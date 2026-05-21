@@ -8,7 +8,7 @@ function doGet(e) {
   const pass   = params.pass  || '';
 
   // ตรวจ password
-  if (pass !== STAFF_PASS) {
+  if (String(pass) !== String(STAFF_PASS)) {
     return jsonResp({ status: 'error', message: 'Unauthorized' });
   }
 
@@ -18,14 +18,17 @@ function doGet(e) {
     if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
 
     const headers = data[0];
-    const rows = data.slice(1).map(row => {
-      const obj = {};
-      headers.forEach((h, i) => {
-        // Include all data including slipImage so dashboard can display payment slips
-        obj[h] = row[i];
+    const refIdx  = headers.indexOf('ref');
+    const rows = data.slice(1)
+      .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '') // ✅ กรอง row ว่าง
+      .map(row => {
+        const obj = {};
+        headers.forEach((h, i) => {
+          // Include all data including slipImage so dashboard can display payment slips
+          obj[h] = row[i];
+        });
+        return obj;
       });
-      return obj;
-    });
     return jsonResp({ status: 'ok', rows: rows.reverse() }); // newest first
   }
 
@@ -40,9 +43,25 @@ function doPost(e) {
 
   const action = body.action || 'saveReservation';
 
+  // ── ยกเลิกการจอง (ทุกสถานะ) ──
+  if (action === 'cancelBooking') {
+    if (String(body.pass) !== String(STAFF_PASS)) return jsonResp({ status: 'error', message: 'Unauthorized' });
+    const sheet = getSheet();
+    const data  = sheet.getDataRange().getValues();
+    const refIdx    = data[0].indexOf('ref');
+    const statusIdx = data[0].indexOf('status');
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][refIdx] === body.ref) {
+        sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
+        return jsonResp({ status: 'ok' });
+      }
+    }
+    return jsonResp({ status: 'error', message: 'Ref not found' });
+  }
+
   // ── อัพเดทสถานะ (หน้าเจ้าหน้าที่ กด อนุมัติ / ไม่อนุมัติ) ──
   if (action === 'updateStatus') {
-    if (body.pass !== STAFF_PASS) return jsonResp({ status: 'error', message: 'Unauthorized' });
+    if (String(body.pass) !== String(STAFF_PASS)) return jsonResp({ status: 'error', message: 'Unauthorized' });
     const sheet = getSheet();
     const data  = sheet.getDataRange().getValues();
     const refIdx    = data[0].indexOf('ref');
@@ -56,9 +75,24 @@ function doPost(e) {
     return jsonResp({ status: 'error', message: 'Ref not found' });
   }
 
-  // ── อัพเดทสลิปและสถานะพร้อมกัน (ญาติชำระเงินแล้วอัปโหลดสลิป) ──
+  // ── อัปโหลดสลิปไป Google Drive แล้ว return URL (เรียกจาก status.html ก่อน) ──
+  if (action === 'uploadSlip') {
+    if (String(body.pass) !== String(STAFF_PASS)) return jsonResp({ status: 'error', message: 'Unauthorized' });
+    if (!body.base64Data) return jsonResp({ status: 'error', message: 'Missing base64Data' });
+    if (!body.ref)        return jsonResp({ status: 'error', message: 'Missing ref' });
+    try {
+      const url = saveSlipToDrive(body.ref, body.base64Data, body.mimeType || '', body.fileName || '');
+      return jsonResp({ status: 'ok', url: url });
+    } catch(e) {
+      Logger.log('uploadSlip error: ' + e.toString());
+      return jsonResp({ status: 'error', message: e.toString() });
+    }
+  }
+
+  // ── อัพเดทสลิปและสถานะพร้อมกัน ──
+  // รับ slipImage เป็น URL (จาก uploadSlip) หรือ base64 (legacy) ก็ได้
   if (action === 'updateSlipAndStatus') {
-    if (body.pass !== STAFF_PASS) return jsonResp({ status: 'error', message: 'Unauthorized' });
+    if (String(body.pass) !== String(STAFF_PASS)) return jsonResp({ status: 'error', message: 'Unauthorized' });
     const sheet = getSheet();
     const data  = sheet.getDataRange().getValues();
     const headers    = data[0];
@@ -69,14 +103,17 @@ function doPost(e) {
       if (data[i][refIdx] === body.ref) {
         sheet.getRange(i + 1, statusIdx + 1).setValue(body.status || 'ชำระแล้ว');
         if (slipIdx >= 0 && body.slipImage) {
-          // Save image to Google Drive, store URL instead of raw base64
-          try {
-            const slipUrl = saveSlipToDrive(body.ref, body.slipImage);
-            sheet.getRange(i + 1, slipIdx + 1).setValue(slipUrl);
-          } catch(driveErr) {
-            // Fallback: store truncated base64 marker so we know a slip was uploaded
-            sheet.getRange(i + 1, slipIdx + 1).setValue('SLIP_UPLOADED:' + new Date().toISOString());
+          // slipImage ตอนนี้เป็น URL จาก uploadSlip แล้ว — บันทึกตรงๆ ได้เลย
+          // (รองรับ base64 legacy ด้วย กรณีมีการเรียกจากที่เก่า)
+          let slipVal = body.slipImage;
+          if (slipVal.startsWith('data:image')) {
+            try {
+              slipVal = saveSlipToDrive(body.ref, slipVal);
+            } catch(e) {
+              slipVal = 'SLIP_UPLOADED:' + new Date().toISOString();
+            }
           }
+          sheet.getRange(i + 1, slipIdx + 1).setValue(slipVal);
         }
         return jsonResp({ status: 'ok' });
       }
@@ -148,27 +185,45 @@ function ensureHeaders(sheet) {
 }
 
 // ===== Save slip image to Google Drive, return public URL =====
-function saveSlipToDrive(ref, base64Data) {
+function saveSlipToDrive(ref, base64Data, mimeTypeOverride, fileNameOverride) {
   // Strip data URI prefix: "data:image/jpeg;base64,..."
-  const matches = base64Data.match(/^data:([a-zA-Z0-9+/]+\/[a-zA-Z0-9+/]+);base64,(.+)$/);
-  if (!matches) throw new Error('Invalid base64 format');
+  const matches = base64Data.match(/^data:([a-zA-Z0-9+\/]+\/[a-zA-Z0-9+\/]+);base64,(.+)$/);
+  
+  let mimeType, rawBase64;
+  if (matches) {
+    mimeType  = mimeTypeOverride || matches[1];
+    rawBase64 = matches[2];
+  } else if (mimeTypeOverride) {
+    // Received raw base64 without data URI prefix (edge case)
+    mimeType  = mimeTypeOverride;
+    rawBase64 = base64Data;
+  } else {
+    throw new Error('Invalid base64 format — ไม่พบ data URI prefix และไม่มี mimeType');
+  }
 
-  const mimeType = matches[1];
-  const ext = mimeType.split('/')[1].replace('jpeg','jpg');
-  const blob = Utilities.newBlob(Utilities.base64Decode(matches[2]), mimeType, `slip_${ref}.${ext}`);
+  const ext = mimeType.split('/')[1].replace('jpeg','jpg').replace('jpg','jpg');
+  const fileName = fileNameOverride || ('slip_' + ref + '_' + new Date().getTime() + '.' + ext);
+  let blob;
+  try {
+    blob = Utilities.newBlob(Utilities.base64Decode(rawBase64), mimeType, fileName);
+  } catch(decodeErr) {
+    throw new Error('base64 decode failed: ' + decodeErr.message);
+  }
 
-  // Save to a "Slips" folder inside Drive root
-  let folder;
+  // บันทึกลงโฟลเดอร์ VisitorSlips
   const folderName = 'VisitorSlips';
   const folderIter = DriveApp.getFoldersByName(folderName);
-  folder = folderIter.hasNext() ? folderIter.next() : DriveApp.createFolder(folderName);
+  const folder = folderIter.hasNext() ? folderIter.next() : DriveApp.createFolder(folderName);
 
   const file = folder.createFile(blob);
+  // ตั้งเป็น Public (ทุกคนที่มี link ดูได้ ไม่ต้อง login)
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-  // Return direct image URL
-  return 'https://drive.google.com/uc?export=view&id=' + file.getId();
+  const fileId = file.getId();
+  // ใช้ thumbnail URL — แสดงใน <img> ได้โดยตรง ไม่ต้อง login
+  return 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1200';
 }
+
 
 function jsonResp(obj) {
   return ContentService

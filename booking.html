@@ -369,7 +369,7 @@
 
 <script>
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzG0D1cijBA9E-qC3MFW3VzjGYfNtzgEiCMfDpbdU2KrybYcS46Z2AJRvz5zS9spEyVQw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYTAy4xe5z6tv5y0F3mjLqMdvYuothFRWUWz6MAkpq6xbusyOTFHvu7-YA2Z8HMhGDjw/exec';
 const QUOTA = 20;
 
 // ===== CALENDAR =====
@@ -550,6 +550,33 @@ async function submitBooking() {
 
   const extras = getExtraVisitors();
   const extraNamesStr = extras.map(v => v.name + '|' + v.id + '|' + v.relation).join(';;');
+
+  const prisonerId = document.getElementById('prisonerId').value.trim();
+
+  // ── ตรวจสอบเลขผู้ต้องขังซ้ำในวันเดียวกัน ──
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('submitBtn').disabled = true;
+  try {
+    const checkResp = await fetch(APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent('10900'), { redirect: 'follow' });
+    const checkData = await checkResp.json();
+    if (checkData.status === 'ok' && checkData.rows) {
+      const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+      const duplicate = checkData.rows.find(r =>
+        String(r.prisonerId || '').trim() === prisonerId &&
+        (r.visitDateISO || '') === selectedDate &&
+        activeStatuses.includes(r.status)
+      );
+      if (duplicate) {
+        document.getElementById('overlay').classList.remove('show');
+        document.getElementById('submitBtn').disabled = false;
+        alert(`⚠️ ไม่สามารถจองได้\n\nมีการจองผู้ต้องขังหมายเลข "${prisonerId}" ในวันนี้อยู่แล้ว\n\nRef: ${duplicate.ref}\nสถานะ: ${duplicate.status}\n\nกรุณาเลือกวันอื่น หรือตรวจสอบสถานะการจองเดิม`);
+        return;
+      }
+    }
+  } catch(err) {
+    console.warn('Duplicate check skipped:', err);
+  }
+
   const data = {
     ref,
     timestamp: now,
@@ -571,20 +598,23 @@ async function submitBooking() {
   };
 
   document.getElementById('overlay').classList.add('show');
-  document.getElementById('submitBtn').disabled = true;
-
+  // (already enabled above, keep for demo/no-script-url path)
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(data)
     });
-    const result = await resp.json();
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const result = JSON.parse(await resp.text());
     if (result.status !== 'ok') throw new Error(result.message || 'ไม่สำเร็จ');
   } catch (err) {
     if (APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
       console.warn('Demo mode — Apps Script URL not configured');
     } else {
       console.error('Submit error:', err);
+      // Don't alert user on network error — ref is already shown
     }
   } finally {
     document.getElementById('overlay').classList.remove('show');

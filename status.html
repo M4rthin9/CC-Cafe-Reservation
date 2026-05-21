@@ -6,7 +6,6 @@
 <title>ตรวจสอบสถานะการจอง — ทัณฑสถานบำบัดพิเศษกลาง</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> -->
 <style>
   :root {
     --blue: #185FA5;
@@ -66,6 +65,7 @@
   /* Buttons */
   .btn-primary { width: 100%; padding: 13px; background: var(--blue); color: #fff; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .btn-primary:hover { background: var(--blue-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(24,95,165,0.25); }
+  .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-secondary { width: 100%; padding: 12px; background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
   .btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
 
@@ -92,24 +92,17 @@
   .pay-section h3 { font-size: 15px; font-weight: 700; color: var(--green); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
   .pay-section p { font-size: 13px; color: #3a5520; margin-bottom: 1rem; }
 
-  /* QR */
-  .qr-box { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; text-align: center; margin-bottom: 1rem; }
-  .qr-wrap { display: flex; justify-content: center; margin-bottom: 10px; }
-  #qrcode canvas, #qrcode img { border-radius: 8px; }
-  .promptpay-badge { display: inline-flex; align-items: center; gap: 6px; background: #003A8C; color: #fff; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-bottom: 6px; }
-  .qr-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-  .qr-acct { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
-  .qr-note { font-size: 12px; color: var(--text2); background: #fffbe6; border-radius: 6px; padding: 6px 10px; display: inline-block; }
-  .total-amount { font-size: 28px; font-weight: 700; color: var(--blue); margin: 8px 0; }
-
   /* Upload */
   .upload-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 1.75rem; text-align: center; cursor: pointer; transition: all 0.15s; background: var(--bg); position: relative; }
   .upload-area:hover { border-color: var(--blue); background: var(--blue-light); }
+  .upload-area.drag-over { border-color: var(--blue); background: var(--blue-light); transform: scale(1.01); }
   .upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
   .upload-icon { font-size: 32px; color: var(--text2); }
   .upload-area p { font-size: 13px; color: var(--text2); margin-top: 6px; }
   .upload-area .hint { font-size: 11px; color: var(--text2); margin-top: 4px; opacity: 0.7; }
-  .preview-img { max-width: 100%; max-height: 200px; border-radius: var(--radius-sm); margin-top: 12px; display: none; }
+  .preview-img { max-width: 100%; max-height: 220px; border-radius: var(--radius-sm); margin-top: 12px; display: none; object-fit: contain; }
+  .upload-progress { margin-top: 10px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; display: none; }
+  .upload-progress-bar { height: 100%; background: var(--blue); border-radius: 3px; transition: width 0.3s; width: 0%; }
 
   /* Not found */
   .not-found { text-align: center; padding: 2.5rem 1rem; }
@@ -126,6 +119,11 @@
   .paid-notice { background: #e8f0fe; border: 1px solid rgba(26,86,219,0.25); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; }
   .paid-notice h3 { color: #1a56db; font-size: 15px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
   .paid-notice p { font-size: 13px; color: #1a3a8a; line-height: 1.7; }
+
+  /* Alert / error strip */
+  .alert-strip { border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; margin-top: 8px; display: none; }
+  .alert-strip.err  { background: var(--red-light); color: #7a2020; border: 1px solid rgba(226,75,74,0.3); }
+  .alert-strip.ok   { background: var(--green-light); color: #2a5010; border: 1px solid rgba(59,109,17,0.25); }
 
   /* Overlay */
   .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
@@ -170,15 +168,17 @@
 
     <div class="tab-content active" id="tabContentRef">
       <label>เลขอ้างอิง (เช่น VIS-12345)</label>
-      <input type="text" id="searchRef" placeholder="VIS-XXXXX" style="text-transform:uppercase;letter-spacing:1px">
+      <input type="text" id="searchRef" placeholder="VIS-XXXXX" style="text-transform:uppercase;letter-spacing:1px"
+        onkeydown="if(event.key==='Enter') doSearch()">
     </div>
     <div class="tab-content" id="tabContentPrisoner">
       <label>หมายเลขผู้ต้องขัง</label>
-      <input type="text" id="searchPrisoner" placeholder="เช่น 12345678">
+      <input type="text" id="searchPrisoner" placeholder="เช่น 12345678"
+        onkeydown="if(event.key==='Enter') doSearch()">
     </div>
 
     <div style="margin-top:12px">
-      <button class="btn-primary" onclick="doSearch()">
+      <button class="btn-primary" id="searchBtn" onclick="doSearch()">
         <i class="ti ti-search"></i> ตรวจสอบสถานะ
       </button>
     </div>
@@ -222,98 +222,42 @@
 
 <script>
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzG0D1cijBA9E-qC3MFW3VzjGYfNtzgEiCMfDpbdU2KrybYcS46Z2AJRvz5zS9spEyVQw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYTAy4xe5z6tv5y0F3mjLqMdvYuothFRWUWz6MAkpq6xbusyOTFHvu7-YA2Z8HMhGDjw/exec';
 const STAFF_PASS = '10900';
 
-// ===== PROMPTPAY QR GENERATOR =====
-// Generate PromptPay QR code - simplified working format
-// function generatePromptPayQR(receiverId, amount) {
-//   // Simplified PromptPay format: 00020101021129370016com.promptpay009{length}{receiverId}{amount}
-//   // This is a basic but functional format for PromptPay QR codes
-  
-//   const receiverIdStr = receiverId.replace(/[^0-9]/g, ''); // Remove non-digits
-//   const amountNum = parseFloat(amount) || 0;
-  
-//   // Build QR string step by step
-//   let qr = '00020101021229370016A0000006770101110213'; // Base structure
-  
-//   // Add receiver ID (phone or tax ID)
-//   qr += receiverIdStr.length.toString().padStart(2, '0');
-//   qr += receiverIdStr;
-  
-//   // Add amount if > 0
-//   if (amountNum > 0) {
-//     qr += '5402'; // Amount tag
-//     const amountStr = amountNum.toFixed(2);
-//     qr += amountStr.length.toString().padStart(2, '0');
-//     qr += amountStr;
-//   }
-  
-//   // Add currency code (THB = 764)
-//   qr += '5303764';
-  
-//   // Add CRC placeholder (can be empty for basic usage)
-//   qr += '6304';
-  
-//   return qr;
-// }
-
-function generatePromptPayQR(receiverId, amount) {
-    // Normalize ID: strip dashes/spaces, digits only
-    const digits = receiverId.replace(/[^0-9]/g, '');
-
-    // Format ID according to PromptPay spec:
-    //   phone (10 digits): prefix with country code 0066, drop leading 0 → 13 chars
-    //   national ID / tax ID (13 digits): use as-is
-    let formattedId;
-    if (digits.length === 10) {
-        formattedId = '0066' + digits.substring(1); // 0066 + 9 digits = 13 chars
-    } else {
-        formattedId = digits; // 13-digit national ID or tax ID
-    }
-
-    // Helper: build a TLV (tag + 2-digit length + value)
-    function tlv(tag, value) {
-        return tag + value.length.toString().padStart(2, '0') + value;
-    }
-
-    // Merchant Account Information (tag 29)
-    const aid = tlv('00', 'A000000677010111');  // Application ID
-    const ref = tlv('01', formattedId);          // PromptPay ID
-    const merchantInfo = tlv('29', aid + ref);
-
-    // Amount (tag 54) — only when > 0
-    const amountNum = parseFloat(amount) || 0;
-    const amountField = amountNum > 0 ? tlv('54', amountNum.toFixed(2)) : '';
-
-    // Assemble payload (without CRC value)
-    const payload =
-        tlv('00', '01') +          // Payload Format Indicator
-        tlv('01', '12') +          // Point of Initiation Method: 12 = dynamic
-        merchantInfo +
-        tlv('53', '764') +         // Currency: 764 = THB
-        amountField +
-        tlv('58', 'TH') +          // Country code
-        '6304';                    // CRC tag + length placeholder
-
-    return payload + crc16(payload);
+// ===== SAFE FETCH WRAPPER =====
+// BUG FIX: Google Apps Script requires redirect:'follow' and Content-Type:'text/plain'
+// to avoid CORS preflight failure. Using 'application/json' triggers a preflight
+// that Apps Script cannot handle, causing the request to silently fail.
+async function appsScriptPost(payload) {
+  const resp = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Invalid JSON response: ' + text.slice(0, 100));
+  }
 }
 
-function crc16(data) {
-    let crc = 0xFFFF;
-    const polynomial = 0x1021;
-
-    for (let i = 0; i < data.length; i++) {
-        crc ^= (data.charCodeAt(i) << 8);
-        for (let j = 0; j < 8; j++) {
-            crc = (crc & 0x8000) ? (crc << 1) ^ polynomial : (crc << 1);
-        }
-    }
-    
-    // Return in hex format, padded to 4 chars
-    return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+async function appsScriptGet(params) {
+  const qs = new URLSearchParams(params).toString();
+  const resp = await fetch(APPS_SCRIPT_URL + '?' + qs, { redirect: 'follow' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Invalid JSON response: ' + text.slice(0, 100));
+  }
 }
 
+// ===== TAB =====
 let activeTab = 'ref';
 function switchTab(tab) {
   activeTab = tab;
@@ -341,7 +285,7 @@ window.addEventListener('load', () => {
 // ===== SEARCH =====
 async function doSearch() {
   let query = '';
-  let mode  = activeTab;
+  const mode = activeTab;
   if (mode === 'ref') {
     query = document.getElementById('searchRef').value.trim().toUpperCase();
     if (!query) { alert('กรุณากรอกเลขอ้างอิง'); return; }
@@ -350,26 +294,30 @@ async function doSearch() {
     if (!query) { alert('กรุณากรอกหมายเลขผู้ต้องขัง'); return; }
   }
 
-  document.getElementById('overlayMsg').textContent = 'กำลังค้นหา...';
-  document.getElementById('overlay').classList.add('show');
+  setOverlay(true, 'กำลังค้นหา...');
+  document.getElementById('searchBtn').disabled = true;
   document.getElementById('resultArea').style.display = 'none';
   document.getElementById('thankYouArea').style.display = 'none';
 
   let rows = [];
   try {
-    const url = `${APPS_SCRIPT_URL}?action=getAll&pass=${STAFF_PASS}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-    if (data.status === 'ok') rows = data.rows;
+    const data = await appsScriptGet({ action: 'getAll', pass: STAFF_PASS });
+    if (data.status === 'ok') rows = data.rows || [];
+    else throw new Error(data.message || 'error');
   } catch(err) {
-    if (APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-      // Demo mode — mock data
+    console.error('Fetch error:', err);
+    // Demo fallback only if URL is placeholder
+    if (APPS_SCRIPT_URL.includes('YOUR_GOOGLE')) {
       rows = getDemoRows();
     } else {
-      console.error('Fetch error:', err);
+      setOverlay(false);
+      document.getElementById('searchBtn').disabled = false;
+      renderError('ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง');
+      return;
     }
   } finally {
-    document.getElementById('overlay').classList.remove('show');
+    setOverlay(false);
+    document.getElementById('searchBtn').disabled = false;
   }
 
   // Filter
@@ -378,10 +326,7 @@ async function doSearch() {
     found = rows.find(r => (r.ref || '').toUpperCase() === query);
   } else {
     const matches = rows.filter(r => String(r.prisonerId || '').trim() === query);
-    if (matches.length > 0) {
-      // Show all matches if multiple, use latest
-      found = matches[0];
-    }
+    if (matches.length > 0) found = matches[0];
   }
 
   if (!found) {
@@ -389,6 +334,17 @@ async function doSearch() {
   } else {
     renderResult(found);
   }
+}
+
+function renderError(msg) {
+  const area = document.getElementById('resultArea');
+  area.style.display = 'block';
+  area.innerHTML = `
+    <div style="background:var(--red-light);border:1px solid rgba(226,75,74,0.3);border-radius:var(--radius);padding:1.25rem;text-align:center;">
+      <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+      <div style="font-weight:600;color:var(--red);margin-bottom:4px">เกิดข้อผิดพลาด</div>
+      <div style="font-size:13px;color:#7a2020">${msg}</div>
+    </div>`;
 }
 
 // ===== RENDER NOT FOUND =====
@@ -400,7 +356,7 @@ function renderNotFound(query) {
       <div class="not-found">
         <div class="not-found-icon">🔍</div>
         <h3>ไม่พบข้อมูลการจอง</h3>
-        <p>ไม่พบการจองสำหรับ <strong>"${query}"</strong><br>กรุณาตรวจสอบความถูกต้องของข้อมูลที่กรอก</p>
+        <p>ไม่พบการจองสำหรับ <strong>"${escHtml(query)}"</strong><br>กรุณาตรวจสอบความถูกต้องของข้อมูลที่กรอก</p>
       </div>
     </div>
     <div style="margin-top:12px">
@@ -413,32 +369,34 @@ function renderNotFound(query) {
 
 // ===== RENDER RESULT =====
 let currentBooking = null;
-let slipBase64 = null;
+let slipFile = null;
 let slipUploaded = false;
 
 function renderResult(row) {
   currentBooking = row;
-  slipBase64 = null;
+  slipFile = null;
   slipUploaded = false;
 
   const status = row.status || 'รอตรวจสอบ';
   const statusPill = getStatusPill(status);
-  const totalPersons = (parseInt(row.visitorCount) || 1) + 1;
-  const total = (parseInt(row.total) || totalPersons * 1000);
+  const visitorCount = parseInt(row.visitorCount) || 1;
+  const totalPersons = visitorCount + 1;
+  const total = parseInt(row.total) || totalPersons * 1000;
 
   const area = document.getElementById('resultArea');
   area.style.display = 'block';
 
   let paymentBlock = '';
+  const sLower = status.toLowerCase();
 
-  if (status === 'รอชำระเงิน' || status === 'อนุมัติ' || status === 'approved') {
+  if (sLower === 'รอชำระเงิน' || sLower === 'อนุมัติ' || sLower === 'approved') {
     paymentBlock = `
       <div class="pay-section">
         <h3>✅ การจองได้รับการอนุมัติ — กรุณาชำระเงิน</h3>
         <p>เจ้าหน้าที่ตรวจสอบประวัติวินัยเรียบร้อยแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเยี่ยม</p>
         <div style="text-align:center;margin-bottom:1rem">
           <div style="font-size:13px;color:var(--text2)">ยอดที่ต้องชำระ</div>
-          <div class="total-amount">${total.toLocaleString()} บาท</div>
+          <div style="font-size:28px;font-weight:700;color:var(--blue);margin:8px 0">${total.toLocaleString()} บาท</div>
           <div style="font-size:12px;color:var(--text2)">${totalPersons} คน × 1,000 บาท</div>
         </div>
         <button class="btn-primary" onclick="showPayment()">
@@ -446,32 +404,42 @@ function renderResult(row) {
         </button>
       </div>
     `;
-  } else if (status === 'ไม่อนุมัติ' || status === 'rejected') {
+  } else if (sLower === 'ไม่อนุมัติ' || sLower === 'rejected') {
     paymentBlock = `
       <div class="rejected-notice">
         <h3>❌ การจองถูกปฏิเสธ</h3>
-        <p>เจ้าหน้าที่ไม่สามารถอนุมัติการจองนี้ได้ เนื่องจากมีข้อมูลวินัยที่เกี่ยวข้อง หากมีข้อสงสัยกรุณาติดต่อเจ้าหน้าที่ณ ทัณฑสถาน</p>
+        <p>เจ้าหน้าที่ไม่สามารถอนุมัติการจองนี้ได้ เนื่องจากมีข้อมูลวินัยที่เกี่ยวข้อง หากมีข้อสงสัยกรุณาติดต่อเจ้าหน้าที่ ณ ทัณฑสถาน</p>
       </div>
       <a href="booking.html" class="btn-secondary" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1rem">
         <i class="ti ti-plus"></i> จองใหม่
       </a>
     `;
-  } else if (status === 'ชำระแล้ว' || status === 'paid') {
+  } else if (sLower === 'ชำระแล้ว' || sLower === 'paid') {
     paymentBlock = `
       <div class="paid-notice">
         <h3>💳 รอเจ้าหน้าที่ยืนยัน</h3>
         <p>ระบบได้รับสลิปการโอนเงินของท่านแล้ว เจ้าหน้าที่กำลังตรวจสอบและจะยืนยันนัดหมายของท่านภายใน 1 วันทำการ</p>
       </div>
     `;
-  } else if (status === 'เสร็จสิ้น') {
+  } else if (sLower === 'เสร็จสิ้น') {
     paymentBlock = `
       <div style="background:#d1fae5;border:1px solid rgba(6,95,70,0.25);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
         <h3 style="color:#065f46;font-size:15px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;">🎉 การจองเสร็จสมบูรณ์</h3>
         <p style="font-size:13px;color:#064e3b;line-height:1.7;">เจ้าหน้าที่ยืนยันการชำระเงินเรียบร้อยแล้ว กรุณานำเลขอ้างอิงมาแสดงในวันเยี่ยม</p>
       </div>
     `;
+  } else if (sLower === 'ยกเลิก') {
+    paymentBlock = `
+      <div style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
+        <h3 style="color:#374151;font-size:15px;font-weight:700;margin-bottom:6px;">🚫 การจองถูกยกเลิก</h3>
+        <p style="font-size:13px;color:#6b7280;line-height:1.7;">การจองนี้ถูกยกเลิกแล้ว หากต้องการจองใหม่กรุณากดปุ่มด้านล่าง</p>
+      </div>
+      <a href="booking.html" class="btn-secondary" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1rem">
+        <i class="ti ti-plus"></i> จองใหม่
+      </a>
+    `;
   } else {
-    // Pending
+    // Pending / รอตรวจสอบ
     paymentBlock = `
       <div style="background:var(--gold-light);border:1px solid rgba(200,146,42,0.3);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
         <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:4px;display:flex;align-items:center;gap:8px;">⏳ รอเจ้าหน้าที่ตรวจสอบ</div>
@@ -484,62 +452,67 @@ function renderResult(row) {
     <div class="result-card">
       <div class="result-header">
         <div>
-          <div class="result-ref">เลขอ้างอิง · <strong>${row.ref || '—'}</strong></div>
-          <div style="font-size:12px;color:var(--text2)">จองเมื่อ ${row.timestamp || '—'}</div>
+          <div class="result-ref">เลขอ้างอิง · <strong>${escHtml(row.ref || '—')}</strong></div>
+          <div style="font-size:12px;color:var(--text2)">จองเมื่อ ${escHtml(row.timestamp || '—')}</div>
         </div>
         <div>${statusPill}</div>
       </div>
       <div class="result-body">
-        <div class="info-row"><span class="lbl">👤 ผู้เยี่ยม</span><span class="val">${row.visitorName || '—'}</span></div>
-        <div class="info-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${row.visitorPhone || '—'}</span></div>
-        <div class="info-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${row.prisonerName || '—'} (#${row.prisonerId || '—'})</span></div>
-        <div class="info-row"><span class="lbl">🏢 แดน</span><span class="val">${row.wing || '—'}</span></div>
-        <div class="info-row"><span class="lbl">📅 วันที่เยี่ยม</span><span class="val">${row.visitDate || '—'}</span></div>
-        <div class="info-row"><span class="lbl">👥 จำนวน</span><span class="val">ญาติ ${row.visitorCount || '—'} + ผู้ต้องขัง 1 = ${totalPersons} คน</span></div>
+        <div class="info-row"><span class="lbl">👤 ผู้เยี่ยม</span><span class="val">${escHtml(row.visitorName || '—')}</span></div>
+        <div class="info-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${escHtml(row.visitorPhone || '—')}</span></div>
+        <div class="info-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${escHtml(row.prisonerName || '—')} (#${escHtml(row.prisonerId || '—')})</span></div>
+        <div class="info-row"><span class="lbl">🏢 แดน</span><span class="val">${escHtml(row.wing || '—')}</span></div>
+        <div class="info-row"><span class="lbl">📅 วันที่เยี่ยม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>
+        <div class="info-row"><span class="lbl">👥 จำนวน</span><span class="val">ญาติ ${visitorCount} + ผู้ต้องขัง 1 = ${totalPersons} คน</span></div>
         <div class="info-row"><span class="lbl">💰 ค่าบริการ</span><span class="val">${total.toLocaleString()} บาท</span></div>
       </div>
     </div>
 
     <div id="paymentArea">${paymentBlock}</div>
 
-    <!-- Payment modal content (hidden) -->
+    <!-- Payment form (hidden until showPayment()) -->
     <div id="paymentForm" style="display:none">
       <div class="section-title" style="margin-top:1rem;font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;">
         <i class="ti ti-credit-card"></i> รายละเอียดการชำระเงิน
       </div>
 
-      <!-- Bank Info - Prominent -->
+      <!-- Bank Info -->
       <div style="background:linear-gradient(135deg,#e8f4f8,#d0eaf3);border:2px solid #03b3c0;border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem;text-align:center;">
         <div style="display:inline-flex;align-items:center;gap:8px;background:#03b3c0;color:#fff;font-size:13px;font-weight:700;padding:6px 18px;border-radius:20px;margin-bottom:14px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="rgba(255,255,255,0.25)"/><path d="M5 8h14M5 12h14M5 16h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-          ธนาคารกรุงไทย
+          🏦 ธนาคารกรุงไทย
         </div>
         <div style="font-size:13px;color:#2a6a75;margin-bottom:6px;font-weight:500;">เลขบัญชี</div>
-        <div style="font-size:32px;font-weight:800;color:#0a4a55;letter-spacing:3px;font-variant-numeric:tabular-nums;margin-bottom:8px;">137-1-09488-8</div>
+        <div style="font-size:32px;font-weight:800;color:#0a4a55;letter-spacing:3px;margin-bottom:8px;">137-1-09488-8</div>
         <div style="font-size:16px;font-weight:600;color:#1a5a65;margin-bottom:12px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
         <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 14px;font-size:13px;color:#1a5a65;line-height:1.8;">
           💰 ยอดที่ต้องชำระ: <strong style="font-size:18px;color:#0a4a55;">${total.toLocaleString()} บาท</strong><br>
           <span style="font-size:12px;color:#2a6a75;">${totalPersons} คน × 1,000 บาท</span>
         </div>
         <div style="margin-top:10px;background:rgba(255,255,255,0.8);border-radius:8px;padding:8px 14px;font-size:13px;color:#7a4a10;">
-          📝 กรุณาระบุเลขอ้างอิง <strong>${row.ref}</strong> ในช่องหมายเหตุเมื่อโอน
+          📝 กรุณาระบุเลขอ้างอิง <strong>${escHtml(row.ref)}</strong> ในช่องหมายเหตุเมื่อโอน
         </div>
       </div>
 
+      <!-- Upload section -->
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
         <div class="section-title" style="font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;">
           <i class="ti ti-upload"></i> อัปโหลดสลิปการโอนเงิน
         </div>
-        <div class="upload-area">
-          <input type="file" accept="image/*" onchange="handleUpload(event)">
+        <div class="upload-area" id="uploadArea"
+          ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <input type="file" accept="image/*,application/pdf" id="slipFileInput" onchange="handleUpload(event)">
           <div id="uploadInner">
             <div class="upload-icon">📄</div>
             <p>แตะหรือคลิกเพื่อเลือกรูปสลิป</p>
-            <p class="hint">รองรับ JPG, PNG · ขนาดไม่เกิน 5MB</p>
+            <p class="hint">รองรับ JPG, PNG · ขนาดไม่เกิน 10MB · ลากไฟล์มาวางได้</p>
           </div>
           <img id="previewImg" class="preview-img" alt="สลิปที่อัปโหลด">
         </div>
-        <p id="uploadStatus" style="font-size:12px;color:var(--text2);margin-top:6px;min-height:16px"></p>
+        <div class="upload-progress" id="uploadProgress">
+          <div class="upload-progress-bar" id="uploadProgressBar"></div>
+        </div>
+        <div id="uploadStatus" style="font-size:12px;color:var(--text2);margin-top:6px;min-height:16px"></div>
+        <div class="alert-strip" id="uploadAlert"></div>
       </div>
 
       <div style="display:flex;gap:10px;margin-bottom:1rem">
@@ -556,9 +529,6 @@ function renderResult(row) {
       <i class="ti ti-search"></i> ค้นหาอีกครั้ง
     </button>
   `;
-
-  // QR generation disabled (removed QR display)
-
 }
 
 // ===== STATUS PILL =====
@@ -569,6 +539,7 @@ function getStatusPill(status) {
   if (s.includes('ไม่อนุมัติ') || s === 'rejected') return `<span class="status-pill status-rejected">❌ ไม่อนุมัติ</span>`;
   if (s === 'เสร็จสิ้น') return `<span class="status-pill status-paid" style="background:#d1fae5;color:#065f46;border-color:rgba(6,95,70,0.3)">✅ เสร็จสิ้นแล้ว</span>`;
   if (s.includes('ชำระ') || s === 'paid') return `<span class="status-pill status-paid">💳 รอเจ้าหน้าที่ยืนยัน</span>`;
+  if (s === 'ยกเลิก') return `<span class="status-pill" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db">🚫 ยกเลิก</span>`;
   return `<span class="status-pill status-pending">⏳ รอตรวจสอบ</span>`;
 }
 
@@ -576,78 +547,188 @@ function getStatusPill(status) {
 function showPayment() {
   document.getElementById('paymentArea').style.display = 'none';
   document.getElementById('paymentForm').style.display = 'block';
-  window.scrollTo({ top: document.getElementById('paymentForm').offsetTop - 20, behavior: 'smooth' });
+  setTimeout(() => {
+    const el = document.getElementById('paymentForm');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
 }
 function hidePayment() {
   document.getElementById('paymentArea').style.display = 'block';
   document.getElementById('paymentForm').style.display = 'none';
 }
 
-// ===== UPLOAD =====
+// ===== DRAG & DROP =====
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.add('drag-over');
+}
+function handleDragLeave(e) {
+  document.getElementById('uploadArea').classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+// ===== FILE UPLOAD HANDLER =====
 function handleUpload(e) {
   const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 5MB'); return; }
-  const reader = new FileReader();
-  reader.onload = ev => {
-    slipBase64 = ev.target.result;
-    const img = document.getElementById('previewImg');
-    img.src = slipBase64; 
-    img.style.display = 'block';
-    document.getElementById('uploadInner').style.opacity = '0.4';
-    document.getElementById('uploadStatus').innerHTML = `✓ อัปโหลดแล้ว: <strong>${file.name}</strong><br><span style="font-size:11px;color:var(--text2)">ขนาด: ${(file.size/1024).toFixed(1)} KB</span>`;
-    slipUploaded = true;
-  };
-  reader.readAsDataURL(file);
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  // BUG FIX: validate file size (10MB limit)
+  if (file.size > 10 * 1024 * 1024) {
+    showUploadAlert('err', '❌ ไฟล์ใหญ่เกิน 10MB กรุณาเลือกไฟล์ที่เล็กกว่า');
+    return;
+  }
+  // BUG FIX: validate file type
+  if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+    showUploadAlert('err', '❌ รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG) เท่านั้น');
+    return;
+  }
+  slipFile = file;
+  slipUploaded = true;
+  hideUploadAlert();
+
+  // Show preview
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.getElementById('previewImg');
+      img.src = ev.target.result;
+      img.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  document.getElementById('uploadInner').style.opacity = '0.4';
+  document.getElementById('uploadStatus').innerHTML =
+    `✓ เลือกไฟล์แล้ว: <strong>${escHtml(file.name)}</strong><br>` +
+    `<span style="font-size:11px;color:var(--text2)">ขนาด: ${(file.size/1024).toFixed(1)} KB · จะอัปโหลดเมื่อกดยืนยัน</span>`;
+}
+
+function showUploadAlert(type, msg) {
+  const el = document.getElementById('uploadAlert');
+  el.className = 'alert-strip ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideUploadAlert() {
+  const el = document.getElementById('uploadAlert');
+  if (el) el.style.display = 'none';
+}
+
+// ===== UPLOAD SLIP TO APPS SCRIPT =====
+// BUG FIX: Use correct headers (text/plain) + redirect:'follow' for CORS compatibility
+async function uploadSlipViaAppsScript(file, ref) {
+  // Convert file to base64 data URI
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result); // data:image/...;base64,...
+    reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์ได้'));
+    reader.readAsDataURL(file);
+  });
+
+  // Animate progress bar
+  animateProgress(10, 60);
+
+  const result = await appsScriptPost({
+    action: 'uploadSlip',
+    pass: STAFF_PASS,
+    ref: ref,
+    fileName: file.name,
+    mimeType: file.type,
+    base64Data: base64
+  });
+
+  animateProgress(60, 100);
+
+  if (result.status !== 'ok') {
+    throw new Error(result.message || 'อัปโหลดไม่สำเร็จ');
+  }
+  return result.url;
+}
+
+function animateProgress(from, to) {
+  const bar = document.getElementById('uploadProgressBar');
+  const wrap = document.getElementById('uploadProgress');
+  if (!bar || !wrap) return;
+  wrap.style.display = 'block';
+  bar.style.width = from + '%';
+  setTimeout(() => { bar.style.width = to + '%'; }, 50);
 }
 
 // ===== SUBMIT PAYMENT =====
 async function submitPayment() {
-  if (!slipUploaded) { alert('กรุณาอัปโหลดสลิปการโอนเงินก่อน'); return; }
+  if (!slipUploaded || !slipFile) {
+    showUploadAlert('err', '❌ กรุณาเลือกรูปสลิปการโอนเงินก่อน');
+    return;
+  }
   if (!currentBooking) return;
 
-  document.getElementById('overlayMsg').textContent = 'กำลังบันทึกการชำระเงิน...';
-  document.getElementById('overlay').classList.add('show');
-  document.getElementById('paySubmitBtn').disabled = true;
+  const submitBtn = document.getElementById('paySubmitBtn');
+  submitBtn.disabled = true;
+  setOverlay(true, 'กำลังอัปโหลดสลิป...');
 
-  // Update slip image in sheet
+  let slipUrl = '';
   try {
-    const updateData = {
+    // Step 1: Upload image to Google Drive via Apps Script
+    slipUrl = await uploadSlipViaAppsScript(slipFile, currentBooking.ref);
+  } catch (uploadErr) {
+    console.error('Slip upload error:', uploadErr);
+    setOverlay(false);
+    submitBtn.disabled = false;
+    // Reset progress bar
+    const wrap = document.getElementById('uploadProgress');
+    if (wrap) { wrap.style.display = 'none'; }
+    showUploadAlert('err',
+      '❌ อัปโหลดสลิปไม่สำเร็จ: ' + (uploadErr.message || 'กรุณาลองใหม่') +
+      '<br>หากยังไม่สำเร็จ กรุณาติดต่อเจ้าหน้าที่');
+    return;
+  }
+
+  // Step 2: Save URL + update status in Sheet
+  setOverlay(true, 'กำลังบันทึกการชำระเงิน...');
+  try {
+    const result = await appsScriptPost({
       action: 'updateSlipAndStatus',
       pass: STAFF_PASS,
       ref: currentBooking.ref,
       status: 'ชำระแล้ว',
-      slipImage: slipBase64
-    };
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify(updateData)
+      slipImage: slipUrl
     });
-    const result = await resp.json();
-    if (result.status !== 'ok') throw new Error(result.message);
-  } catch(err) {
-    if (APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-      console.warn('Demo mode');
-    } else {
-      console.error('Payment error:', err);
-    }
+    if (result.status !== 'ok') throw new Error(result.message || 'บันทึกไม่สำเร็จ');
+  } catch (err) {
+    console.error('Update status error:', err);
+    // Don't block UX — slip already uploaded to Drive
+    // Still show thank you since the critical step (upload) succeeded
   } finally {
-    document.getElementById('overlay').classList.remove('show');
+    setOverlay(false);
   }
 
   // Show thank you
+  showThankYou();
+}
+
+function showThankYou() {
+  const row = currentBooking;
+  const visitorCount = parseInt(row.visitorCount) || 1;
+  const totalPersons = visitorCount + 1;
+  const total = parseInt(row.total) || totalPersons * 1000;
+
   document.getElementById('resultArea').style.display = 'none';
   document.getElementById('thankYouArea').style.display = 'block';
-  document.getElementById('tyRefNumber').textContent = currentBooking.ref;
+  document.getElementById('tyRefNumber').textContent = row.ref;
 
-  const totalPersons = (parseInt(currentBooking.visitorCount) || 1) + 1;
-  const total = parseInt(currentBooking.total) || totalPersons * 1000;
   document.getElementById('tySummary').innerHTML = `
-    <div>📋 <strong>Ref No.:</strong> ${currentBooking.ref}</div>
-    <div>👤 <strong>ผู้เยี่ยม:</strong> ${currentBooking.visitorName}</div>
-    <div>🔒 <strong>ผู้ต้องขัง:</strong> ${currentBooking.prisonerName} (#${currentBooking.prisonerId})</div>
-    <div>🏢 <strong>แดน:</strong> ${currentBooking.wing}</div>
-    <div>📅 <strong>วันที่:</strong> ${currentBooking.visitDate}</div>
+    <div>📋 <strong>Ref No.:</strong> ${escHtml(row.ref)}</div>
+    <div>👤 <strong>ผู้เยี่ยม:</strong> ${escHtml(row.visitorName)}</div>
+    <div>🔒 <strong>ผู้ต้องขัง:</strong> ${escHtml(row.prisonerName)} (#${escHtml(row.prisonerId)})</div>
+    <div>🏢 <strong>แดน:</strong> ${escHtml(row.wing)}</div>
+    <div>📅 <strong>วันที่:</strong> ${escHtml(row.visitDate)}</div>
     <div>👥 <strong>จำนวน:</strong> ${totalPersons} คน</div>
     <div>💰 <strong>ยอดชำระ:</strong> ${total.toLocaleString()} บาท ✓</div>
   `;
@@ -660,8 +741,26 @@ function resetSearch() {
   document.getElementById('searchPrisoner').value = '';
   document.getElementById('resultArea').style.display = 'none';
   document.getElementById('thankYouArea').style.display = 'none';
-  currentBooking = null; slipBase64 = null; slipUploaded = false;
+  currentBooking = null;
+  slipFile = null;
+  slipUploaded = false;
   window.scrollTo(0, 0);
+}
+
+// ===== OVERLAY =====
+function setOverlay(show, msg) {
+  const el = document.getElementById('overlay');
+  el.classList.toggle('show', show);
+  if (msg) document.getElementById('overlayMsg').textContent = msg;
+}
+
+// ===== UTILS =====
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ===== DEMO DATA =====

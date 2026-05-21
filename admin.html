@@ -84,7 +84,9 @@ tr:hover td { background: #f8f9fa; }
 .badge-reject  { background: var(--red-light); color: var(--red); }
 .badge-pay     { background: #e8f0fe; color: #1a56db; }
 .badge-paid    { background: #e0f2fe; color: #0369a1; }
-.badge-done    { background: #d1fae5; color: #065f46; }
+.badge-cancel  { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.btn-cancel { padding: 5px 12px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.btn-cancel:hover { background: #fee2e2; color: #dc2626; border-color: #dc2626; }
 .btn-confirm-pay { padding: 5px 12px; background: #1a56db; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
 .btn-confirm-pay:hover { opacity: 0.85; }
 .btn-reject-pay { padding: 5px 12px; background: #dc2626; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
@@ -250,7 +252,7 @@ tr:hover td { background: #f8f9fa; }
 <script>
 // ===== CONFIG =====
 const PASSWORD = '10900';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzG0D1cijBA9E-qC3MFW3VzjGYfNtzgEiCMfDpbdU2KrybYcS46Z2AJRvz5zS9spEyVQw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYTAy4xe5z6tv5y0F3mjLqMdvYuothFRWUWz6MAkpq6xbusyOTFHvu7-YA2Z8HMhGDjw/exec';
 
 // ===== STATE =====
 let allRows = [];
@@ -338,6 +340,7 @@ function renderTable() {
   const fs = document.getElementById('filterStatus').value;
   const fd = document.getElementById('filterDate').value;
   let rows = allRows.filter(r => {
+    if (!r.ref || String(r.ref).trim() === '') return false; // ✅ กรอง row ว่าง
     if (fs && r.status !== fs) return false;
     if (fd && r.visitDate !== fd) return false;
     if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
@@ -355,9 +358,11 @@ function renderTable() {
     else if (s === 'ชำระแล้ว') badgeClass = 'badge-paid';
     else if (s === 'เสร็จสิ้น') badgeClass = 'badge-done';
     else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-reject';
+    else if (s === 'ยกเลิก') badgeClass = 'badge-cancel';
 
     const isWait      = s === 'รอตรวจสอบ';
     const isPaid      = s === 'ชำระแล้ว';
+    const isCancelled = s === 'ยกเลิก';
     const rowIdx      = allRows.indexOf(r);
     return `<tr>
       <td><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
@@ -387,6 +392,7 @@ function renderTable() {
             <button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">💳 ยืนยันชำระเงิน</button>
             <button class="btn-reject-pay" onclick="rejectPayment(${rowIdx})">✗ ปฏิเสธ</button>
           ` : ''}
+          ${!isCancelled ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
           <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
           <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
         </div>
@@ -403,6 +409,8 @@ async function updateStatus(idx, newStatus) {
   try {
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: newStatus, pass: PASSWORD })
     });
   } catch(e) { /* demo mode */ }
@@ -418,6 +426,8 @@ async function confirmPayment(idx) {
   try {
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'เสร็จสิ้น', pass: PASSWORD })
     });
   } catch(e) { /* demo mode */ }
@@ -434,6 +444,8 @@ async function rejectPayment(idx) {
   try {
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: PASSWORD })
     });
   } catch(e) { /* demo mode */ }
@@ -443,35 +455,97 @@ async function rejectPayment(idx) {
 }
 
 
+// ===== CANCEL BOOKING =====
+async function cancelBooking(idx) {
+  const row = allRows[idx];
+  if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
+  row.status = 'ยกเลิก';
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'cancelBooking', ref: row.ref, pass: PASSWORD })
+    });
+  } catch(e) { /* demo mode */ }
+  updateStats();
+  renderTable();
+}
+
+
 function viewSlip(idx) {
   const row = allRows[idx];
-  const body = document.getElementById('modalBody');
-  if (row.slipImage && row.slipImage.startsWith('data:image')) {
-    body.innerHTML = `<img src="${row.slipImage}" alt="สลิป" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-      <div style="margin-top:10px;font-size:13px;color:var(--text2);padding:10px;background:var(--bg);border-radius:6px;">
-        <b>${row.ref}</b> · ${row.visitorName}<br>
-        ยอด: ${(row.total||0).toLocaleString()} บาท<br>
-        <span style="color:var(--green);font-weight:600">✓ สถานะ: ${row.status}</span>
-      </div>`;
+  const modalBody = document.getElementById('modalBody');
+  const slip = (row.slipImage || '').trim();
+
+  const infoBox = `<div style="margin-top:10px;font-size:13px;color:var(--text2);padding:10px;background:var(--bg);border-radius:6px;">
+    <b>${row.ref}</b> · ${row.visitorName}<br>
+    ยอด: <b>${(row.total||0).toLocaleString()} บาท</b> · สถานะ: <b>${row.status}</b>
+  </div>`;
+
+  // ✅ ดึง fileId จาก Drive URL ทุกรูปแบบ (?id=, /d/, /open?id=)
+  function extractDriveId(url) {
+    const m = url.match(/(?:[?&]id=|\/d\/|\/open\?id=)([a-zA-Z0-9_-]{10,})/);
+    return m ? m[1] : null;
+  }
+
+  if (slip && (slip.includes('drive.google.com') || slip.includes('googleusercontent.com'))) {
+    const fileId = extractDriveId(slip);
+    // ✅ ใช้ thumbnail URL สำหรับแสดง + uc?export=view เป็น fallback
+    const thumbUrl = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200` : slip;
+    const openUrl  = fileId ? `https://drive.google.com/file/d/${fileId}/view`            : slip;
+
+    modalBody.innerHTML = `
+      <div style="text-align:center;padding:10px 10px 4px;">
+        <img id="slipImg_${idx}" src="${thumbUrl}" alt="สลิปโอนเงิน"
+          style="max-width:100%;max-height:480px;border-radius:8px;border:1px solid var(--border);display:block;margin:0 auto 4px;"
+          onerror="document.getElementById('slipImgErr_${idx}').style.display='block';this.style.opacity='0.15';">
+        <div id="slipImgErr_${idx}" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px;font-size:12px;color:#856404;margin-bottom:6px;">
+          ⚠️ โหลดรูปภาพโดยตรงไม่สำเร็จ — กรุณากดปุ่มด้านล่างเพื่อเปิด
+        </div>
+        <a href="${openUrl}" target="_blank"
+          style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:9px 20px;
+            background:var(--blue);color:#fff;border-radius:8px;font-weight:600;
+            text-decoration:none;font-size:13px;">
+          🔗 เปิดสลิปใน Google Drive ↗
+        </a>
+      </div>${infoBox}`;
+
+  } else if (slip && slip.startsWith('data:image')) {
+    modalBody.innerHTML = `<img src="${slip}" alt="สลิป"
+      style="max-width:100%;border-radius:8px;margin-bottom:10px;display:block;">${infoBox}`;
+
+  } else if (slip && slip.startsWith('SLIP_UPLOADED:')) {
+    modalBody.innerHTML = `<div style="padding:2rem;text-align:center;">
+      <div style="font-size:32px;">✅</div>
+      <div style="font-weight:600;margin-top:8px;">สลิปถูกอัปโหลดแล้ว</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">เวลาอัปโหลด: ${slip.replace('SLIP_UPLOADED:','')}</div>
+    </div>${infoBox}`;
+
+  } else if (slip && slip.startsWith('http')) {
+    // URL ที่ไม่ใช่ Drive
+    modalBody.innerHTML = `<div style="text-align:center;padding:10px;">
+      <img src="${slip}" alt="สลิป"
+        style="max-width:100%;border-radius:8px;display:block;margin:0 auto 8px;"
+        onerror="this.style.opacity='0.1'">
+      <a href="${slip}" target="_blank"
+        style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--blue);color:#fff;border-radius:8px;font-weight:600;text-decoration:none;font-size:13px;">
+        🔗 เปิดสลิปในแท็บใหม่ ↗
+      </a>
+    </div>${infoBox}`;
+
   } else if (row.status === 'ชำระแล้ว' || row.status === 'เสร็จสิ้น') {
-    body.innerHTML = `<div class="no-slip" style="padding:2rem;text-align:center;">
-      ⏳ ยังไม่มีรูปสลิปในระบบ<br>
-      <span style="font-size:12px;color:var(--text2)">ญาติอาจยังไม่ได้อัปโหลด หรือกำลังประมวลผล</span><br><br>
-      <div style="background:var(--green-light);border:1px solid rgba(59,109,17,0.3);border-radius:6px;padding:8px;font-size:12px;color:var(--green);">
-        📋 Ref: ${row.ref}<br>
-        💰 ยอด: ${(row.total||0).toLocaleString()} บาท<br>
-        📊 สถานะ: ${row.status}
-      </div>
-    </div>`;
+    modalBody.innerHTML = `<div style="padding:2rem;text-align:center;">
+      <div style="font-size:32px;">⏳</div>
+      <div style="font-weight:600;margin-top:8px;">ยังไม่มีรูปสลิปในระบบ</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">ญาติอาจยังไม่ได้อัปโหลด หรือกำลังประมวลผล</div>
+    </div>${infoBox}`;
   } else {
-    body.innerHTML = `<div class="no-slip" style="padding:2rem;text-align:center;">
-      📋 ยังไม่มีรูปสลิป<br>
-      <span style="font-size:12px;color:var(--text2)">รอให้ญาติชำระเงินและอัปโหลดสลิป</span><br><br>
-      <div style="background:var(--yellow-light);border:1px solid rgba(200,146,42,0.3);border-radius:6px;padding:8px;font-size:12px;color:var(--yellow);">
-        Ref: ${row.ref}<br>
-        สถานะ: ${row.status}
-      </div>
-    </div>`;
+    modalBody.innerHTML = `<div style="padding:2rem;text-align:center;">
+      <div style="font-size:32px;">📋</div>
+      <div style="font-weight:600;margin-top:8px;">ยังไม่มีรูปสลิป</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">รอให้ญาติชำระเงินและอัปโหลดสลิป</div>
+    </div>${infoBox}`;
   }
   document.getElementById('modalBg').classList.add('show');
 }
