@@ -177,7 +177,7 @@
       <input type="text" id="searchPrisoner" placeholder="เช่น 12345678">
     </div>
 
-  ;  <div style="margin-top:12px">
+    <div style="margin-top:12px">
       <button class="btn-primary" onclick="doSearch()">
         <i class="ti ti-search"></i> ตรวจสอบสถานะ
       </button>
@@ -191,7 +191,7 @@
   <div id="thankYouArea">
     <div class="thankyou-page">
       <div class="success-icon-big">🎉</div>
-  ;    <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">ชำระเงินและจองสำเร็จ!</h2>
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">ชำระเงินและจองสำเร็จ!</h2>
       <p style="font-size:14px;color:var(--text2);margin-bottom:1rem">เจ้าหน้าที่จะยืนยันนัดหมายผ่านโทรศัพท์ภายใน 1 วันทำการ</p>
 
       <div class="ref-box-sm">
@@ -205,7 +205,7 @@
         <button class="btn-secondary" onclick="resetSearch()" style="flex:1;min-width:160px">
           <i class="ti ti-search"></i> ค้นหาอีกครั้ง
         </button>
-  ;      <a href="index.html" class="btn-primary" style="text-decoration:none;flex:1;min-width:160px">
+        <a href="index.html" class="btn-primary" style="text-decoration:none;flex:1;min-width:160px">
           <i class="ti ti-home"></i> กลับหน้าหลัก
         </a>
       </div>
@@ -219,7 +219,7 @@
   <div class="spinner"></div>
   <p id="overlayMsg">กำลังค้นหา...</p>
 </div>
-;
+
 <script>
 // ===== CONFIG =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbylY1l-zAZvwjwSc7WG0kRzsrSGlEI1ElAThyKr23e3Ewaa_hQF9Q63OY2tPBp_tyLPgg/exec';
@@ -227,37 +227,92 @@ const STAFF_PASS = '10900';
 
 // ===== PROMPTPAY QR GENERATOR =====
 // Generate PromptPay QR code - simplified working format
+// function generatePromptPayQR(receiverId, amount) {
+//   // Simplified PromptPay format: 00020101021129370016com.promptpay009{length}{receiverId}{amount}
+//   // This is a basic but functional format for PromptPay QR codes
+  
+//   const receiverIdStr = receiverId.replace(/[^0-9]/g, ''); // Remove non-digits
+//   const amountNum = parseFloat(amount) || 0;
+  
+//   // Build QR string step by step
+//   let qr = '00020101021229370016A0000006770101110213'; // Base structure
+  
+//   // Add receiver ID (phone or tax ID)
+//   qr += receiverIdStr.length.toString().padStart(2, '0');
+//   qr += receiverIdStr;
+  
+//   // Add amount if > 0
+//   if (amountNum > 0) {
+//     qr += '5402'; // Amount tag
+//     const amountStr = amountNum.toFixed(2);
+//     qr += amountStr.length.toString().padStart(2, '0');
+//     qr += amountStr;
+//   }
+  
+//   // Add currency code (THB = 764)
+//   qr += '5303764';
+  
+//   // Add CRC placeholder (can be empty for basic usage)
+//   qr += '6304';
+  
+//   return qr;
+// }
+
 function generatePromptPayQR(receiverId, amount) {
-  // Simplified PromptPay format: 00020101021129370016com.promptpay009{length}{receiverId}{amount}
-  // This is a basic but functional format for PromptPay QR codes
-  
-  const receiverIdStr = receiverId.replace(/[^0-9;]/g, ''); // Remove non-digits
-  const amountNum = parseFloat(amount) || 0;
-  ;
-  // Build QR string step by step
-  let qr = '00020101021229370016A00000067701011102130994000160208'; // Base structure
-  
-  // Add receiver ID (phone or tax ID)
-  qr += receiverIdStr.length.toString().padStart(2, '0');
-  qr += receiverIdStr;
-  
-  // Add amount if > 0
-  if (amountNum > 0) {
-    qr += '5802'; // Amount tag
-    const amountStr = amountNum.toFixed(2);
-    qr += amountStr.length.toString().padStart(2, '0');
-    qr += amountStr;
-  }
-  
-  // Add currency code (THB = 764)
-  qr += '5303764';
-  
-  // Add CRC placeholder (can be empty for basic usage)
-  qr += '6304';
-  
-  return qr;
+    // Normalize ID: strip dashes/spaces, digits only
+    const digits = receiverId.replace(/[^0-9]/g, '');
+
+    // Format ID according to PromptPay spec:
+    //   phone (10 digits): prefix with country code 0066, drop leading 0 → 13 chars
+    //   national ID / tax ID (13 digits): use as-is
+    let formattedId;
+    if (digits.length === 10) {
+        formattedId = '0066' + digits.substring(1); // 0066 + 9 digits = 13 chars
+    } else {
+        formattedId = digits; // 13-digit national ID or tax ID
+    }
+
+    // Helper: build a TLV (tag + 2-digit length + value)
+    function tlv(tag, value) {
+        return tag + value.length.toString().padStart(2, '0') + value;
+    }
+
+    // Merchant Account Information (tag 29)
+    const aid = tlv('00', 'A000000677010111');  // Application ID
+    const ref = tlv('01', formattedId);          // PromptPay ID
+    const merchantInfo = tlv('29', aid + ref);
+
+    // Amount (tag 54) — only when > 0
+    const amountNum = parseFloat(amount) || 0;
+    const amountField = amountNum > 0 ? tlv('54', amountNum.toFixed(2)) : '';
+
+    // Assemble payload (without CRC value)
+    const payload =
+        tlv('00', '01') +          // Payload Format Indicator
+        tlv('01', '12') +          // Point of Initiation Method: 12 = dynamic
+        merchantInfo +
+        tlv('53', '764') +         // Currency: 764 = THB
+        amountField +
+        tlv('58', 'TH') +          // Country code
+        '6304';                    // CRC tag + length placeholder
+
+    return payload + crc16(payload);
 }
 
+function crc16(data) {
+    let crc = 0xFFFF;
+    const polynomial = 0x1021;
+
+    for (let i = 0; i < data.length; i++) {
+        crc ^= (data.charCodeAt(i) << 8);
+        for (let j = 0; j < 8; j++) {
+            crc = (crc & 0x8000) ? (crc << 1) ^ polynomial : (crc << 1);
+        }
+    }
+    
+    // Return in hex format, padded to 4 chars
+    return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+}
 
 let activeTab = 'ref';
 function switchTab(tab) {
@@ -513,7 +568,46 @@ function renderResult(row) {
       <i class="ti ti-search"></i> ค้นหาอีกครั้ง
     </button>
   `;
- 
+
+  // Generate QR after render
+  setTimeout(() => {
+    try {
+      const qrEl = document.getElementById('qrcode');
+      if (qrEl && qrEl.innerHTML === '') {
+        // Clear previous content
+        qrEl.innerHTML = '';
+        
+        // Generate PromptPay QR
+        const phoneNumber = '0994000160208';
+        const qrText = generatePromptPayQR(phoneNumber, total);
+        
+        try {
+          new QRCode(qrEl, {
+            text: qrText,
+            width: 200,
+            height: 200,
+            colorDark: '#000',
+            colorLight: '#fff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        } catch(qrErr) {
+          console.warn('QRCode library error:', qrErr);
+          // Fallback if QRCode fails
+          qrEl.innerHTML = `
+            <div style="background:#fff;border:2px solid #ddd;border-radius:8px;padding:12px;text-align:center;font-size:12px;color:#666;">
+              <strong>QR Code</strong><br>
+              <span style="font-size:10px;">${qrText.substring(0,30)}...</span><br><br>
+              <span style="color:#c00;">⚠️ ไม่สามารถสร้าง QR Code</span><br>
+              <span style="font-size:11px;">กรุณาโอนเงินตามบัญชีด้านบน</span>
+            </div>
+          `;
+        }
+      }
+    } catch(e) {
+      console.error('QR Generation error:', e);
+    }
+  }, 300);
+}
 
 // ===== STATUS PILL =====
 function getStatusPill(status) {
