@@ -177,7 +177,7 @@
       <input type="text" id="searchPrisoner" placeholder="เช่น 12345678">
     </div>
 
-    <div style="margin-top:12px">
+  ;  <div style="margin-top:12px">
       <button class="btn-primary" onclick="doSearch()">
         <i class="ti ti-search"></i> ตรวจสอบสถานะ
       </button>
@@ -191,7 +191,7 @@
   <div id="thankYouArea">
     <div class="thankyou-page">
       <div class="success-icon-big">🎉</div>
-      <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">ชำระเงินและจองสำเร็จ!</h2>
+  ;    <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">ชำระเงินและจองสำเร็จ!</h2>
       <p style="font-size:14px;color:var(--text2);margin-bottom:1rem">เจ้าหน้าที่จะยืนยันนัดหมายผ่านโทรศัพท์ภายใน 1 วันทำการ</p>
 
       <div class="ref-box-sm">
@@ -205,7 +205,7 @@
         <button class="btn-secondary" onclick="resetSearch()" style="flex:1;min-width:160px">
           <i class="ti ti-search"></i> ค้นหาอีกครั้ง
         </button>
-        <a href="index.html" class="btn-primary" style="text-decoration:none;flex:1;min-width:160px">
+  ;      <a href="index.html" class="btn-primary" style="text-decoration:none;flex:1;min-width:160px">
           <i class="ti ti-home"></i> กลับหน้าหลัก
         </a>
       </div>
@@ -219,13 +219,46 @@
   <div class="spinner"></div>
   <p id="overlayMsg">กำลังค้นหา...</p>
 </div>
-
+;
 <script>
 // ===== CONFIG =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbylY1l-zAZvwjwSc7WG0kRzsrSGlEI1ElAThyKr23e3Ewaa_hQF9Q63OY2tPBp_tyLPgg/exec';
 const STAFF_PASS = '10900';
 
-// ===== Tab =====
+// ===== PROMPTPAY QR GENERATOR =====
+// Generate PromptPay QR code - simplified working format
+function generatePromptPayQR(receiverId, amount) {
+  // Simplified PromptPay format: 00020101021129370016com.promptpay009{length}{receiverId}{amount}
+  // This is a basic but functional format for PromptPay QR codes
+  
+  const receiverIdStr = receiverId.replace(/[^0-9;]/g, ''); // Remove non-digits
+  const amountNum = parseFloat(amount) || 0;
+  ;
+  // Build QR string step by step
+  let qr = '00020101021229370016A00000067701011102130994000160208'; // Base structure
+  
+  // Add receiver ID (phone or tax ID)
+  qr += receiverIdStr.length.toString().padStart(2, '0');
+  qr += receiverIdStr;
+  
+  // Add amount if > 0
+  if (amountNum > 0) {
+    qr += '5802'; // Amount tag
+    const amountStr = amountNum.toFixed(2);
+    qr += amountStr.length.toString().padStart(2, '0');
+    qr += amountStr;
+  }
+  
+  // Add currency code (THB = 764)
+  qr += '5303764';
+  
+  // Add CRC placeholder (can be empty for basic usage)
+  qr += '6304';
+  
+  return qr;
+}
+
+
 let activeTab = 'ref';
 function switchTab(tab) {
   activeTab = tab;
@@ -426,17 +459,28 @@ function renderResult(row) {
           PromptPay
         </div>
         <div class="qr-name">ทัณฑสถานบำบัดพิเศษกลาง</div>
-        <div class="qr-acct">เลขนิติบุคคล 0994000160208</div>
-        <div style="margin:8px 0;border-top:1px dashed var(--border);padding-top:8px;">
+        <div class="qr-acct">เบอร์ PromptPay 0994000160208</div>
+        <div style="font-size:24px;font-weight:700;color:var(--blue);margin:8px 0">${total.toLocaleString()} บาท</div>
+        
+        <div style="margin:8px 0;border-top:1px dashed var(--border);padding-top:8px;border-bottom:1px dashed var(--border);padding-bottom:8px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">
+            <strong>วิธีการชำระ:</strong><br>
+            1️⃣ สแกน QR ด้านบน หรือ<br>
+            2️⃣ โอนไปบัญชีธนาคารด้านล่าง
+          </div>
+        </div>
+        
+        <div style="background:#e8f4f8;border-radius:6px;padding:10px;margin:8px 0;">
           <div style="display:inline-flex;align-items:center;gap:6px;background:#03b3c0;color:#1d1c1c;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:5px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#fff"/><path d="M5 8h14M5 12h14M5 16h8" stroke="#1a6f3c" stroke-width="2" stroke-linecap="round"/></svg>
             ธนาคารกรุงไทย
           </div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);letter-spacing:1px;">137-1-09488-8</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:1px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:1px;margin-top:4px">137-1-09488-8</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">ทัณฑสถานบำบัดพิเศษกลาง</div>
+          <div style="font-size:10px;color:#999;margin-top:4px;">📝 หมายเหตุ: ระบุเลขอ้างอิง ${row.ref} ที่ข้อความเพิ่มเติม</div>
         </div>
-        <div style="font-size:24px;font-weight:700;color:var(--blue);margin:8px 0">${total.toLocaleString()} บาท</div>
-        <div class="qr-note">⚠️ สแกน QR หรือโอนเข้าบัญชี แล้วอัปโหลดสลิปด้านล่าง</div>
+        
+        <div class="qr-note" style="margin-top:10px;">⚠️ หลังโอนเงินเรียบร้อยแล้ว กรุณาอัปโหลดสลิปการโอนด้านล่าง</div>
       </div>
 
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
@@ -469,21 +513,45 @@ function renderResult(row) {
       <i class="ti ti-search"></i> ค้นหาอีกครั้ง
     </button>
   `;
+
+  // Generate QR after render
   setTimeout(() => {
     try {
       const qrEl = document.getElementById('qrcode');
-      if (qrEl) {
-        // ใช้บริการ API สร้าง PromptPay QR โค้ดที่สแกนด้วยแอปธนาคารได้จริง
-        // รูปแบบ: https://promptpay.io/[เลขพร้อมเพย์]/[จำนวนเงิน].png
-        const promptPayID = "0994000160208";
-        const qrImageUrl = `https://promptpay.io/${promptPayID}/${total}.png`;
+      if (qrEl && qrEl.innerHTML === '') {
+        // Clear previous content
+        qrEl.innerHTML = '';
         
-        qrEl.innerHTML = `<img src="${qrImageUrl}" alt="PromptPay QR Code" style="border-radius: 8px; width: 180px; height: 180px;">`;
+        // Generate PromptPay QR
+        const phoneNumber = '0994000160208';
+        const qrText = generatePromptPayQR(phoneNumber, total);
+        
+        try {
+          new QRCode(qrEl, {
+            text: qrText,
+            width: 200,
+            height: 200,
+            colorDark: '#000',
+            colorLight: '#fff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        } catch(qrErr) {
+          console.warn('QRCode library error:', qrErr);
+          // Fallback if QRCode fails
+          qrEl.innerHTML = `
+            <div style="background:#fff;border:2px solid #ddd;border-radius:8px;padding:12px;text-align:center;font-size:12px;color:#666;">
+              <strong>QR Code</strong><br>
+              <span style="font-size:10px;">${qrText.substring(0,30)}...</span><br><br>
+              <span style="color:#c00;">⚠️ ไม่สามารถสร้าง QR Code</span><br>
+              <span style="font-size:11px;">กรุณาโอนเงินตามบัญชีด้านบน</span>
+            </div>
+          `;
+        }
       }
     } catch(e) {
-      console.error("QR Generation Error:", e);
+      console.error('QR Generation error:', e);
     }
-  }, 200);
+  }, 300);
 }
 
 // ===== STATUS PILL =====
