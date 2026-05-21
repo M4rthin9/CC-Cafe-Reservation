@@ -21,8 +21,8 @@ function doGet(e) {
     const rows = data.slice(1).map(row => {
       const obj = {};
       headers.forEach((h, i) => {
-        // ซ่อน slipImage ออกจาก response เพื่อประหยัด bandwidth
-        if (h !== 'slipImage') obj[h] = row[i];
+        // Include all data including slipImage so dashboard can display payment slips
+        obj[h] = row[i];
       });
       return obj;
     });
