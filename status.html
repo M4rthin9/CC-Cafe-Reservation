@@ -517,9 +517,10 @@ function handleUpload(e) {
   reader.onload = ev => {
     slipBase64 = ev.target.result;
     const img = document.getElementById('previewImg');
-    img.src = slipBase64; img.style.display = 'block';
+    img.src = slipBase64; 
+    img.style.display = 'block';
     document.getElementById('uploadInner').style.opacity = '0.4';
-    document.getElementById('uploadStatus').textContent = '✓ อัปโหลดสลิปเรียบร้อย: ' + file.name;
+    document.getElementById('uploadStatus').innerHTML = `✓ อัปโหลดแล้ว: <strong>${file.name}</strong><br><span style="font-size:11px;color:var(--text2)">ขนาด: ${(file.size/1024).toFixed(1)} KB</span>`;
     slipUploaded = true;
   };
   reader.readAsDataURL(file);
