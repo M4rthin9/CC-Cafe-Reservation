@@ -704,14 +704,15 @@ async function appsScriptGet(params) {
 
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
-  // นับทุกสถานะยกเว้น "ยกเลิก" — block slot ทันทีหลังจอง
-  const excludedStatuses = ['ยกเลิก'];
+  // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" จริง
+  // ไม่นับ: ยกเลิก, ไม่อนุมัติ
+  const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
   try {
     const data = await appsScriptGet({ action: 'getAll', pass: '10900' });
     if (data.status === 'ok' && data.rows) {
       bookings = {};
       data.rows.forEach(r => {
-        if (r.visitDateISO && !excludedStatuses.includes(r.status)) {
+        if (r.visitDateISO && activeStatuses.includes(r.status)) {
           bookings[r.visitDateISO] = (bookings[r.visitDateISO] || 0) + 1;
         }
       });
