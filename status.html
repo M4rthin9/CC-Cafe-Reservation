@@ -469,20 +469,20 @@ function renderResult(row) {
       <i class="ti ti-search"></i> ค้นหาอีกครั้ง
     </button>
   `;
-
-  // Generate QR after render
   setTimeout(() => {
     try {
       const qrEl = document.getElementById('qrcode');
       if (qrEl) {
-        new QRCode(qrEl, {
-          text: `promptpay:0994000160208:${total}`,
-          width: 180, height: 180,
-          colorDark: '#000', colorLight: '#fff',
-          correctLevel: QRCode.CorrectLevel.M
-        });
+        // ใช้บริการ API สร้าง PromptPay QR โค้ดที่สแกนด้วยแอปธนาคารได้จริง
+        // รูปแบบ: https://promptpay.io/[เลขพร้อมเพย์]/[จำนวนเงิน].png
+        const promptPayID = "0994000160208";
+        const qrImageUrl = `https://promptpay.io/${promptPayID}/${total}.png`;
+        
+        qrEl.innerHTML = `<img src="${qrImageUrl}" alt="PromptPay QR Code" style="border-radius: 8px; width: 180px; height: 180px;">`;
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error("QR Generation Error:", e);
+    }
   }, 200);
 }
 
