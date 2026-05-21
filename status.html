@@ -222,7 +222,7 @@
 ;
 <script>
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxcKZl2F00LeP_pEHlcBHbOrWrUnVDeOhwc0tYRcZIavaZ2y43njBpEzvP7dQaIzjVZKQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbylY1l-zAZvwjwSc7WG0kRzsrSGlEI1ElAThyKr23e3Ewaa_hQF9Q63OY2tPBp_tyLPgg/exec';
 const STAFF_PASS = '10900';
 
 // ===== PROMPTPAY QR GENERATOR =====
@@ -513,46 +513,7 @@ function renderResult(row) {
       <i class="ti ti-search"></i> ค้นหาอีกครั้ง
     </button>
   `;
-
-  // Generate QR after render
-  setTimeout(() => {
-    try {
-      const qrEl = document.getElementById('qrcode');
-      if (qrEl && qrEl.innerHTML === '') {
-        // Clear previous content
-        qrEl.innerHTML = '';
-        
-        // Generate PromptPay QR
-        const phoneNumber = '0994000160208';
-        const qrText = generatePromptPayQR(phoneNumber, total);
-        
-        try {
-          new QRCode(qrEl, {
-            text: qrText,
-            width: 200,
-            height: 200,
-            colorDark: '#000',
-            colorLight: '#fff',
-            correctLevel: QRCode.CorrectLevel.H
-          });
-        } catch(qrErr) {
-          console.warn('QRCode library error:', qrErr);
-          // Fallback if QRCode fails
-          qrEl.innerHTML = `
-            <div style="background:#fff;border:2px solid #ddd;border-radius:8px;padding:12px;text-align:center;font-size:12px;color:#666;">
-              <strong>QR Code</strong><br>
-              <span style="font-size:10px;">${qrText.substring(0,30)}...</span><br><br>
-              <span style="color:#c00;">⚠️ ไม่สามารถสร้าง QR Code</span><br>
-              <span style="font-size:11px;">กรุณาโอนเงินตามบัญชีด้านบน</span>
-            </div>
-          `;
-        }
-      }
-    } catch(e) {
-      console.error('QR Generation error:', e);
-    }
-  }, 300);
-}
+ 
 
 // ===== STATUS PILL =====
 function getStatusPill(status) {
