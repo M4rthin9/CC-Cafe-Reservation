@@ -704,17 +704,36 @@ async function appsScriptGet(params) {
 
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
-  // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" จริง
-  // ไม่นับ: ยกเลิก, ไม่อนุมัติ
+  // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
   const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
   try {
     const data = await appsScriptGet({ action: 'getAll', pass: '10900' });
     if (data.status === 'ok' && data.rows) {
       bookings = {};
       data.rows.forEach(r => {
-        if (r.visitDateISO && activeStatuses.includes(r.status)) {
-          bookings[r.visitDateISO] = (bookings[r.visitDateISO] || 0) + 1;
+        if (!r.visitDateISO) return;
+        if (!activeStatuses.includes(r.status)) return;
+
+        // ✅ normalize visitDateISO → "YYYY-MM-DD"
+        // Apps Script อาจส่งมาเป็น Date string หลายรูปแบบ เช่น
+        // "2026-05-25", "Thu May 25 2026 00:00:00 GMT+0700", "25/05/2026"
+        let dateKey = String(r.visitDateISO).trim();
+
+        // กรณีเป็น ISO แล้ว ไม่ต้องแปลง
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+          // ลอง parse แล้ว format ใหม่
+          const parsed = new Date(dateKey);
+          if (!isNaN(parsed)) {
+            const y = parsed.getFullYear();
+            const m = String(parsed.getMonth() + 1).padStart(2, '0');
+            const d = String(parsed.getDate()).padStart(2, '0');
+            dateKey = `${y}-${m}-${d}`;
+          } else {
+            return; // parse ไม่ได้ ข้ามไป
+          }
         }
+
+        bookings[dateKey] = (bookings[dateKey] || 0) + 1;
       });
     }
   } catch (err) {
