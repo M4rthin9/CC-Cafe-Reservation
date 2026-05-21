@@ -369,7 +369,7 @@
 
 <script>
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRPckxy3EGoCX2eUU4573loyNHLCycX4cKrEmbPBkfpcPEP96CCYDMYHeJkCvVz1Vh5g/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbylY1l-zAZvwjwSc7WG0kRzsrSGlEI1ElAThyKr23e3Ewaa_hQF9Q63OY2tPBp_tyLPgg/exec';
 const QUOTA = 20;
 
 // ===== CALENDAR =====
@@ -549,7 +549,7 @@ async function submitBooking() {
   const now = new Date().toLocaleString('th-TH');
 
   const extras = getExtraVisitors();
-  const extraNamesStr = extras.map(v => v.name + ' (' + v.id + ', ' + v.relation + ')').join(', ');
+  const extraNamesStr = extras.map(v => v.name + '|' + v.id + '|' + v.relation).join(';;');
   const data = {
     ref,
     timestamp: now,

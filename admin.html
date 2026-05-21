@@ -250,7 +250,7 @@ tr:hover td { background: #f8f9fa; }
 <script>
 // ===== CONFIG =====
 const PASSWORD = '10900';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRPckxy3EGoCX2eUU4573loyNHLCycX4cKrEmbPBkfpcPEP96CCYDMYHeJkCvVz1Vh5g/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby31RQYPsLlzuw1mJJVLOGXn-_AzLOYKeXYSz_m9ivYDUHBvSlV6YEnHo1hgUmDyGZ8wQ/exec';
 
 // ===== STATE =====
 let allRows = [];
@@ -501,22 +501,32 @@ function viewDetail(idx) {
 
   let extraHtml = '';
   if (r.extraVisitorNames && r.extraVisitorNames.trim()) {
-    const extras = r.extraVisitorNames.split(',').map(s => s.trim()).filter(Boolean);
-    extras.forEach((entry, i) => {
-      // entry format: "ชื่อ (บัตร, ความสัมพันธ์)" or "ชื่อ (บัตร)"
-      const match = entry.match(/^(.+?)\s*\((.+?)\)$/);
-      let name = entry, info = '';
-      if (match) {
-        name = match[1].trim();
-        const parts = match[2].split(',').map(p => p.trim());
-        info = 'บัตร: ' + (parts[0] || '—');
-        if (parts[1]) info += ' · ความสัมพันธ์: ' + parts[1];
-      }
+    // New format: "name|id|relation;;name|id|relation"
+    // Legacy format (fallback): "name (id, relation), ..."
+    const isNewFormat = r.extraVisitorNames.includes(';;') || r.extraVisitorNames.includes('|');
+    let extras = [];
+    if (isNewFormat) {
+      extras = r.extraVisitorNames.split(';;').map(e => {
+        const parts = e.split('|');
+        return { name: (parts[0]||'').trim(), id: (parts[1]||'').trim(), relation: (parts[2]||'').trim() };
+      }).filter(e => e.name);
+    } else {
+      // Legacy: best-effort parse "name (id, relation)"
+      extras = r.extraVisitorNames.split(/,(?![^(]*\))/).map(e => {
+        const m = e.trim().match(/^(.+?)\s*\(([^,)]+?)(?:,\s*([^)]+))?\)$/);
+        if (m) return { name: m[1].trim(), id: (m[2]||'').trim(), relation: (m[3]||'').trim() };
+        return { name: e.trim(), id: '', relation: '' };
+      }).filter(e => e.name);
+    }
+    extras.forEach((v, i) => {
+      const infoParts = [];
+      if (v.id) infoParts.push('บัตร: ' + v.id);
+      if (v.relation) infoParts.push('ความสัมพันธ์: ' + v.relation);
       extraHtml += `
         <div class="visitor-card">
           <div class="vc-num">👤 ผู้เยี่ยมคนที่ ${i + 2}</div>
-          <div class="vc-name">${name}</div>
-          ${info ? '<div class="vc-info">' + info + '</div>' : ''}
+          <div class="vc-name">${v.name}</div>
+          ${infoParts.length ? '<div class="vc-info">' + infoParts.join(' · ') + '</div>' : ''}
         </div>`;
     });
   }
