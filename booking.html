@@ -396,6 +396,20 @@ function changeMonth(d) {
   renderCalendar();
 }
 
+// แปลง local Date → "YYYY-MM-DD" โดยไม่ผ่าน UTC (แก้ปัญหา timezone offset)
+function toLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// parse "YYYY-MM-DD" เป็น local Date (ไม่ใช่ UTC)
+function parseLocalDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function renderCalendar() {
   const title = new Date(calYear, calMonth, 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
   document.getElementById('calTitle').textContent = title;
@@ -404,10 +418,10 @@ function renderCalendar() {
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   for (let i = 0; i < firstDay; i++) grid.insertAdjacentHTML('beforeend', '<div></div>');
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = toLocalDateStr(today);  // ✅ ใช้ local time แทน UTC
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(calYear, calMonth, d);
-    const dateStr = date.toISOString().slice(0, 10);
+    const dateStr = toLocalDateStr(date);  // ✅ ใช้ local time แทน .toISOString()
     const dow = date.getDay();
     const isPast = dateStr < todayStr;
     const isWknd = dow === 0 || dow === 6;
@@ -432,7 +446,7 @@ function renderCalendar() {
 function selectDate(dateStr, blocked) {
   if (blocked) return;
   selectedDate = dateStr;
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);  // ✅ parse เป็น local date ถูกต้อง
   document.getElementById('selectedDateDisplay').textContent =
     '✓ เลือก: ' + d.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   renderCalendar();
@@ -513,7 +527,7 @@ function goToConfirm() {
   if (!validate()) return;
   const n = parseInt(document.getElementById('visitorCount').value);
   const totalPersons = n + 1;
-  const d = new Date(selectedDate);
+  const d = parseLocalDate(selectedDate);  // ✅ parse local ไม่ผ่าน UTC
   const thDate = d.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
   const extras = getExtraVisitors();
@@ -544,7 +558,7 @@ async function submitBooking() {
   const ref = 'VIS-' + Math.floor(10000 + Math.random() * 90000);
   const n = parseInt(document.getElementById('visitorCount').value);
   const totalPersons = n + 1;
-  const d = new Date(selectedDate);
+  const d = parseLocalDate(selectedDate);  // ✅ parse local ไม่ผ่าน UTC
   const thDate = d.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   const now = new Date().toLocaleString('th-TH');
 
@@ -621,7 +635,7 @@ async function submitBooking() {
   }
 
   document.getElementById('refNumber').textContent = ref;
-  bookings[selectedDate] = (bookings[selectedDate] || 0) + 1;
+  // ✅ ไม่เพิ่ม bookings[] ที่นี่อีกต่อไป — นับเฉพาะ "ชำระแล้ว" จาก sheet จริง
   renderCalendar();
 
   document.getElementById('finalSummary').innerHTML = `
@@ -681,7 +695,8 @@ function resetAll() {
 
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
-  const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+  // ✅ นับเฉพาะที่ "ชำระแล้ว" และ "เสร็จสิ้น" เท่านั้น — slot ที่ยืนยันจริงแล้ว
+  const paidStatuses = ['ชำระแล้ว', 'เสร็จสิ้น'];
   try {
     const resp = await fetch(
       APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent('10900'),
@@ -691,7 +706,7 @@ async function loadBookingCounts() {
     if (data.status === 'ok' && data.rows) {
       bookings = {};
       data.rows.forEach(r => {
-        if (r.visitDateISO && activeStatuses.includes(r.status)) {
+        if (r.visitDateISO && paidStatuses.includes(r.status)) {
           bookings[r.visitDateISO] = (bookings[r.visitDateISO] || 0) + 1;
         }
       });
