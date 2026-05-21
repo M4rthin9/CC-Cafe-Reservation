@@ -679,7 +679,30 @@ function resetAll() {
   showPage(1);
 }
 
-renderCalendar();
+// ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
+async function loadBookingCounts() {
+  const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+  try {
+    const resp = await fetch(
+      APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent('10900'),
+      { redirect: 'follow' }
+    );
+    const data = await resp.json();
+    if (data.status === 'ok' && data.rows) {
+      bookings = {};
+      data.rows.forEach(r => {
+        if (r.visitDateISO && activeStatuses.includes(r.status)) {
+          bookings[r.visitDateISO] = (bookings[r.visitDateISO] || 0) + 1;
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('loadBookingCounts failed, using empty:', err);
+  }
+  renderCalendar();
+}
+
+loadBookingCounts();
 </script>
 </body>
 </html>
