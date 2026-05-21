@@ -228,12 +228,18 @@
         </div>
         <div class="form-group full">
           <label>จำนวนผู้เยี่ยม <span style="color:var(--red)">*</span> <span style="font-weight:400;color:var(--text2)">(ไม่รวมผู้ต้องขัง · สูงสุด 10 คน)</span></label>
-          <select id="visitorCount">
+          <select id="visitorCount" onchange="updateExtraVisitors()">
             <option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option>
             <option value="4">4 คน</option><option value="5">5 คน</option><option value="6">6 คน</option>
             <option value="7">7 คน</option><option value="8">8 คน</option><option value="9">9 คน</option>
             <option value="10">10 คน</option>
           </select>
+        </div>
+        <div id="extraVisitorsContainer" class="form-group full" style="display:none">
+          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;border-top:1px solid var(--border);padding-top:12px;">
+            ชื่อผู้เยี่ยมเพิ่มเติม <span style="font-weight:400">(ผู้เยี่ยมคนที่ 2 เป็นต้นไป)</span>
+          </div>
+          <div id="extraVisitorsList" class="form-grid"></div>
         </div>
       </div>
     </div>
@@ -363,7 +369,7 @@
 
 <script>
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxcKZl2F00LeP_pEHlcBHbOrWrUnVDeOhwc0tYRcZIavaZ2y43njBpEzvP7dQaIzjVZKQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRPckxy3EGoCX2eUU4573loyNHLCycX4cKrEmbPBkfpcPEP96CCYDMYHeJkCvVz1Vh5g/exec';
 const QUOTA = 20;
 
 // ===== CALENDAR =====
@@ -432,6 +438,45 @@ function selectDate(dateStr, blocked) {
   renderCalendar();
 }
 
+// ===== EXTRA VISITORS =====
+function updateExtraVisitors() {
+  const n = parseInt(document.getElementById('visitorCount').value);
+  const container = document.getElementById('extraVisitorsContainer');
+  const list = document.getElementById('extraVisitorsList');
+  list.innerHTML = '';
+  if (n <= 1) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  for (let i = 2; i <= n; i++) {
+    const div = document.createElement('div');
+    div.className = 'form-group full';
+    div.style.cssText = 'border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;';
+    const relOpts = '<option value="">-- เลือก --</option><option>บิดา / มารดา</option><option>คู่สมรส</option><option>บุตร / ธิดา</option><option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>';
+    div.innerHTML =
+      '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">ผู้เยี่ยมคนที่ ' + i + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
+        '<div class="form-group"><label>ชื่อ-นามสกุล <span style=\"color:var(--red)\">*</span></label>' +
+        '<input type="text" id="extraVisitorName' + i + '" placeholder="เช่น สมหญิง ใจดี"></div>' +
+        '<div class="form-group"><label>เลขบัตรประชาชน <span style=\"color:var(--red)\">*</span></label>' +
+        '<input type="text" id="extraVisitorId' + i + '" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17"></div>' +
+      '</div>' +
+      '<div class="form-group"><label>ความสัมพันธ์ <span style=\"color:var(--red)\">*</span></label>' +
+      '<select id="extraVisitorRelation' + i + '">' + relOpts + '</select></div>';
+    list.appendChild(div);
+  }
+}
+
+function getExtraVisitors() {
+  const n = parseInt(document.getElementById('visitorCount').value);
+  const extras = [];
+  for (let i = 2; i <= n; i++) {
+    const nameEl = document.getElementById('extraVisitorName' + i);
+    const idEl   = document.getElementById('extraVisitorId' + i);
+    const relEl  = document.getElementById('extraVisitorRelation' + i);
+    if (nameEl) extras.push({ name: nameEl.value.trim(), id: idEl ? idEl.value.trim() : '', relation: relEl ? relEl.value : '' });
+  }
+  return extras;
+}
+
 // ===== VALIDATION =====
 function validate() {
   const fields = [
@@ -447,6 +492,16 @@ function validate() {
     const el = document.getElementById(f.id);
     if (!el.value.trim()) { alert(`กรุณากรอก ${f.label}`); el.focus(); return false; }
   }
+  // Validate extra visitors (name + id)
+  const n = parseInt(document.getElementById('visitorCount').value);
+  for (let i = 2; i <= n; i++) {
+    const nameEl = document.getElementById('extraVisitorName' + i);
+    const idEl   = document.getElementById('extraVisitorId' + i);
+    if (nameEl && !nameEl.value.trim()) { alert('กรุณากรอกชื่อผู้เยี่ยมคนที่ ' + i); nameEl.focus(); return false; }
+    if (idEl && !idEl.value.trim()) { alert('กรุณากรอกเลขบัตรประชาชนผู้เยี่ยมคนที่ ' + i); idEl.focus(); return false; }
+    const relEl = document.getElementById('extraVisitorRelation' + i);
+    if (relEl && !relEl.value) { alert('กรุณาเลือกความสัมพันธ์ผู้เยี่ยมคนที่ ' + i); relEl.focus(); return false; }
+  }
   if (!selectedDate) { alert('กรุณาเลือกวันที่ต้องการเยี่ยม'); return false; }
   if ((bookings[selectedDate] || 0) >= QUOTA) { alert('วันที่เลือกเต็มแล้ว กรุณาเลือกวันอื่น'); return false; }
   if (!document.getElementById('consent').checked) { alert('กรุณายืนยันและยินยอมก่อนดำเนินการ'); return false; }
@@ -461,9 +516,16 @@ function goToConfirm() {
   const d = new Date(selectedDate);
   const thDate = d.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
+  const extras = getExtraVisitors();
+  const visitor1Name = document.getElementById('visitorName').value.trim();
+  const visitor1Id   = document.getElementById('visitorId').value.trim();
+  let visitorRowsHtml = `<div class="summary-row"><span class="lbl">👤 ผู้เยี่ยมคนที่ 1</span><span class="val">${visitor1Name}<br><span style="font-size:12px;color:var(--text2)">${visitor1Id}</span></span></div>`;
+  extras.forEach((v, idx) => {
+    visitorRowsHtml += `<div class="summary-row"><span class="lbl">👤 ผู้เยี่ยมคนที่ ${idx+2}</span><span class="val">${v.name}<br><span style="font-size:12px;color:var(--text2)">${v.id} · ${v.relation}</span></span></div>`;
+  });
+
   document.getElementById('confirmSummary').innerHTML = `
-    <div class="summary-row"><span class="lbl">👤 ผู้เยี่ยม</span><span class="val">${document.getElementById('visitorName').value.trim()}</span></div>
-    <div class="summary-row"><span class="lbl">🪪 เลขบัตรฯ</span><span class="val">${document.getElementById('visitorId').value.trim()}</span></div>
+    ${visitorRowsHtml}
     <div class="summary-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${document.getElementById('visitorPhone').value.trim()}</span></div>
     <div class="summary-row"><span class="lbl">🔗 ความสัมพันธ์</span><span class="val">${document.getElementById('relation').value}</span></div>
     <div class="summary-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${document.getElementById('prisonerName').value.trim()} (#${document.getElementById('prisonerId').value.trim()})</span></div>
@@ -486,10 +548,13 @@ async function submitBooking() {
   const thDate = d.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   const now = new Date().toLocaleString('th-TH');
 
+  const extras = getExtraVisitors();
+  const extraNamesStr = extras.map(v => v.name + ' (' + v.id + ', ' + v.relation + ')').join(', ');
   const data = {
     ref,
     timestamp: now,
     visitorName: document.getElementById('visitorName').value.trim(),
+    extraVisitorNames: extraNamesStr,
     visitorId: document.getElementById('visitorId').value.trim(),
     visitorPhone: document.getElementById('visitorPhone').value.trim(),
     relation: document.getElementById('relation').value,
@@ -575,6 +640,8 @@ function resetAll() {
   document.querySelectorAll('input[type=text],input[type=tel]').forEach(i => i.value = '');
   document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
   document.getElementById('consent').checked = false;
+  document.getElementById('extraVisitorsContainer').style.display = 'none';
+  document.getElementById('extraVisitorsList').innerHTML = '';
   selectedDate = null;
   document.getElementById('selectedDateDisplay').textContent = '';
   document.getElementById('submitBtn').disabled = false;
