@@ -87,6 +87,8 @@ tr:hover td { background: #f8f9fa; }
 .badge-done    { background: #d1fae5; color: #065f46; }
 .btn-confirm-pay { padding: 5px 12px; background: #1a56db; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
 .btn-confirm-pay:hover { opacity: 0.85; }
+.btn-reject-pay { padding: 5px 12px; background: #dc2626; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.btn-reject-pay:hover { opacity: 0.85; }
 .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .btn-approve { padding: 5px 12px; background: var(--green); color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
 .btn-approve:hover { opacity: 0.85; }
@@ -363,6 +365,7 @@ function renderTable() {
           ` : ''}
           ${isPaid ? `
             <button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">💳 ยืนยันชำระเงิน</button>
+            <button class="btn-reject-pay" onclick="rejectPayment(${rowIdx})">✗ ปฏิเสธ</button>
           ` : ''}
           <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
         </div>
@@ -401,17 +404,53 @@ async function confirmPayment(idx) {
   renderTable();
 }
 
+// ===== REJECT PAYMENT (ปฏิเสธการชำระเงิน) =====
+async function rejectPayment(idx) {
+  const row = allRows[idx];
+  const reason = prompt(`ปฏิเสธการชำระเงินของ "${row.visitorName}" (${row.ref})\n\nเหตุผล (ถ้ามี):`, '');
+  if (reason === null) return; // User cancelled
+  row.status = 'รอชำระเงิน'; // Back to waiting for payment
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: PASSWORD })
+    });
+  } catch(e) { /* demo mode */ }
+  alert('ปฏิเสธการชำระเงินแล้ว (สถานะกลับไปเป็น "รอชำระเงิน")');
+  updateStats();
+  renderTable();
+}
+
 
 function viewSlip(idx) {
   const row = allRows[idx];
   const body = document.getElementById('modalBody');
   if (row.slipImage && row.slipImage.startsWith('data:image')) {
-    body.innerHTML = `<img src="${row.slipImage}" alt="สลิป">
-      <div style="margin-top:10px;font-size:13px;color:var(--text2)">
-        <b>${row.ref}</b> · ${row.visitorName} · ${(row.total||0).toLocaleString()} บาท
+    body.innerHTML = `<img src="${row.slipImage}" alt="สลิป" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
+      <div style="margin-top:10px;font-size:13px;color:var(--text2);padding:10px;background:var(--bg);border-radius:6px;">
+        <b>${row.ref}</b> · ${row.visitorName}<br>
+        ยอด: ${(row.total||0).toLocaleString()} บาท<br>
+        <span style="color:var(--green);font-weight:600">✓ สถานะ: ${row.status}</span>
       </div>`;
+  } else if (row.status === 'ชำระแล้ว' || row.status === 'เสร็จสิ้น') {
+    body.innerHTML = `<div class="no-slip" style="padding:2rem;text-align:center;">
+      ⏳ ยังไม่มีรูปสลิปในระบบ<br>
+      <span style="font-size:12px;color:var(--text2)">ญาติอาจยังไม่ได้อัปโหลด หรือกำลังประมวลผล</span><br><br>
+      <div style="background:var(--green-light);border:1px solid rgba(59,109,17,0.3);border-radius:6px;padding:8px;font-size:12px;color:var(--green);">
+        📋 Ref: ${row.ref}<br>
+        💰 ยอด: ${(row.total||0).toLocaleString()} บาท<br>
+        📊 สถานะ: ${row.status}
+      </div>
+    </div>`;
   } else {
-    body.innerHTML = '<div class="no-slip">ไม่มีรูปสลิปในระบบ<br><span style="font-size:11px">(อาจโหลดจาก Drive แยก)</span></div>';
+    body.innerHTML = `<div class="no-slip" style="padding:2rem;text-align:center;">
+      📋 ยังไม่มีรูปสลิป<br>
+      <span style="font-size:12px;color:var(--text2)">รอให้ญาติชำระเงินและอัปโหลดสลิป</span><br><br>
+      <div style="background:var(--yellow-light);border:1px solid rgba(200,146,42,0.3);border-radius:6px;padding:8px;font-size:12px;color:var(--yellow);">
+        Ref: ${row.ref}<br>
+        สถานะ: ${row.status}
+      </div>
+    </div>`;
   }
   document.getElementById('modalBg').classList.add('show');
 }
