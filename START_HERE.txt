@@ -1,0 +1,187 @@
+# 📑 Index - การนำทาง
+
+## 📌 Start Here
+
+**👉 อ่านก่อน:** `VISUAL_SUMMARY.txt` (ภาพรวม)
+
+---
+
+## 📂 ไฟล์ HTML/JS (ใช้งาน)
+
+| ไฟล์ | วัตถุประสงค์ | อัปเดต |
+|---|---|---|
+| **status.html** | หน้าตรวจสอบสถานะ (ญาติ) | ✅ PromptPay QR Fix |
+| **prison_staff_dashboard.html** | หน้าเจ้าหน้าที่ | ✅ ปุ่มปฏิเสธ + ยืนยัน |
+| **google_apps_script_updated.js** | Google Apps Script Backend | ✅ slipImage รวม |
+
+---
+
+## 📖 Documentation (อ่าน)
+
+| ไฟล์ | เนื้อหา | เวลาอ่าน |
+|---|---|---|
+| **VISUAL_SUMMARY.txt** | ภาพรวมทั้งหมด (ASCII art) | ⏱️ 5 นาที |
+| **README_FULL.txt** | รายละเอียดครบถ้วน | ⏱️ 15 นาที |
+| **CHANGES_SUMMARY.md** | รายการเปลี่ยนแปลง | ⏱️ 10 นาที |
+| **PROMPTPAY_QR_FIX.md** | PromptPay QR Code พื้นฐาน | ⏱️ 8 นาที |
+| **PROMPTPAY_QUICK_REFERENCE.txt** | อ้างอิงด่วน | ⏱️ 2 นาที |
+
+---
+
+## 🎯 Choose Your Path
+
+### 🏃 Quick Implementation (15 min)
+```
+1. VISUAL_SUMMARY.txt        → ภาพรวม
+2. Replace 3 HTML/JS files    → Copy to your server
+3. Deploy Apps Script         → Publish new deployment
+4. Test 3 scenarios           → Ready!
+```
+
+### 📚 Deep Understanding (30 min)
+```
+1. README_FULL.txt            → Comprehensive guide
+2. CHANGES_SUMMARY.md         → Detail each change
+3. PROMPTPAY_QR_FIX.md        → QR specifics
+4. Review HTML files          → Understand code
+5. Test & Troubleshoot        → Ready!
+```
+
+### 🔧 Customization (45 min)
+```
+1. README_FULL.txt            → Understand
+2. Edit Configuration:
+   - PromptPay ID
+   - Bank Account
+   - Password
+   - App Script URL
+3. Test all scenarios
+4. Ready for production!
+```
+
+---
+
+## ✅ Pre-Deployment Checklist
+
+- [ ] Read VISUAL_SUMMARY.txt
+- [ ] Backup original files
+- [ ] Replace 3 files
+- [ ] Update Google Apps Script
+- [ ] Test Dashboard approve
+- [ ] Test PromptPay QR
+- [ ] Test slip upload
+- [ ] Test Mobile Bank scan
+- [ ] Verify all statuses
+- [ ] Ready to deploy!
+
+---
+
+## 🚀 What's New (v2.0)
+
+| Feature | Type | Where |
+|---|---|---|
+| `รอชำระเงิน` status | NEW | status.html + dashboard |
+| `เสร็จสิ้น` status | NEW | status.html + dashboard |
+| Reject payment button | NEW | prison_staff_dashboard.html |
+| Confirm payment button | NEW | prison_staff_dashboard.html |
+| PromptPay QR Fix | FIX | status.html |
+| SlipImage in API | FIX | google_apps_script_updated.js |
+| Better slip display | IMPROVE | prison_staff_dashboard.html |
+| Payment UI improved | IMPROVE | status.html |
+
+---
+
+## 🔐 Important IDs
+
+```
+PromptPay ID:  0994000160208
+Bank Account:  137-1-09488-8 (KTB)
+Password:      10900
+```
+
+**⚠️ If changed:** Update all 3 files!
+
+---
+
+## 📞 Troubleshooting Guide
+
+| Issue | Document | Line |
+|---|---|---|
+| QR not showing | PROMPTPAY_QR_FIX.md | Troubleshooting |
+| Payment button missing | CHANGES_SUMMARY.md | Dashboard section |
+| Slip not visible | README_FULL.txt | SlipImage section |
+| Status not updating | README_FULL.txt | Google Apps Script |
+
+---
+
+## 🎓 Learning Path
+
+```
+Beginner → VISUAL_SUMMARY → understand flow
+   ↓
+Intermediate → README_FULL → understand each part
+   ↓
+Advanced → Review code + PROMPTPAY_QR_FIX → customize
+   ↓
+Ready → Deploy v2.0
+```
+
+---
+
+## 📊 File Sizes
+
+```
+status.html                    ~27 KB
+prison_staff_dashboard.html    ~15 KB
+google_apps_script_updated.js  ~5 KB
+─────────────────────────────────
+Total                         ~47 KB
+```
+
+---
+
+## ⏰ Timeline
+
+```
+Discovery:     21 May 2026
+Testing:       21 May 2026 (completed)
+Documentation: 21 May 2026 (completed)
+Deployment:    Ready! 🎉
+```
+
+---
+
+## 💡 Quick Links
+
+- **Google Apps Script Guide** → README_FULL.txt
+- **PromptPay Details** → PROMPTPAY_QR_FIX.md
+- **All Changes** → CHANGES_SUMMARY.md
+- **Visual Overview** → VISUAL_SUMMARY.txt
+- **Full Documentation** → README_FULL.txt
+
+---
+
+## 📝 Notes
+
+- ✅ All files tested
+- ✅ Error handling included
+- ✅ Fallback UI for QR failures
+- ✅ Mobile responsive
+- ✅ Production ready
+
+---
+
+## 🎯 Next Steps
+
+1. **Read** VISUAL_SUMMARY.txt
+2. **Backup** current files
+3. **Update** 3 main files
+4. **Deploy** Apps Script
+5. **Test** all flows
+6. **Go Live** 🚀
+
+---
+
+**Last Updated:** 21 May 2026  
+**Version:** 2.0  
+**Status:** ✅ Complete & Ready
