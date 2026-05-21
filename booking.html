@@ -571,8 +571,7 @@ async function submitBooking() {
   document.getElementById('overlay').classList.add('show');
   document.getElementById('submitBtn').disabled = true;
   try {
-    const checkResp = await fetch(APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent('10900'), { redirect: 'follow' });
-    const checkData = await checkResp.json();
+    const checkData = await appsScriptGet({ action: 'getAll', pass: '10900' });
     if (checkData.status === 'ok' && checkData.rows) {
       const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
       const duplicate = checkData.rows.find(r =>
@@ -693,16 +692,22 @@ function resetAll() {
   showPage(1);
 }
 
+// ===== SAFE FETCH WRAPPER =====
+async function appsScriptGet(params) {
+  const qs = new URLSearchParams(params).toString();
+  const resp = await fetch(APPS_SCRIPT_URL + '?' + qs, { redirect: 'follow' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const text = await resp.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error('Invalid JSON: ' + text.slice(0, 100)); }
+}
+
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
   // นับทุกสถานะยกเว้น "ยกเลิก" — block slot ทันทีหลังจอง
   const excludedStatuses = ['ยกเลิก'];
   try {
-    const resp = await fetch(
-      APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent('10900'),
-      { redirect: 'follow' }
-    );
-    const data = await resp.json();
+    const data = await appsScriptGet({ action: 'getAll', pass: '10900' });
     if (data.status === 'ok' && data.rows) {
       bookings = {};
       data.rows.forEach(r => {
@@ -712,7 +717,7 @@ async function loadBookingCounts() {
       });
     }
   } catch (err) {
-    console.warn('loadBookingCounts failed, using empty:', err);
+    console.warn('loadBookingCounts failed:', err);
   }
   renderCalendar();
 }
