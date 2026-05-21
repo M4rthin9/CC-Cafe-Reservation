@@ -695,8 +695,8 @@ function resetAll() {
 
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
-  // ✅ นับเฉพาะที่ "ชำระแล้ว" และ "เสร็จสิ้น" เท่านั้น — slot ที่ยืนยันจริงแล้ว
-  const paidStatuses = ['ชำระแล้ว', 'เสร็จสิ้น'];
+  // นับทุกสถานะยกเว้น "ยกเลิก" — block slot ทันทีหลังจอง
+  const excludedStatuses = ['ยกเลิก'];
   try {
     const resp = await fetch(
       APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent('10900'),
@@ -706,7 +706,7 @@ async function loadBookingCounts() {
     if (data.status === 'ok' && data.rows) {
       bookings = {};
       data.rows.forEach(r => {
-        if (r.visitDateISO && paidStatuses.includes(r.status)) {
+        if (r.visitDateISO && !excludedStatuses.includes(r.status)) {
           bookings[r.visitDateISO] = (bookings[r.visitDateISO] || 0) + 1;
         }
       });
