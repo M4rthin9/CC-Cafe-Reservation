@@ -547,7 +547,7 @@ function goToConfirm() {
     <div class="summary-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${document.getElementById('prisonerName').value.trim()} (#${document.getElementById('prisonerId').value.trim()})</span></div>
     <div class="summary-row"><span class="lbl">🏢 แดน</span><span class="val">${document.getElementById('wing').value}</span></div>
     <div class="summary-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${thDate}</span></div>
-    <div class="summary-row"><span class="lbl">👥 จำนวนรวม</span><span class="val">ญาติ ${n} คน + ผู้ต้องขัง 1 = <strong>${totalPersons} คน</strong></span></div>
+    <div class="summary-row"><span class="lbl">👥 จำนวนรวม</span><span class="val">ผู้เข้าร่วมกิจกรรม ${n} คน + ผู้ต้องขัง 1 = <strong>${totalPersons} คน</strong></span></div>
     <div class="summary-row"><span class="lbl">💰 ค่าบริการอาหาร (ประมาณ)</span><span class="val">${(totalPersons * 1000).toLocaleString()} บาท (ชำระหลังอนุมัติ)</span></div>
   `;
   showPage(2);
