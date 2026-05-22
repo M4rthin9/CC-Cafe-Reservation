@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ตรวจสอบสถานะการจอง — ทัณฑสถานบำบัดพิเศษกลาง</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root {
+  --blue: #185FA5; --blue-dark: #0C447C; --blue-light: #E6F1FB;
+  --green: #3B6D11; --green-light: #EAF3DE;
+  --gold: #C8922A; --gold-light: #FDF3E3;
+  --red: #E24B4A; --red-light: #FFF0F0;
+  --bg: #f0f4f9; --bg2: #ffffff;
+  --border: #dde3ec; --text: #1a1d23; --text2: #6b7280;
+  --radius: 12px; --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--text); min-height: 100vh; }
+.app { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+
+/* ── Header ── */
+.header {
+  text-align: center; margin-bottom: 1.5rem; padding: 1.5rem;
+  background: linear-gradient(135deg, #0C3A6B 0%, #185FA5 100%);
+  border-radius: var(--radius); color: #fff; position: relative; overflow: hidden;
+}
+.header::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 60%);
+}
+.back-link {
+  position: absolute; top: 14px; left: 14px;
+  display: flex; align-items: center; gap: 4px;
+  color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; z-index: 1;
+}
+.back-link:hover { color: #fff; }
+.hbadge {
+  display: inline-block; background: rgba(200,146,42,0.3);
+  border: 1px solid rgba(200,146,42,0.5); color: #f5d08a;
+  font-size: 11px; padding: 3px 12px; border-radius: 20px;
+  margin-bottom: 10px; letter-spacing: 0.5px; position: relative;
+}
+.header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; position: relative; }
+.header p  { font-size: 13px; color: rgba(255,255,255,0.7); position: relative; }
+
+/* ── Search box ── */
+.search-section {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.25rem;
+  margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.section-title {
+  font-size: 13px; font-weight: 600; color: var(--text2);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
+  border-bottom: 1px solid var(--border); padding-bottom: 10px;
+}
+.search-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.tab-btn {
+  flex: 1; padding: 9px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border); font-size: 13px; font-weight: 600;
+  font-family: inherit; background: var(--bg); color: var(--text2);
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.tab-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+label { font-size: 13px; color: var(--text2); font-weight: 500; display: block; margin-bottom: 5px; }
+input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 15px; background: var(--bg);
+  color: var(--text); font-family: inherit; transition: border-color 0.15s;
+}
+input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24,95,165,0.1); background: #fff; }
+
+/* ── Buttons ── */
+.btn-primary {
+  width: 100%; padding: 13px; background: var(--blue); color: #fff;
+  border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-primary:hover { background: var(--blue-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(24,95,165,0.25); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-secondary {
+  width: 100%; padding: 12px; background: var(--bg2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  text-decoration: none;
+}
+.btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ── Result card ── */
+.result-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 1rem;
+}
+.result-header {
+  padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px;
+}
+.result-ref { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.result-ref strong { font-size: 18px; font-weight: 700; color: var(--blue); letter-spacing: 2px; }
+.result-body { padding: 1rem 1.25rem; }
+.info-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border); gap: 10px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-row .lbl { color: var(--text2); flex-shrink: 0; min-width: 110px; }
+.info-row .val { font-weight: 600; text-align: right; }
+
+/* ── Status pills ── */
+.status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+.status-pending  { background: #FFF9E6; color: #C8922A; border: 1px solid rgba(200,146,42,0.3); }
+.status-approved { background: var(--green-light); color: var(--green); border: 1px solid rgba(59,109,17,0.25); }
+.status-rejected { background: var(--red-light); color: var(--red); border: 1px solid rgba(226,75,74,0.25); }
+.status-paid     { background: #e8f0fe; color: #1a56db; border: 1px solid rgba(26,86,219,0.25); }
+
+/* ── Pay summary block ── */
+.pay-section { background: var(--green-light); border: 1.5px solid rgba(59,109,17,0.3); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+.pay-section h3 { font-size: 15px; font-weight: 700; color: var(--green); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.pay-section p   { font-size: 13px; color: #3a5520; margin-bottom: 1rem; }
+
+/* ── Payment method tabs ── */
+.pay-tabs { display: flex; margin-bottom: 1.25rem; border-radius: var(--radius-sm); overflow: hidden; border: 1.5px solid var(--border); }
+.pay-tab-btn {
+  flex: 1; padding: 10px 8px; border: none; font-size: 13px; font-weight: 600;
+  font-family: inherit; background: var(--bg); color: var(--text2); cursor: pointer;
+  transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px;
+  border-right: 1px solid var(--border);
+}
+.pay-tab-btn:last-child { border-right: none; }
+.pay-tab-btn.active { background: var(--blue); color: #fff; }
+.pay-tab-content { display: none; }
+.pay-tab-content.active { display: block; }
+
+/* ── QR box ── */
+.qr-payment-box { background: #fff; border: 2px solid #005BAA; border-radius: var(--radius); padding: 1.25rem; text-align: center; margin-bottom: 1.25rem; }
+.qr-thai-header { background: #005BAA; color: #fff; border-radius: var(--radius-sm); padding: 10px 16px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+.qr-logos { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px; }
+.qr-logo-badge { background: #f0f4f9; border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; font-size: 11px; font-weight: 700; color: #005BAA; }
+#qrCanvas { display: flex; justify-content: center; margin: 12px auto; }
+#qrCanvas canvas, #qrCanvas img { border-radius: 8px; border: 4px solid #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
+.qr-amount-badge { background: linear-gradient(135deg, #005BAA, #185FA5); color: #fff; border-radius: 20px; padding: 8px 24px; font-size: 20px; font-weight: 800; display: inline-block; margin: 10px 0; letter-spacing: 1px; }
+.qr-merchant-id { font-size: 11px; color: var(--text2); margin-top: 6px; line-height: 1.7; }
+.qr-note { background: #fff9e6; border: 1px solid rgba(200,146,42,0.3); border-radius: 8px; padding: 8px 12px; font-size: 12px; color: #7a5a10; margin-top: 10px; text-align: left; line-height: 1.7; }
+
+/* ── Upload ── */
+.upload-area {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 1.75rem; text-align: center; cursor: pointer;
+  transition: all 0.15s; background: var(--bg); position: relative;
+}
+.upload-area:hover  { border-color: var(--blue); background: var(--blue-light); }
+.upload-area.drag-over { border-color: var(--blue); background: var(--blue-light); transform: scale(1.01); }
+.upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-icon { font-size: 32px; color: var(--text2); }
+.upload-area p    { font-size: 13px; color: var(--text2); margin-top: 6px; }
+.upload-area .hint { font-size: 11px; color: var(--text2); margin-top: 4px; opacity: 0.7; }
+.preview-img { max-width: 100%; max-height: 220px; border-radius: var(--radius-sm); margin-top: 12px; display: none; object-fit: contain; }
+.upload-progress { margin-top: 10px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; display: none; }
+.upload-progress-bar { height: 100%; background: var(--blue); border-radius: 3px; transition: width 0.3s; width: 0%; }
+
+/* ── Notices ── */
+.notice { border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.notice h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.notice p  { font-size: 13px; line-height: 1.7; }
+.notice-rejected { background: var(--red-light); border: 1px solid rgba(226,75,74,0.3); }
+.notice-rejected h3 { color: var(--red); }
+.notice-rejected p  { color: #7a2020; }
+.notice-paid { background: #e8f0fe; border: 1px solid rgba(26,86,219,0.25); }
+.notice-paid h3 { color: #1a56db; }
+.notice-paid p  { color: #1a3a8a; }
+.notice-done { background: #d1fae5; border: 1px solid rgba(6,95,70,0.25); }
+.notice-done h3 { color: #065f46; }
+.notice-done p  { color: #064e3b; }
+.notice-cancelled { background: #f3f4f6; border: 1px solid #d1d5db; }
+.notice-cancelled h3 { color: #374151; }
+.notice-cancelled p  { color: #6b7280; }
+.notice-pending { background: var(--gold-light); border: 1px solid rgba(200,146,42,0.3); }
+.notice-pending h3 { color: var(--gold); }
+.notice-pending p  { color: #7a5a10; }
+
+/* ── Alert strip ── */
+.alert-strip { border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; margin-top: 8px; display: none; }
+.alert-strip.err { background: var(--red-light); color: #7a2020; border: 1px solid rgba(226,75,74,0.3); }
+.alert-strip.ok  { background: var(--green-light); color: #2a5010; border: 1px solid rgba(59,109,17,0.25); }
+
+/* ── Not found ── */
+.not-found { text-align: center; padding: 2.5rem 1rem; }
+.not-found-icon { font-size: 48px; margin-bottom: 1rem; }
+.not-found h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.not-found p  { font-size: 14px; color: var(--text2); line-height: 1.7; }
+
+/* ── Overlay spinner ── */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+.overlay.show { display: flex; }
+.spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.overlay p { color: #fff; font-size: 15px; font-weight: 500; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Thank-you page ── */
+.thankyou-page { text-align: center; padding: 1.5rem 0.5rem; }
+.success-icon-big { width: 80px; height: 80px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 40px; border: 3px solid rgba(59,109,17,0.3); }
+.ref-box-sm { background: linear-gradient(135deg, #0C3A6B 0%, #185FA5 100%); border-radius: var(--radius); padding: 14px 24px; display: inline-block; margin: 1rem 0; }
+.ref-box-sm .ref-label { font-size: 11px; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+.ref-box-sm span { font-size: 24px; font-weight: 700; letter-spacing: 3px; color: #fff; display: block; }
+
+#resultArea   { display: none; }
+#thankYouArea { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <a href="index.html" class="back-link"><i class="ti ti-arrow-left"></i> หน้าหลัก</a>
+    <div class="hbadge">ตรวจสอบสถานะ</div>
+    <h1>ตรวจสอบสถานะการจอง</h1>
+    <p>ใช้เลขอ้างอิง (Ref No.) หรือเลขประจำตัวผู้ต้องขัง</p>
+  </div>
+
+  <!-- ── Search ── -->
+  <div class="search-section">
+    <div class="section-title"><i class="ti ti-search"></i> ค้นหาการจอง</div>
+    <div class="search-tabs">
+      <button class="tab-btn active" id="tabRef" onclick="switchTab('ref')">
+        <i class="ti ti-hash"></i> Ref No.
+      </button>
+      <button class="tab-btn" id="tabPrisoner" onclick="switchTab('prisoner')">
+        <i class="ti ti-lock"></i> เลขผู้ต้องขัง
+      </button>
+    </div>
+    <div class="tab-content active" id="tabContentRef">
+      <label>เลขอ้างอิง (เช่น VIS-12345)</label>
+      <input type="text" id="searchRef" placeholder="VIS-XXXXX"
+        style="text-transform:uppercase;letter-spacing:1px"
+        onkeydown="if(event.key==='Enter') doSearch()">
+    </div>
+    <div class="tab-content" id="tabContentPrisoner">
+      <label>หมายเลขผู้ต้องขัง</label>
+      <input type="text" id="searchPrisoner" placeholder="เช่น 12345678"
+        onkeydown="if(event.key==='Enter') doSearch()">
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn-primary" id="searchBtn" onclick="doSearch()">
+        <i class="ti ti-search"></i> ตรวจสอบสถานะ
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Result / Thank-you areas (populated by JS) ── -->
+  <div id="resultArea"></div>
+
+  <div id="thankYouArea">
+    <div class="thankyou-page">
+      <div class="success-icon-big">🎉</div>
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">ชำระเงินและจองสำเร็จ!</h2>
+      <p style="font-size:14px;color:var(--text2);margin-bottom:1rem">เจ้าหน้าที่จะยืนยันนัดหมายผ่านโทรศัพท์ภายใน 1 วันทำการ</p>
+      <div class="ref-box-sm">
+        <div class="ref-label">เลขอ้างอิง</div>
+        <span id="tyRefNumber">VIS-00000</span>
+      </div>
+      <div id="tySummary" style="background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border);padding:14px;text-align:left;margin:1rem 0;font-size:13px;line-height:2.2"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:1rem">
+        <button class="btn-secondary" onclick="resetSearch()" style="flex:1;min-width:160px">
+          <i class="ti ti-search"></i> ค้นหาอีกครั้ง
+        </button>
+        <a href="index.html" class="btn-primary" style="text-decoration:none;flex:1;min-width:160px">
+          <i class="ti ti-home"></i> กลับหน้าหลัก
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Overlay ── -->
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <p id="overlayMsg">กำลังค้นหา...</p>
+</div>
+
+<script>
+// ================================================================
+//  CONFIG
+// ================================================================
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYTAy4xe5z6tv5y0F3mjLqMdvYuothFRWUWz6MAkpq6xbusyOTFHvu7-YA2Z8HMhGDjw/exec';
+const STAFF_PASS      = '10900';
+const MERCHANT_ID     = 'ML099400ZO0160208VX';
+const PRICE_PER_PERSON = 1000;   // ← เปลี่ยนเป็น 1000 เมื่อใช้จริง
+
+// ================================================================
+//  APPS SCRIPT HELPERS
+//  Google Apps Script ต้องใช้ redirect:'follow' + Content-Type:'text/plain'
+//  เพื่อหลีกเลี่ยง CORS preflight ที่ Apps Script รองรับไม่ได้
+// ================================================================
+async function appsScriptGet(params) {
+  const qs   = new URLSearchParams(params).toString();
+  const resp = await fetch(APPS_SCRIPT_URL + '?' + qs, { redirect: 'follow' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const text = await resp.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error('Invalid JSON: ' + text.slice(0, 120)); }
+}
+
+async function appsScriptPost(payload) {
+  const resp = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const text = await resp.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error('Invalid JSON: ' + text.slice(0, 120)); }
+}
+
+// ================================================================
+//  SEARCH TAB SWITCH
+// ================================================================
+let activeTab = 'ref';
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tabRef').classList.toggle('active', tab === 'ref');
+  document.getElementById('tabPrisoner').classList.toggle('active', tab === 'prisoner');
+  document.getElementById('tabContentRef').classList.toggle('active', tab === 'ref');
+  document.getElementById('tabContentPrisoner').classList.toggle('active', tab === 'prisoner');
+}
+
+// Pre-fill จาก sessionStorage (ถ้ามาจากหน้า booking)
+window.addEventListener('load', () => {
+  try {
+    const lastRef = sessionStorage.getItem('lastRef');
+    const lastPId = sessionStorage.getItem('lastPrisonerId');
+    if (lastRef)  { document.getElementById('searchRef').value = lastRef; switchTab('ref'); }
+    else if (lastPId) { document.getElementById('searchPrisoner').value = lastPId; switchTab('prisoner'); }
+  } catch(e) {}
+});
+
+// ================================================================
+//  SEARCH
+// ================================================================
+async function doSearch() {
+  const mode  = activeTab;
+  let   query = '';
+  if (mode === 'ref') {
+    query = document.getElementById('searchRef').value.trim().toUpperCase();
+    if (!query) { alert('กรุณากรอกเลขอ้างอิง'); return; }
+  } else {
+    query = document.getElementById('searchPrisoner').value.trim();
+    if (!query) { alert('กรุณากรอกหมายเลขผู้ต้องขัง'); return; }
+  }
+
+  setOverlay(true, 'กำลังค้นหา...');
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('resultArea').style.display   = 'none';
+  document.getElementById('thankYouArea').style.display = 'none';
+
+  let rows = [];
+  try {
+    const data = await appsScriptGet({ action: 'getAll', pass: STAFF_PASS });
+    if (data.status === 'ok') rows = data.rows || [];
+    else throw new Error(data.message || 'error');
+  } catch(err) {
+    console.error('Fetch error:', err);
+    // Fallback: demo data เฉพาะเมื่อ URL ยังเป็น placeholder
+    if (APPS_SCRIPT_URL.includes('YOUR_GOOGLE')) {
+      rows = getDemoRows();
+    } else {
+      setOverlay(false);
+      document.getElementById('searchBtn').disabled = false;
+      renderError('ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+  } finally {
+    setOverlay(false);
+    document.getElementById('searchBtn').disabled = false;
+  }
+
+  let found = null;
+  if (mode === 'ref') {
+    found = rows.find(r => (r.ref || '').toUpperCase() === query) || null;
+  } else {
+    const matches = rows.filter(r => String(r.prisonerId || '').trim() === query);
+    if (matches.length) found = matches[0];
+  }
+
+  if (!found) renderNotFound(query);
+  else        renderResult(found);
+}
+
+// ================================================================
+//  RENDER HELPERS
+// ================================================================
+function renderError(msg) {
+  const area = document.getElementById('resultArea');
+  area.style.display = 'block';
+  area.innerHTML = `
+    <div style="background:var(--red-light);border:1px solid rgba(226,75,74,0.3);border-radius:var(--radius);padding:1.25rem;text-align:center;">
+      <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+      <div style="font-weight:600;color:var(--red);margin-bottom:4px">เกิดข้อผิดพลาด</div>
+      <div style="font-size:13px;color:#7a2020">${escHtml(msg)}</div>
+    </div>`;
+}
+
+function renderNotFound(query) {
+  const area = document.getElementById('resultArea');
+  area.style.display = 'block';
+  area.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+      <div class="not-found">
+        <div class="not-found-icon">🔍</div>
+        <h3>ไม่พบข้อมูลการจอง</h3>
+        <p>ไม่พบการจองสำหรับ <strong>"${escHtml(query)}"</strong><br>กรุณาตรวจสอบความถูกต้องของข้อมูลที่กรอก</p>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <a href="booking.html" class="btn-primary" style="text-decoration:none">
+        <i class="ti ti-plus"></i> จองใหม่
+      </a>
+    </div>`;
+}
+
+function getStatusPill(status) {
+  const s = (status || '').toLowerCase();
+  if (s === 'รอชำระเงิน')                     return `<span class="status-pill status-approved">✅ อนุมัติ — รอชำระเงิน</span>`;
+  if (s.includes('อนุมัติ') || s === 'approved') return `<span class="status-pill status-approved">✅ อนุมัติแล้ว</span>`;
+  if (s.includes('ไม่อนุมัติ') || s === 'rejected') return `<span class="status-pill status-rejected">❌ ไม่อนุมัติ</span>`;
+  if (s === 'เสร็จสิ้น')                      return `<span class="status-pill status-paid" style="background:#d1fae5;color:#065f46;border-color:rgba(6,95,70,0.3)">✅ เสร็จสิ้นแล้ว</span>`;
+  if (s.includes('ชำระ') || s === 'paid')     return `<span class="status-pill status-paid">💳 รอยืนยัน</span>`;
+  if (s === 'ยกเลิก')                          return `<span class="status-pill" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db">🚫 ยกเลิก</span>`;
+  return `<span class="status-pill status-pending">⏳ รอตรวจสอบ</span>`;
+}
+
+// ================================================================
+//  RENDER RESULT
+// ================================================================
+let currentBooking = null;
+let slipFile       = null;
+let slipUploaded   = false;
+
+function calcTotal(row) {
+  const visitorCount = parseInt(row.visitorCount) || 1;
+  const totalPersons = visitorCount + 1;
+  // ถ้ามีค่าใน row.total ให้ใช้ค่านั้น (override จาก sheet)
+  // ถ้าไม่มีให้คำนวณจาก PRICE_PER_PERSON
+  const total = parseFloat(row.total) || (totalPersons * PRICE_PER_PERSON);
+  return { visitorCount, totalPersons, total };
+}
+
+function renderResult(row) {
+  currentBooking = row;
+  slipFile       = null;
+  slipUploaded   = false;
+
+  const status    = row.status || 'รอตรวจสอบ';
+  const sLower    = status.toLowerCase();
+  const statusPill = getStatusPill(status);
+  const { visitorCount, totalPersons, total } = calcTotal(row);
+  const fmtTotal = total.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtUnit  = PRICE_PER_PERSON.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ── Payment action block (depends on status) ──
+  let paymentBlock = '';
+
+  if (sLower === 'รอชำระเงิน' || sLower === 'อนุมัติ' || sLower === 'approved') {
+    paymentBlock = `
+      <div class="pay-section">
+        <h3>✅ การจองได้รับการอนุมัติ — กรุณาชำระเงิน</h3>
+        <p>เจ้าหน้าที่ตรวจสอบประวัติวินัยเรียบร้อยแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเยี่ยม</p>
+        <div style="text-align:center;margin-bottom:1rem">
+          <div style="font-size:13px;color:var(--text2)">ยอดที่ต้องชำระ</div>
+          <div style="font-size:32px;font-weight:700;color:var(--blue);margin:8px 0">${fmtTotal} บาท</div>
+          <div style="font-size:12px;color:var(--text2)">${totalPersons} คน × ${fmtUnit} บาท</div>
+        </div>
+        <button class="btn-primary" onclick="showPayment()">
+          <i class="ti ti-credit-card"></i> ดำเนินการชำระเงิน
+        </button>
+      </div>`;
+  } else if (sLower.includes('ไม่อนุมัติ') || sLower === 'rejected') {
+    paymentBlock = `
+      <div class="notice notice-rejected">
+        <h3>❌ การจองถูกปฏิเสธ</h3>
+        <p>เจ้าหน้าที่ไม่สามารถอนุมัติการจองนี้ได้ เนื่องจากมีข้อมูลวินัยที่เกี่ยวข้อง<br>หากมีข้อสงสัยกรุณาติดต่อเจ้าหน้าที่ ณ ทัณฑสถาน</p>
+      </div>
+      <a href="booking.html" class="btn-secondary" style="text-decoration:none;margin-bottom:1rem">
+        <i class="ti ti-plus"></i> จองใหม่
+      </a>`;
+  } else if (sLower.includes('ชำระ') || sLower === 'paid') {
+    paymentBlock = `
+      <div class="notice notice-paid">
+        <h3>💳 รอเจ้าหน้าที่ยืนยัน</h3>
+        <p>ระบบได้รับสลิปการโอนเงินของท่านแล้ว เจ้าหน้าที่กำลังตรวจสอบ<br>และจะยืนยันนัดหมายของท่านภายใน 1 วันทำการ</p>
+      </div>`;
+  } else if (sLower === 'เสร็จสิ้น') {
+    paymentBlock = `
+      <div class="notice notice-done">
+        <h3>🎉 การจองเสร็จสมบูรณ์</h3>
+        <p>เจ้าหน้าที่ยืนยันการชำระเงินเรียบร้อยแล้ว<br>กรุณานำเลขอ้างอิงมาแสดงในวันเยี่ยม</p>
+      </div>`;
+  } else if (sLower === 'ยกเลิก') {
+    paymentBlock = `
+      <div class="notice notice-cancelled">
+        <h3>🚫 การจองถูกยกเลิก</h3>
+        <p>การจองนี้ถูกยกเลิกแล้ว หากต้องการจองใหม่กรุณากดปุ่มด้านล่าง</p>
+      </div>
+      <a href="booking.html" class="btn-secondary" style="text-decoration:none;margin-bottom:1rem">
+        <i class="ti ti-plus"></i> จองใหม่
+      </a>`;
+  } else {
+    paymentBlock = `
+      <div class="notice notice-pending">
+        <h3>⏳ รอเจ้าหน้าที่ตรวจสอบ</h3>
+        <p>เจ้าหน้าที่กำลังตรวจสอบประวัติวินัยของผู้ต้องขัง (1–2 วันทำการ)<br>กรุณาตรวจสอบสถานะอีกครั้งในภายหลัง</p>
+      </div>`;
+  }
+
+  const area = document.getElementById('resultArea');
+  area.style.display = 'block';
+  area.innerHTML = `
+    <!-- ── Booking summary card ── -->
+    <div class="result-card">
+      <div class="result-header">
+        <div>
+          <div class="result-ref">เลขอ้างอิง · <strong>${escHtml(row.ref || '—')}</strong></div>
+          <div style="font-size:12px;color:var(--text2)">จองเมื่อ ${escHtml(row.timestamp || '—')}</div>
+        </div>
+        <div>${statusPill}</div>
+      </div>
+      <div class="result-body">
+        <div class="info-row"><span class="lbl">👤 ผู้เยี่ยม</span><span class="val">${escHtml(row.visitorName || '—')}</span></div>
+        <div class="info-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${escHtml(row.visitorPhone || '—')}</span></div>
+        <div class="info-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${escHtml(row.prisonerName || '—')} (#${escHtml(row.prisonerId || '—')})</span></div>
+        <div class="info-row"><span class="lbl">🏢 แดน</span><span class="val">${escHtml(row.wing || '—')}</span></div>
+        <div class="info-row"><span class="lbl">📅 วันที่เยี่ยม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>
+        <div class="info-row"><span class="lbl">👥 จำนวน</span><span class="val">ญาติ ${visitorCount} + ผู้ต้องขัง 1 = ${totalPersons} คน</span></div>
+        <div class="info-row"><span class="lbl">💰 ค่าบริการ</span><span class="val">${fmtTotal} บาท</span></div>
+      </div>
+    </div>
+
+    <!-- ── Status-dependent action block ── -->
+    <div id="paymentArea">${paymentBlock}</div>
+
+    <!-- ── Payment form (ซ่อนจนกว่าจะกด "ดำเนินการชำระเงิน") ── -->
+    <div id="paymentForm" style="display:none">
+      <div class="section-title" style="margin-top:1rem;margin-bottom:14px;">
+        <i class="ti ti-credit-card"></i> รายละเอียดการชำระเงิน
+      </div>
+
+      <!-- Payment method tabs -->
+      <div class="pay-tabs">
+        <button class="pay-tab-btn active" id="ptabQR" onclick="switchPayTab('qr')">
+          <i class="ti ti-qrcode"></i> พร้อมเพย์ QR
+        </button>
+        <button class="pay-tab-btn" id="ptabBank" onclick="switchPayTab('bank')">
+          <i class="ti ti-building-bank"></i> โอนบัญชีธนาคาร
+        </button>
+      </div>
+
+      <!-- PromptPay QR tab -->
+      <div class="pay-tab-content active" id="ptabContentQR">
+        <div class="qr-payment-box">
+          <div class="qr-thai-header">
+            🇹🇭 THAI QR PAYMENT
+          </div>
+          <div class="qr-logos">
+            <div class="qr-logo-badge">PromptPay</div>
+            <span style="font-size:10px;color:var(--text2)">+</span>
+            <div class="qr-logo-badge" style="color:#e05a00;">CROSS-BORDER QR</div>
+          </div>
+          <div id="qrCanvas" style="display:flex;justify-content:center;margin:12px auto;">
+            <img src="data:image/png;base64,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" alt="PromptPay QR Code"
+              style="width:220px;height:220px;border-radius:8px;border:4px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,0.12);object-fit:contain;">
+          </div>
+          <div class="qr-amount-badge">${fmtTotal} บาท</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px;">${totalPersons} คน × ${fmtUnit} บาท</div>
+          <div class="qr-merchant-id">
+            ชื่อบัญชี: ร้านสงเคราะห์ผู้ต้องขัง<br>
+            รหัสร้านค้า: ${escHtml(MERCHANT_ID)}
+          </div>
+          <div class="qr-note">
+            📱 เปิดแอปธนาคารใดก็ได้ → สแกน QR → โอนยอด <strong>${fmtTotal} บาท</strong><br>
+            📝 ใส่หมายเหตุ: <strong>${escHtml(row.ref)}</strong> เมื่อโอน
+          </div>
+        </div>
+      </div>
+
+      <!-- Bank transfer tab -->
+      <div class="pay-tab-content" id="ptabContentBank">
+        <div style="background:linear-gradient(135deg,#e8f4f8,#d0eaf3);border:2px solid #03b3c0;border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem;text-align:center;">
+          <div style="display:inline-flex;align-items:center;gap:8px;background:#03b3c0;color:#fff;font-size:13px;font-weight:700;padding:6px 18px;border-radius:20px;margin-bottom:14px;">
+            🏦 ธนาคารกรุงไทย
+          </div>
+          <div style="font-size:13px;color:#2a6a75;margin-bottom:6px;font-weight:500;">เลขบัญชี</div>
+          <div style="font-size:30px;font-weight:800;color:#0a4a55;letter-spacing:3px;margin-bottom:8px;">137-1-09488-8</div>
+          <div style="font-size:15px;font-weight:600;color:#1a5a65;margin-bottom:12px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
+          <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 14px;font-size:13px;color:#1a5a65;line-height:1.8;">
+            💰 ยอดที่ต้องชำระ: <strong style="font-size:18px;color:#0a4a55;">${fmtTotal} บาท</strong><br>
+            <span style="font-size:12px;color:#2a6a75;">${totalPersons} คน × ${fmtUnit} บาท</span>
+          </div>
+          <div style="margin-top:10px;background:rgba(255,255,255,0.8);border-radius:8px;padding:8px 14px;font-size:13px;color:#7a4a10;">
+            📝 ระบุหมายเหตุ: <strong>${escHtml(row.ref)}</strong> เมื่อโอน
+          </div>
+        </div>
+      </div>
+
+      <!-- Slip upload -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
+        <div class="section-title" style="margin-bottom:14px;">
+          <i class="ti ti-upload"></i> อัปโหลดสลิปการโอนเงิน
+        </div>
+        <div class="upload-area" id="uploadArea"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event)">
+          <input type="file" accept="image/*" id="slipFileInput" onchange="handleUpload(event)">
+          <div id="uploadInner">
+            <div class="upload-icon">📄</div>
+            <p>แตะหรือคลิกเพื่อเลือกรูปสลิป</p>
+            <p class="hint">รองรับ JPG, PNG · ขนาดไม่เกิน 10MB · ลากไฟล์มาวางได้</p>
+          </div>
+          <img id="previewImg" class="preview-img" alt="สลิปที่อัปโหลด">
+        </div>
+        <div class="upload-progress" id="uploadProgress">
+          <div class="upload-progress-bar" id="uploadProgressBar"></div>
+        </div>
+        <div id="uploadStatus" style="font-size:12px;color:var(--text2);margin-top:6px;min-height:16px"></div>
+        <div class="alert-strip" id="uploadAlert"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:1rem">
+        <button class="btn-secondary" onclick="hidePayment()" style="flex:0.4">
+          <i class="ti ti-arrow-left"></i> ยกเลิก
+        </button>
+        <button class="btn-primary" onclick="submitPayment()" style="flex:1" id="paySubmitBtn">
+          <i class="ti ti-check"></i> ยืนยันการชำระเงิน
+        </button>
+      </div>
+    </div>
+
+    <button class="btn-secondary" onclick="resetSearch()" style="margin-top:4px">
+      <i class="ti ti-search"></i> ค้นหาอีกครั้ง
+    </button>`;
+}
+
+// ================================================================
+//  PAYMENT TABS
+// ================================================================
+function switchPayTab(tab) {
+  document.getElementById('ptabQR').classList.toggle('active', tab === 'qr');
+  document.getElementById('ptabBank').classList.toggle('active', tab === 'bank');
+  document.getElementById('ptabContentQR').classList.toggle('active', tab === 'qr');
+  document.getElementById('ptabContentBank').classList.toggle('active', tab === 'bank');
+}
+
+// ================================================================
+//  SHOW / HIDE PAYMENT FORM
+// ================================================================
+function showPayment() {
+  document.getElementById('paymentArea').style.display  = 'none';
+  document.getElementById('paymentForm').style.display  = 'block';
+  setTimeout(() => {
+    if (currentBooking) {
+      const { total } = calcTotal(currentBooking);
+      generatePromptPayQR(MERCHANT_ID, total);
+    }
+    const el = document.getElementById('paymentForm');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
+}
+function hidePayment() {
+  document.getElementById('paymentArea').style.display = 'block';
+  document.getElementById('paymentForm').style.display = 'none';
+}
+
+// ================================================================
+//  PROMPTPAY QR  (EMVCo, reverse-engineered from real Krungthai QR)
+// ================================================================
+function buildPromptPayPayload(merchantId, amount) {
+
+  function crc16(str) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < str.length; i++) {
+      crc ^= str.charCodeAt(i) << 8;
+      for (let j = 0; j < 8; j++) {
+        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      }
+    }
+    return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  function tlv(tag, value) {
+    return tag + String(value.length).padStart(2, '0') + value;
+  }
+
+  // Tag 29 — PromptPay Bill Payment (structure from real Krungthai QR)
+  const aid   = tlv('00', 'A000000677010112');  // PromptPay AID
+  const sub01 = tlv('01', '010753700088205');    // Biller ID (Krungthai)
+  const sub02 = tlv('02', merchantId);           // Merchant / Shop ID
+  const sub03 = tlv('03', 'CIDA');               // Ref2
+  const tag29 = tlv('29', aid + sub01 + sub02 + sub03);
+
+  const amountStr = parseFloat(amount).toFixed(2);
+  const tag62 = tlv('62', tlv('07', '0000'));    // Additional Data
+
+  let payload = '';
+  payload += tlv('00', '01');       // Payload Format Indicator
+  payload += tlv('01', '11');       // Dynamic QR (amount embedded)
+  payload += tag29;
+  payload += tlv('53', '764');      // Currency: THB
+  payload += tlv('54', amountStr);  // Transaction Amount
+  payload += tlv('58', 'TH');       // Country Code
+  payload += tag62;
+  payload += '6304';                // CRC placeholder tag+len
+
+  return payload + crc16(payload);
+}
+
+function generatePromptPayQR(merchantId, amount) {
+  const canvas = document.getElementById('qrCanvas');
+  if (!canvas) return;
+  canvas.innerHTML = '';
+  try {
+    const payload = buildPromptPayPayload(merchantId, amount);
+    new QRCode(canvas, {
+      text: payload,
+      width: 220, height: 220,
+      colorDark: '#000000', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    canvas.innerHTML = `<div style="padding:20px;color:var(--red);font-size:12px;">ไม่สามารถสร้าง QR Code ได้: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// ================================================================
+//  DRAG & DROP / FILE UPLOAD
+// ================================================================
+function handleDragOver(e)  { e.preventDefault(); document.getElementById('uploadArea').classList.add('drag-over'); }
+function handleDragLeave()  { document.getElementById('uploadArea').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleUpload(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  if (file.size > 10 * 1024 * 1024) {
+    showUploadAlert('err', '❌ ไฟล์ใหญ่เกิน 10MB กรุณาเลือกไฟล์ที่เล็กกว่า');
+    return;
+  }
+  if (!file.type.startsWith('image/')) {
+    showUploadAlert('err', '❌ รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG) เท่านั้น');
+    return;
+  }
+  slipFile     = file;
+  slipUploaded = true;
+  hideUploadAlert();
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('previewImg');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+
+  document.getElementById('uploadInner').style.opacity = '0.4';
+  document.getElementById('uploadStatus').innerHTML =
+    `✓ เลือกไฟล์แล้ว: <strong>${escHtml(file.name)}</strong><br>` +
+    `<span style="font-size:11px;color:var(--text2)">ขนาด: ${(file.size/1024).toFixed(1)} KB · จะอัปโหลดเมื่อกดยืนยัน</span>`;
+}
+
+function showUploadAlert(type, msg) {
+  const el = document.getElementById('uploadAlert');
+  el.className = 'alert-strip ' + type;
+  el.innerHTML = msg;
+  el.style.display = 'block';
+}
+function hideUploadAlert() {
+  const el = document.getElementById('uploadAlert');
+  if (el) el.style.display = 'none';
+}
+
+function animateProgress(from, to) {
+  const bar  = document.getElementById('uploadProgressBar');
+  const wrap = document.getElementById('uploadProgress');
+  if (!bar || !wrap) return;
+  wrap.style.display = 'block';
+  bar.style.width = from + '%';
+  setTimeout(() => { bar.style.width = to + '%'; }, 50);
+}
+
+// ================================================================
+//  UPLOAD SLIP → Google Drive via Apps Script
+// ================================================================
+async function uploadSlipViaAppsScript(file, ref) {
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์ได้'));
+    reader.readAsDataURL(file);
+  });
+
+  animateProgress(10, 60);
+
+  const result = await appsScriptPost({
+    action: 'uploadSlip',
+    pass: STAFF_PASS,
+    ref, fileName: file.name, mimeType: file.type, base64Data: base64
+  });
+
+  animateProgress(60, 100);
+
+  if (result.status !== 'ok') throw new Error(result.message || 'อัปโหลดไม่สำเร็จ');
+  return result.url;
+}
+
+// ================================================================
+//  SUBMIT PAYMENT
+// ================================================================
+async function submitPayment() {
+  if (!slipUploaded || !slipFile) {
+    showUploadAlert('err', '❌ กรุณาเลือกรูปสลิปการโอนเงินก่อน');
+    return;
+  }
+  if (!currentBooking) return;
+
+  const submitBtn = document.getElementById('paySubmitBtn');
+  submitBtn.disabled = true;
+  setOverlay(true, 'กำลังอัปโหลดสลิป...');
+
+  let slipUrl = '';
+  try {
+    slipUrl = await uploadSlipViaAppsScript(slipFile, currentBooking.ref);
+  } catch (uploadErr) {
+    console.error('Slip upload error:', uploadErr);
+    setOverlay(false);
+    submitBtn.disabled = false;
+    const wrap = document.getElementById('uploadProgress');
+    if (wrap) wrap.style.display = 'none';
+    showUploadAlert('err',
+      '❌ อัปโหลดสลิปไม่สำเร็จ: ' + escHtml(uploadErr.message || 'กรุณาลองใหม่') +
+      '<br>หากยังไม่สำเร็จ กรุณาติดต่อเจ้าหน้าที่');
+    return;
+  }
+
+  // อัปเดต status ใน Google Sheet
+  setOverlay(true, 'กำลังบันทึกการชำระเงิน...');
+  try {
+    const result = await appsScriptPost({
+      action: 'updateSlipAndStatus',
+      pass: STAFF_PASS,
+      ref: currentBooking.ref,
+      status: 'ชำระแล้ว',
+      slipImage: slipUrl
+    });
+    if (result.status !== 'ok') throw new Error(result.message || 'บันทึกไม่สำเร็จ');
+  } catch (err) {
+    // slip อัปโหลดสำเร็จแล้ว ไม่ block UX
+    console.error('Update status error:', err);
+  } finally {
+    setOverlay(false);
+  }
+
+  showThankYou();
+}
+
+// ================================================================
+//  THANK YOU
+// ================================================================
+function showThankYou() {
+  const row = currentBooking;
+  const { visitorCount, totalPersons, total } = calcTotal(row);
+  const fmtTotal = total.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  document.getElementById('resultArea').style.display   = 'none';
+  document.getElementById('thankYouArea').style.display = 'block';
+  document.getElementById('tyRefNumber').textContent = row.ref;
+  document.getElementById('tySummary').innerHTML = `
+    <div>📋 <strong>Ref No.:</strong> ${escHtml(row.ref)}</div>
+    <div>👤 <strong>ผู้เยี่ยม:</strong> ${escHtml(row.visitorName)}</div>
+    <div>🔒 <strong>ผู้ต้องขัง:</strong> ${escHtml(row.prisonerName)} (#${escHtml(row.prisonerId)})</div>
+    <div>🏢 <strong>แดน:</strong> ${escHtml(row.wing)}</div>
+    <div>📅 <strong>วันที่:</strong> ${escHtml(row.visitDate)}</div>
+    <div>👥 <strong>จำนวน:</strong> ${totalPersons} คน</div>
+    <div>💰 <strong>ยอดชำระ:</strong> ${fmtTotal} บาท ✓</div>`;
+  window.scrollTo(0, 0);
+}
+
+// ================================================================
+//  RESET
+// ================================================================
+function resetSearch() {
+  document.getElementById('searchRef').value      = '';
+  document.getElementById('searchPrisoner').value = '';
+  document.getElementById('resultArea').style.display   = 'none';
+  document.getElementById('thankYouArea').style.display = 'none';
+  currentBooking = null;
+  slipFile       = null;
+  slipUploaded   = false;
+  window.scrollTo(0, 0);
+}
+
+// ================================================================
+//  OVERLAY
+// ================================================================
+function setOverlay(show, msg) {
+  const el = document.getElementById('overlay');
+  el.classList.toggle('show', show);
+  if (msg) document.getElementById('overlayMsg').textContent = msg;
+}
+
+// ================================================================
+//  UTILS
+// ================================================================
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+//  DEMO DATA  (fallback เมื่อ Apps Script URL ยังไม่ได้ตั้งค่า)
+// ================================================================
+function getDemoRows() {
+  return [
+    {
+      ref: 'VIS-12345', timestamp: '21/5/2569 10:30',
+      visitorName: 'สมชาย ใจดี', visitorId: '1234567890123', visitorPhone: '081-234-5678',
+      relation: 'คู่สมรส', prisonerName: 'สมศักดิ์ มั่นคง', prisonerId: '56781234',
+      wing: 'แดน 3', visitDate: 'วันจันทร์ที่ 25 พฤษภาคม พ.ศ. 2569', visitDateISO: '2026-05-25',
+      visitorCount: 2, totalPersons: 3, total: null,  // null → คำนวณจาก PRICE_PER_PERSON
+      status: 'รอชำระเงิน'
+    },
+    {
+      ref: 'VIS-67890', timestamp: '20/5/2569 14:15',
+      visitorName: 'มาลี สุขใจ', visitorId: '9876543210987', visitorPhone: '089-876-5432',
+      relation: 'บุตร / ธิดา', prisonerName: 'วิชัย รักชาติ', prisonerId: '11223344',
+      wing: 'แดน 7', visitDate: 'วันอังคารที่ 26 พฤษภาคม พ.ศ. 2569', visitDateISO: '2026-05-26',
+      visitorCount: 1, totalPersons: 2, total: null,
+      status: 'รอตรวจสอบ'
+    }
+  ];
+}
+</script>
+</body>
+</html>
