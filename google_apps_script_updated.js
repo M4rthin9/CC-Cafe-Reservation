@@ -24,8 +24,22 @@ function doGet(e) {
       .map(row => {
         const obj = {};
         headers.forEach((h, i) => {
-          // Include all data including slipImage so dashboard can display payment slips
-          obj[h] = row[i];
+          let val = row[i];
+          // ✅ แปลง Date object → "YYYY-MM-DD" string เสมอ
+          // (Google Sheets ส่ง Date column กลับเป็น Date object ไม่ใช่ string)
+          if (val instanceof Date) {
+            if (h === 'visitDateISO') {
+              // normalize เป็น YYYY-MM-DD (local time ของ sheet timezone)
+              const y = val.getFullYear();
+              const m = String(val.getMonth() + 1).padStart(2, '0');
+              const d = String(val.getDate()).padStart(2, '0');
+              val = y + '-' + m + '-' + d;
+            } else {
+              // column อื่นที่เป็น Date ให้แปลงเป็น string ปกติ
+              val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+            }
+          }
+          obj[h] = val;
         });
         return obj;
       });
