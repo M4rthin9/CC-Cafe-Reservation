@@ -222,7 +222,7 @@
           <label>ความสัมพันธ์ <span style="color:var(--red)">*</span></label>
           <select id="relation">
             <option value="">-- เลือก --</option>
-            <option>บิดา / มารดา</option><option>คู่สมรส</option><option>บุตร / ธิดา</option>
+            <option>บิดา / มารดา</option><option>แฟน/ภรรยา</option><option>บุตร / ธิดา</option>
             <option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option>
             <option>ทนายความ</option><option>อื่น ๆ</option>
           </select>
@@ -466,7 +466,7 @@ function updateExtraVisitors() {
     const div = document.createElement('div');
     div.className = 'form-group full';
     div.style.cssText = 'border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;';
-    const relOpts = '<option value="">-- เลือก --</option><option>บิดา / มารดา</option><option>คู่สมรส</option><option>บุตร / ธิดา</option><option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>';
+    const relOpts = '<option value="">-- เลือก --</option><option>บิดา / มารดา</option><option>แฟน/ภรรยา</option><option>บุตร / ธิดา</option><option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>';
     div.innerHTML =
       '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">ผู้เข้าร่วมกิจกรรม ' + i + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
