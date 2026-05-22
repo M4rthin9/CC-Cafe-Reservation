@@ -176,7 +176,7 @@
 
   <div class="header">
     <a href="index.html" class="back-link"><i class="ti ti-arrow-left"></i> หน้าหลัก</a>
-    <div class="badge">จองเยี่ยม</div>
+    <div class="badge">จองคิวเพื่อเข้าร่วมกิจกรรม</div>
     <h1>โครงการการจัดการเรียนรู้การฝึกวิชาชีพด้านอาหารฯ</h1>
     <p>ทัณฑสถานบำบัดพิเศษกลาง · กรอกข้อมูลให้ครบถ้วนเพื่อจอง</p>
   </div>
@@ -203,7 +203,7 @@
   <div class="page active" id="page1">
 
     <div class="section">
-      <div class="section-title"><i class="ti ti-user"></i> ข้อมูลผู้เยี่ยม</div>
+      <div class="section-title"><i class="ti ti-user"></i> ข้อมูลผู้เข้าร่วมกิจกรรม</div>
       <div class="form-grid">
         <div class="form-group">
           <label>ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>
@@ -227,7 +227,7 @@
           </select>
         </div>
         <div class="form-group full">
-          <label>จำนวนผู้เยี่ยม <span style="color:var(--red)">*</span> <span style="font-weight:400;color:var(--text2)">(ไม่รวมผู้ต้องขัง · สูงสุด 10 คน)</span></label>
+          <label>จำนวนผู้เข้าร่วมกิจกรรม <span style="color:var(--red)">*</span> <span style="font-weight:400;color:var(--text2)">(ไม่รวมผู้ต้องขัง · สูงสุด 10 คน)</span></label>
           <select id="visitorCount" onchange="updateExtraVisitors()">
             <option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option>
             <option value="4">4 คน</option><option value="5">5 คน</option><option value="6">6 คน</option>
@@ -237,7 +237,7 @@
         </div>
         <div id="extraVisitorsContainer" class="form-group full" style="display:none">
           <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;border-top:1px solid var(--border);padding-top:12px;">
-            ชื่อผู้เยี่ยมเพิ่มเติม <span style="font-weight:400">(ผู้เยี่ยมคนที่ 2 เป็นต้นไป)</span>
+            ชื่อเข้าร่วมกิจกรรมเพิ่มเติม <span style="font-weight:400">(ผู้เข้าร่วมกิจกรรมคนที่ 2 เป็นต้นไป)</span>
           </div>
           <div id="extraVisitorsList" class="form-grid"></div>
         </div>
@@ -268,7 +268,7 @@
     </div>
 
     <div class="section">
-      <div class="section-title"><i class="ti ti-calendar"></i> วันที่ต้องการเยี่ยม</div>
+      <div class="section-title"><i class="ti ti-calendar"></i> วันที่ต้องการเข้าร่วมกิจกรรม</div>
       <div class="cal-header">
         <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
         <span id="calTitle" style="font-size:14px;font-weight:600;color:var(--text)"></span>
@@ -289,8 +289,9 @@
     </div>
 
     <div class="rules">
-      <strong>ข้อปฏิบัติ:</strong> ผู้เยี่ยมต้องแสดงบัตรประชาชนตัวจริง · ห้ามนำโทรศัพท์เข้าพื้นที่เยี่ยม<br>
-      รับจองวันละ <strong>20 โต๊ะ</strong> · ค่าบริการ <strong>1,000 บาท / คน</strong> (คิดรวมผู้ต้องขัง 1 คนด้วย)<br>
+      <strong>ข้อปฏิบัติ:</strong><br> ผู้เข้าร่วมกิจกรรมต้องแสดงบัตรประชาชนตัวจริง · ห้ามนำโทรศัพท์เข้าพื้นที่เยี่ยม<br>
+      รับจองวันละ <strong>20 โต๊ะ</strong> · ค่าร่วมกิจกรรม <strong>1,000 บาท / คน</strong> (คิดรวมผู้ต้องขัง 1 คนด้วย)<br>
+      <strong>สิ่งที่จะได้จากการเข้าร่วมกิจกรรม:</strong> <br>ภายในกิจกรรมจะมีอาหารเป็น Fine Dining เสิร์ฟให้ผู้เข้าร่วมจำนวน 6 คอร์ส<br>
       ชำระเงินได้หลังเจ้าหน้าที่ <strong>ตรวจสอบและอนุมัติ</strong> การจองแล้วเท่านั้น
     </div>
 
@@ -466,7 +467,7 @@ function updateExtraVisitors() {
     div.style.cssText = 'border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;';
     const relOpts = '<option value="">-- เลือก --</option><option>บิดา / มารดา</option><option>คู่สมรส</option><option>บุตร / ธิดา</option><option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>';
     div.innerHTML =
-      '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">ผู้เยี่ยมคนที่ ' + i + '</div>' +
+      '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">ผู้เข้าร่วมกิจกรรม ' + i + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
         '<div class="form-group"><label>ชื่อ-นามสกุล <span style=\"color:var(--red)\">*</span></label>' +
         '<input type="text" id="extraVisitorName' + i + '" placeholder="เช่น สมหญิง ใจดี"></div>' +
@@ -494,7 +495,7 @@ function getExtraVisitors() {
 // ===== VALIDATION =====
 function validate() {
   const fields = [
-    { id: 'visitorName',  label: 'ชื่อผู้เยี่ยม' },
+    { id: 'visitorName',  label: 'ชื่อผู้ร่วมกิจกรรม' },
     { id: 'visitorId',    label: 'เลขบัตรประชาชน' },
     { id: 'visitorPhone', label: 'เบอร์โทรศัพท์' },
     { id: 'relation',     label: 'ความสัมพันธ์' },
@@ -511,12 +512,12 @@ function validate() {
   for (let i = 2; i <= n; i++) {
     const nameEl = document.getElementById('extraVisitorName' + i);
     const idEl   = document.getElementById('extraVisitorId' + i);
-    if (nameEl && !nameEl.value.trim()) { alert('กรุณากรอกชื่อผู้เยี่ยมคนที่ ' + i); nameEl.focus(); return false; }
-    if (idEl && !idEl.value.trim()) { alert('กรุณากรอกเลขบัตรประชาชนผู้เยี่ยมคนที่ ' + i); idEl.focus(); return false; }
+    if (nameEl && !nameEl.value.trim()) { alert('กรุณากรอกชื่อผู้เข้าร่วมกิจกรรมคนที่ ' + i); nameEl.focus(); return false; }
+    if (idEl && !idEl.value.trim()) { alert('กรุณากรอกเลขบัตรประชาชนผู้เข้าร่วมกิจกรรมคนที่ ' + i); idEl.focus(); return false; }
     const relEl = document.getElementById('extraVisitorRelation' + i);
-    if (relEl && !relEl.value) { alert('กรุณาเลือกความสัมพันธ์ผู้เยี่ยมคนที่ ' + i); relEl.focus(); return false; }
+    if (relEl && !relEl.value) { alert('กรุณาเลือกความสัมพันธ์ผู้ร่วมกิจกรรมคนที่ ' + i); relEl.focus(); return false; }
   }
-  if (!selectedDate) { alert('กรุณาเลือกวันที่ต้องการเยี่ยม'); return false; }
+  if (!selectedDate) { alert('กรุณาเลือกวันที่ต้องการร่วมกิจกรรม'); return false; }
   if ((bookings[selectedDate] || 0) >= QUOTA) { alert('วันที่เลือกเต็มแล้ว กรุณาเลือกวันอื่น'); return false; }
   if (!document.getElementById('consent').checked) { alert('กรุณายืนยันและยินยอมก่อนดำเนินการ'); return false; }
   return true;
@@ -533,9 +534,9 @@ function goToConfirm() {
   const extras = getExtraVisitors();
   const visitor1Name = document.getElementById('visitorName').value.trim();
   const visitor1Id   = document.getElementById('visitorId').value.trim();
-  let visitorRowsHtml = `<div class="summary-row"><span class="lbl">👤 ผู้เยี่ยมคนที่ 1</span><span class="val">${visitor1Name}<br><span style="font-size:12px;color:var(--text2)">${visitor1Id}</span></span></div>`;
+  let visitorRowsHtml = `<div class="summary-row"><span class="lbl">👤 ผู้ร่วมกิจกรรมคนที่ 1</span><span class="val">${visitor1Name}<br><span style="font-size:12px;color:var(--text2)">${visitor1Id}</span></span></div>`;
   extras.forEach((v, idx) => {
-    visitorRowsHtml += `<div class="summary-row"><span class="lbl">👤 ผู้เยี่ยมคนที่ ${idx+2}</span><span class="val">${v.name}<br><span style="font-size:12px;color:var(--text2)">${v.id} · ${v.relation}</span></span></div>`;
+    visitorRowsHtml += `<div class="summary-row"><span class="lbl">👤 ผู้ร่วมกิจกรรมคนที่ ${idx+2}</span><span class="val">${v.name}<br><span style="font-size:12px;color:var(--text2)">${v.id} · ${v.relation}</span></span></div>`;
   });
 
   document.getElementById('confirmSummary').innerHTML = `
@@ -544,9 +545,9 @@ function goToConfirm() {
     <div class="summary-row"><span class="lbl">🔗 ความสัมพันธ์</span><span class="val">${document.getElementById('relation').value}</span></div>
     <div class="summary-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${document.getElementById('prisonerName').value.trim()} (#${document.getElementById('prisonerId').value.trim()})</span></div>
     <div class="summary-row"><span class="lbl">🏢 แดน</span><span class="val">${document.getElementById('wing').value}</span></div>
-    <div class="summary-row"><span class="lbl">📅 วันที่เยี่ยม</span><span class="val">${thDate}</span></div>
+    <div class="summary-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${thDate}</span></div>
     <div class="summary-row"><span class="lbl">👥 จำนวนรวม</span><span class="val">ญาติ ${n} คน + ผู้ต้องขัง 1 = <strong>${totalPersons} คน</strong></span></div>
-    <div class="summary-row"><span class="lbl">💰 ค่าบริการ (ประมาณ)</span><span class="val">${(totalPersons * 1000).toLocaleString()} บาท (ชำระหลังอนุมัติ)</span></div>
+    <div class="summary-row"><span class="lbl">💰 ค่าบริการอาหาร (ประมาณ)</span><span class="val">${(totalPersons * 1000).toLocaleString()} บาท (ชำระหลังอนุมัติ)</span></div>
   `;
   showPage(2);
 }
@@ -639,7 +640,7 @@ async function submitBooking() {
 
   document.getElementById('finalSummary').innerHTML = `
     <div>📋 <strong>Ref No.:</strong> ${ref}</div>
-    <div>👤 <strong>ผู้เยี่ยม:</strong> ${data.visitorName}</div>
+    <div>👤 <strong>ผู้ร่วมกิจกรรม:</strong> ${data.visitorName}</div>
     <div>🔒 <strong>ผู้ต้องขัง:</strong> ${data.prisonerName} (#${data.prisonerId})</div>
     <div>🏢 <strong>แดน:</strong> ${data.wing}</div>
     <div>📅 <strong>วันที่:</strong> ${thDate}</div>

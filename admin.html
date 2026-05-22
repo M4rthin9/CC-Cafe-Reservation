@@ -208,8 +208,8 @@ tr:hover td { background: #f8f9fa; }
             <tr>
               <th>เลขอ้างอิง</th>
               <th>วันที่จอง</th>
-              <th class="hide-mobile">วันที่เยี่ยม</th>
-              <th>ผู้เยี่ยม</th>
+              <th class="hide-mobile">วันที่ร่วมกิจกรรม</th>
+              <th>ผู้เข้าร่วมกิจกรรม</th>
               <th class="hide-mobile">ผู้ต้องขัง</th>
               <th class="hide-mobile">แดน</th>
               <th class="hide-mobile">จำนวน/ยอด</th>
@@ -458,7 +458,7 @@ async function rejectPayment(idx) {
 // ===== CANCEL BOOKING =====
 async function cancelBooking(idx) {
   const row = allRows[idx];
-  if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
+  if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้ร่วมกิจกรรม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
   row.status = 'ยกเลิก';
   try {
     await fetch(APPS_SCRIPT_URL, {
@@ -568,7 +568,7 @@ function viewDetail(idx) {
   // Build visitor cards
   const visitor1Html = `
     <div class="visitor-card">
-      <div class="vc-num">👤 ผู้เยี่ยมคนที่ 1 (ผู้จอง)</div>
+      <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ 1 (ผู้จอง)</div>
       <div class="vc-name">${r.visitorName || '—'}</div>
       <div class="vc-info">บัตร: ${r.visitorId || '—'} · โทร: ${r.visitorPhone || '—'} · ความสัมพันธ์: ${r.relation || '—'}</div>
     </div>`;
@@ -598,7 +598,7 @@ function viewDetail(idx) {
       if (v.relation) infoParts.push('ความสัมพันธ์: ' + v.relation);
       extraHtml += `
         <div class="visitor-card">
-          <div class="vc-num">👤 ผู้เยี่ยมคนที่ ${i + 2}</div>
+          <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ ${i + 2}</div>
           <div class="vc-name">${v.name}</div>
           ${infoParts.length ? '<div class="vc-info">' + infoParts.join(' · ') + '</div>' : ''}
         </div>`;
@@ -617,7 +617,7 @@ function viewDetail(idx) {
       <span class="badge ${badgeClass}" style="font-size:13px;padding:6px 14px;">${s}</span>
     </div>
 
-    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">ผู้เยี่ยมทั้งหมด (${r.visitorCount || 1} คน)</div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">ผู้ร่วมกิจกรรมทั้งหมด (${r.visitorCount || 1} คน)</div>
     ${visitor1Html}
     ${extraHtml}
 
@@ -639,7 +639,7 @@ function viewDetail(idx) {
         <span class="dval">ญาติ ${r.visitorCount || '—'} + ผู้ต้องขัง 1 = ${totalPersons} คน</span>
       </div>
       <div class="detail-row">
-        <span class="dlbl">💰 ค่าบริการ</span>
+        <span class="dlbl">💰 ค่าบริการอาหาร</span>
         <span class="dval" style="color:var(--blue);font-size:15px;">${total.toLocaleString()} บาท</span>
       </div>
       <div class="detail-row">

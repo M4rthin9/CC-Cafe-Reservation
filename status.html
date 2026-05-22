@@ -385,7 +385,7 @@ function renderResult(row) {
     paymentBlock = `
       <div class="pay-section">
         <h3>✅ การจองได้รับการอนุมัติ — กรุณาชำระเงิน</h3>
-        <p>เจ้าหน้าที่ตรวจสอบประวัติวินัยเรียบร้อยแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเยี่ยม</p>
+        <p>เจ้าหน้าที่ตรวจสอบประวัติวินัยเรียบร้อยแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเข้าร่วมกิจกรรม</p>
         <div style="text-align:center;margin-bottom:1rem">
           <div style="font-size:13px;color:var(--text2)">ยอดที่ต้องชำระ</div>
           <div style="font-size:28px;font-weight:700;color:var(--blue);margin:8px 0">${total.toLocaleString()} บาท</div>
@@ -417,7 +417,7 @@ function renderResult(row) {
     paymentBlock = `
       <div style="background:#d1fae5;border:1px solid rgba(6,95,70,0.25);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
         <h3 style="color:#065f46;font-size:15px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;">🎉 การจองเสร็จสมบูรณ์</h3>
-        <p style="font-size:13px;color:#064e3b;line-height:1.7;">เจ้าหน้าที่ยืนยันการชำระเงินเรียบร้อยแล้ว กรุณานำเลขอ้างอิงมาแสดงในวันเยี่ยม</p>
+        <p style="font-size:13px;color:#064e3b;line-height:1.7;">เจ้าหน้าที่ยืนยันการชำระเงินเรียบร้อยแล้ว กรุณานำเลขอ้างอิงมาแสดงในวันเข้าร่วมกิจกรรม</p>
       </div>
     `;
   } else if (sLower === 'ยกเลิก') {
@@ -449,13 +449,13 @@ function renderResult(row) {
         <div>${statusPill}</div>
       </div>
       <div class="result-body">
-        <div class="info-row"><span class="lbl">👤 ผู้เยี่ยม</span><span class="val">${escHtml(row.visitorName || '—')}</span></div>
+        <div class="info-row"><span class="lbl">👤 ผู้ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitorName || '—')}</span></div>
         <div class="info-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${escHtml(row.visitorPhone || '—')}</span></div>
         <div class="info-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${escHtml(row.prisonerName || '—')} (#${escHtml(row.prisonerId || '—')})</span></div>
         <div class="info-row"><span class="lbl">🏢 แดน</span><span class="val">${escHtml(row.wing || '—')}</span></div>
-        <div class="info-row"><span class="lbl">📅 วันที่เยี่ยม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>
+        <div class="info-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>
         <div class="info-row"><span class="lbl">👥 จำนวน</span><span class="val">ญาติ ${visitorCount} + ผู้ต้องขัง 1 = ${totalPersons} คน</span></div>
-        <div class="info-row"><span class="lbl">💰 ค่าบริการ</span><span class="val">${total.toLocaleString()} บาท</span></div>
+        <div class="info-row"><span class="lbl">💰 ค่าบริการอาหาร</span><span class="val">${total.toLocaleString()} บาท</span></div>
       </div>
     </div>
 
@@ -706,7 +706,7 @@ function showThankYou() {
 
   document.getElementById('tySummary').innerHTML = `
     <div>📋 <strong>Ref No.:</strong> ${escHtml(row.ref)}</div>
-    <div>👤 <strong>ผู้เยี่ยม:</strong> ${escHtml(row.visitorName)}</div>
+    <div>👤 <strong>ผู้ร่วมกิจกรรม:</strong> ${escHtml(row.visitorName)}</div>
     <div>🔒 <strong>ผู้ต้องขัง:</strong> ${escHtml(row.prisonerName)} (#${escHtml(row.prisonerId)})</div>
     <div>🏢 <strong>แดน:</strong> ${escHtml(row.wing)}</div>
     <div>📅 <strong>วันที่:</strong> ${escHtml(row.visitDate)}</div>
