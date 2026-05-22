@@ -412,6 +412,47 @@ function parseLocalDate(dateStr) {
   return new Date(y, m - 1, d);
 }
 
+// function renderCalendar() {
+//   const title = new Date(calYear, calMonth, 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
+//   document.getElementById('calTitle').textContent = title;
+//   const grid = document.getElementById('dateGrid');
+//   grid.innerHTML = '';
+//   const firstDay = new Date(calYear, calMonth, 1).getDay();
+//   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+//   for (let i = 0; i < firstDay; i++) grid.insertAdjacentHTML('beforeend', '<div></div>');
+//   const todayStr = toLocalDateStr(today);  // ✅ ใช้ local time แทน UTC
+//   for (let d = 1; d <= daysInMonth; d++) {
+//     const date = new Date(calYear, calMonth, d);
+//     const dateStr = toLocalDateStr(date);  // ✅ ใช้ local time แทน .toISOString()
+//     const dow = date.getDay();
+//     const isPast = dateStr < todayStr;
+//     const isWknd = dow === 0 || dow === 6;
+//     const isHol  = HOLIDAYS[dateStr];
+//     const quota  = bookings[dateStr] || 0;
+//     const isFull = quota >= QUOTA;
+//     const isSel  = selectedDate === dateStr;
+//     let cls = 'day-btn';
+//     if (isPast) cls += ' past';
+//     else if (isHol) cls += ' holiday';
+//     else if (isWknd) cls += ' weekend';
+//     else if (isFull) cls += ' full-day';
+//     if (isSel) cls += ' selected';
+//     const holLabel = isHol ? `<span class="hol-label">${HOLIDAYS[dateStr]}</span>` : '';
+//     const quotaLabel = (!isPast && !isHol && !isWknd) ? `<span class="quota">${quota}/${QUOTA}</span>` : '';
+//     grid.insertAdjacentHTML('beforeend',
+//       `<div class="${cls}" onclick="selectDate('${dateStr}',${isPast||isHol||isWknd||isFull})">${d}${quotaLabel}${holLabel}</div>`
+//     );
+//   }
+// }
+
+// function selectDate(dateStr, blocked) {
+//   if (blocked) return;
+//   selectedDate = dateStr;
+//   const d = parseLocalDate(dateStr);  // ✅ parse เป็น local date ถูกต้อง
+//   document.getElementById('selectedDateDisplay').textContent =
+//     '✓ เลือก: ' + d.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+//   renderCalendar();
+// }
 function renderCalendar() {
   const title = new Date(calYear, calMonth, 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
   document.getElementById('calTitle').textContent = title;
@@ -420,35 +461,58 @@ function renderCalendar() {
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   for (let i = 0; i < firstDay; i++) grid.insertAdjacentHTML('beforeend', '<div></div>');
-  const todayStr = toLocalDateStr(today);  // ✅ ใช้ local time แทน UTC
+  
+  const todayStr = toLocalDateStr(today);
+
+  // ──คำนวณช่วงวันที่อนุญาตให้จอง (7 ถึง 10 วันล่วงหน้า) ──
+  const minAllowedDate = new Date(today);
+  minAllowedDate.setDate(today.getDate() + 0);
+  const minAllowedStr = toLocalDateStr(minAllowedDate);
+
+  const maxAllowedDate = new Date(today);
+  maxAllowedDate.setDate(today.getDate() + 14);
+  const maxAllowedStr = toLocalDateStr(maxAllowedDate);
+
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(calYear, calMonth, d);
-    const dateStr = toLocalDateStr(date);  // ✅ ใช้ local time แทน .toISOString()
+    const dateStr = toLocalDateStr(date);  
     const dow = date.getDay();
+    
     const isPast = dateStr < todayStr;
     const isWknd = dow === 0 || dow === 6;
     const isHol  = HOLIDAYS[dateStr];
     const quota  = bookings[dateStr] || 0;
     const isFull = quota >= QUOTA;
     const isSel  = selectedDate === dateStr;
+    
+    // ── ตรวจสอบเงื่อนไข: ถ้านอกเหนือจากวันที่ 7 ถึง 10 วันล่วงหน้า ให้ถือว่าจองไม่ได้ ──
+    const isNotWithinWindow = dateStr < minAllowedStr || dateStr > maxAllowedStr;
+
     let cls = 'day-btn';
-    if (isPast) cls += ' past';
+    // วันที่ผ่านมาแล้ว หรือวันไม่อยู่ในเงื่อนไข 7-10 วัน จะแสดงเป็นสีเทาจาง (.past)
+    if (isPast || isNotWithinWindow) cls += ' past'; 
     else if (isHol) cls += ' holiday';
     else if (isWknd) cls += ' weekend';
     else if (isFull) cls += ' full-day';
+    
     if (isSel) cls += ' selected';
+    
     const holLabel = isHol ? `<span class="hol-label">${HOLIDAYS[dateStr]}</span>` : '';
-    const quotaLabel = (!isPast && !isHol && !isWknd) ? `<span class="quota">${quota}/${QUOTA}</span>` : '';
+    const quotaLabel = (!isPast && !isNotWithinWindow && !isHol && !isWknd) ? `<span class="quota">${quota}/${QUOTA}</span>` : '';
+    
+    // กำหนดให้บล็อกการกด ถ้าเกิดเงื่อนไขอย่างใดอย่างหนึ่งรวมถึงการอยู่นอกช่วง 7-10 วันด้วย
+    const isBlocked = isPast || isNotWithinWindow || isHol || isWknd || isFull;
+
     grid.insertAdjacentHTML('beforeend',
-      `<div class="${cls}" onclick="selectDate('${dateStr}',${isPast||isHol||isWknd||isFull})">${d}${quotaLabel}${holLabel}</div>`
+      `<div class="${cls}" onclick="selectDate('${dateStr}', ${isBlocked})">${d}${quotaLabel}${holLabel}</div>`
     );
   }
 }
 
 function selectDate(dateStr, blocked) {
-  if (blocked) return;
+  if (blocked) return; // คลิกไม่ได้ถ้าโดนบล็อก
   selectedDate = dateStr;
-  const d = parseLocalDate(dateStr);  // ✅ parse เป็น local date ถูกต้อง
+  const d = parseLocalDate(dateStr);  
   document.getElementById('selectedDateDisplay').textContent =
     '✓ เลือก: ' + d.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   renderCalendar();
