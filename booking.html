@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>จองเยี่ยมผู้ต้องขัง — ทัณฑสถานบำบัดพิเศษกลาง</title>
+<title>จองงคิวเพื่อร่วมกิจกรรมโครงการจัดการเรียนรู้
+การฝึกวิชาชีพด้านอาหารและงานบริการฯ — ทัณฑสถานบำบัดพิเศษกลาง ร้าน Chance & Change Cafe</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
@@ -375,7 +376,6 @@ const QUOTA = 20;
 
 // ===== CALENDAR =====
 const HOLIDAYS = {
-  '2026-05-25': ' เต็มแล้ว',
   '2026-01-01':'วันขึ้นปีใหม่','2026-02-13':'มาฆบูชา','2026-04-06':'จักรี',
   '2026-04-13':'สงกรานต์','2026-04-14':'สงกรานต์','2026-04-15':'สงกรานต์',
   '2026-05-01':'แรงงาน','2026-05-04':'ฉัตรมงคล','2026-05-11':'วิสาขบูชา',
@@ -385,9 +385,9 @@ const HOLIDAYS = {
 };
 
 let calYear, calMonth, selectedDate = null;
-let bookings = {};
+let bookings = { '2026-05-25': 20 };
 
-const today = new Date();
+const today = new Date(2026, 4, 25); // 25 May 2026 — bookings open from 26 May
 calYear  = today.getFullYear();
 calMonth = today.getMonth();
 
