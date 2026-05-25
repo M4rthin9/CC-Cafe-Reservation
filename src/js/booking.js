@@ -54,7 +54,7 @@ function renderCalendar() {
 
   // ──คำนวณช่วงวันที่อนุญาตให้จอง (พรุ่งนี้ ถึง 30 วันล่วงหน้า) ──
   const minAllowedDate = new Date(today);
-  minAllowedDate.setDate(today.getDate() + 0);
+  minAllowedDate.setDate(today.getDate() + 1);
   const minAllowedStr = toLocalDateStr(minAllowedDate);
 
   const maxAllowedDate = new Date(today);
