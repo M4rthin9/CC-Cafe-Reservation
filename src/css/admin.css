@@ -353,3 +353,158 @@ tr:hover td { background: #f8f9fa; }
   .sb-brand > div:last-child, .sb-text { display: none; }
   .sb-link { justify-content: center; padding: 9px 0; font-size: 16px; }
 }
+
+/* Dark theme using provided palette */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --bg2: #1e1e1e;
+    --border: #7F8C8D;
+    --text: #FFFFFF;
+    --text2: #7F8C8D;
+    --blue: #E59866;
+    --blue-dark: #c97a4a;
+    --blue-light: #2c2520;
+    --green: #82E0AA;
+    --green-light: #1e3a2a;
+    --yellow: #E59866;
+    --yellow-light: #2c2520;
+    --red: #E24B4A;
+    --red-light: #3a2525;
+  }
+}
+[data-theme="dark"] {
+  --bg: #121212;
+  --bg2: #1e1e1e;
+  --border: #7F8C8D;
+  --text: #FFFFFF;
+  --text2: #7F8C8D;
+  --blue: #E59866;
+  --blue-dark: #c97a4a;
+  --blue-light: #2c2520;
+  --green: #82E0AA;
+  --green-light: #1e3a2a;
+  --yellow: #E59866;
+  --yellow-light: #2c2520;
+  --red: #E24B4A;
+  --red-light: #3a2525;
+}
+/* Dark overrides for admin */
+[data-theme="dark"] .topbar { background: #1a1a1a; }
+[data-theme="dark"] .login-box { background: #1e1e1e; border-color: #7F8C8D; }
+[data-theme="dark"] .stat-card { background: #1e1e1e; border-color: #7F8C8D; }
+[data-theme="dark"] .controls { background: #1e1e1e; border-color: #7F8C8D; }
+[data-theme="dark"] .filter-select { background: #121212; border-color: #7F8C8D; color: #fff; }
+[data-theme="dark"] .table-wrap { background: #1e1e1e; border-color: #7F8C8D; }
+[data-theme="dark"] th { background: #121212; border-color: #7F8C8D; color: #7F8C8D; }
+[data-theme="dark"] td { border-color: #7F8C8D; }
+[data-theme="dark"] .badge-wait { background: #2c2520; color: #E59866; }
+[data-theme="dark"] .badge-ok { background: #1e3a2a; color: #82E0AA; }
+[data-theme="dark"] .badge-reject { background: #3a2525; color: #E24B4A; }
+[data-theme="dark"] .btn-slip { background: #1e1e1e; border-color: #7F8C8D; }
+[data-theme="dark"] .btn-slip:hover { border-color: #E59866; color: #E59866; }
+[data-theme="dark"] .empty-state, .loading-state { color: #7F8C8D; }
+[data-theme="dark"] .modal { background: #1e1e1e; }
+[data-theme="dark"] .detail-row { border-color: #7F8C8D; }
+[data-theme="dark"] .visitor-card { background: #121212; }
+[data-theme="dark"] .modal-head { border-color: #7F8C8D; }
+[data-theme="dark"] .modal-close { color: #7F8C8D; }
+[data-theme="dark"] .modal-body .no-slip { color: #7F8C8D; }
+[data-theme="dark"] .last-updated { color: #7F8C8D; }
+[data-theme="dark"] .visitor-item { background: #1e1e1e; border-color: #7F8C8D; }
+[data-theme="dark"] .status-bar-track { background: #2a2a2a; }
+[data-theme="dark"] .sidebar { background: #161616; border-color: #7F8C8D; }
+[data-theme="dark"] .sb-link.active { background: #2c2520; color: #E59866; }
+[data-theme="dark"] .sb-link:hover { background: #1e1e1e; }
+[data-theme="dark"] .sb-link .sb-icon { color: #7F8C8D; }
+[data-theme="dark"] .sb-link.active .sb-icon { color: #E59866; }
+[data-theme="dark"] .section-title { border-color: #7F8C8D; color: #7F8C8D; }
+[data-theme="dark"] .login-input { background: #121212; border-color: #7F8C8D; color: #fff; }
+[data-theme="dark"] .search-box { background: #121212; border-color: #7F8C8D; color: #fff; }
+[data-theme="dark"] .login-input:focus,
+[data-theme="dark"] .filter-select:focus,
+[data-theme="dark"] .search-box:focus {
+  background: #2a2a2a;
+  color: #fff;
+  border-color: #E59866;
+  box-shadow: 0 0 0 3px rgba(229,152,102,0.2);
+}
+@media (prefers-color-scheme: dark) {
+  .login-input:focus,
+  .filter-select:focus,
+  .search-box:focus {
+    background: #2a2a2a;
+    color: #fff;
+    border-color: #E59866;
+    box-shadow: 0 0 0 3px rgba(229,152,102,0.2);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .topbar { background: #1a1a1a; }
+  .login-box { background: #1e1e1e; border-color: #7F8C8D; }
+  .stat-card { background: #1e1e1e; border-color: #7F8C8D; }
+  .controls { background: #1e1e1e; border-color: #7F8C8D; }
+  .filter-select { background: #121212; border-color: #7F8C8D; color: #fff; }
+  .table-wrap { background: #1e1e1e; border-color: #7F8C8D; }
+  th { background: #121212; border-color: #7F8C8D; color: #7F8C8D; }
+  td { border-color: #7F8C8D; }
+  .badge-wait { background: #2c2520; color: #E59866; }
+  .badge-ok { background: #1e3a2a; color: #82E0AA; }
+  .badge-reject { background: #3a2525; color: #E24B4A; }
+  .btn-slip { background: #1e1e1e; border-color: #7F8C8D; }
+  .btn-slip:hover { border-color: #E59866; color: #E59866; }
+  .empty-state, .loading-state { color: #7F8C8D; }
+  .modal { background: #1e1e1e; }
+  .detail-row { border-color: #7F8C8D; }
+  .visitor-card { background: #121212; }
+  .modal-head { border-color: #7F8C8D; }
+  .modal-close { color: #7F8C8D; }
+  .modal-body .no-slip { color: #7F8C8D; }
+  .last-updated { color: #7F8C8D; }
+  .visitor-item { background: #1e1e1e; border-color: #7F8C8D; }
+  .status-bar-track { background: #2a2a2a; }
+  .sidebar { background: #161616; border-color: #7F8C8D; }
+  .sb-link.active { background: #2c2520; color: #E59866; }
+  .sb-link:hover { background: #1e1e1e; }
+  .sb-link .sb-icon { color: #7F8C8D; }
+  .sb-link.active .sb-icon { color: #E59866; }
+  .section-title { border-color: #7F8C8D; color: #7F8C8D; }
+  .login-input { background: #121212; border-color: #7F8C8D; color: #fff; }
+  .search-box { background: #121212; border-color: #7F8C8D; color: #fff; }
+}
+
+/* Theme toggle button (works in light + dark) */
+.theme-toggle {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 99999;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.theme-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .theme-toggle {
+  background: #1e1e1e;
+  border-color: #7F8C8D;
+}
+@media (prefers-color-scheme: dark) {
+  .theme-toggle {
+    background: #1e1e1e;
+    border-color: #7F8C8D;
+  }
+}
