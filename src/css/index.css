@@ -56,26 +56,81 @@
     clip-path: ellipse(60% 100% at 50% 100%);
   }
 
-  /* Emblem / Seal */
-  .seal-wrap {
-    position: relative;
-    margin-bottom: 1.5rem;
+  /* Dual Logo Holder in Hero (two circular logo frames) */
+  .logo-holder {
+    display: flex;
+    gap: 72px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1.35rem;
     animation: fadeDown 0.7s ease both;
   }
-  .seal {
-    width: 90px; height: 90px;
-    background: rgba(255,255,255,0.15);
-    border: 2px solid rgba(255,255,255,0.35);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    backdrop-filter: blur(8px);
-    font-size: 42px;
+  .logo-item {
+    position: relative;
   }
-  .seal-ring {
-    position: absolute; inset: -6px;
+  .logo-circle {
+    width: 168px;
+    height: 168px;
+    background: rgba(255,255,255,0.13);
+    border: 4px solid rgba(255,255,255,0.38);
     border-radius: 50%;
-    border: 1.5px dashed rgba(200,146,42,0.6);
-    animation: spin 30s linear infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(7px);
+    overflow: hidden;
+  }
+  .logo-text {
+    font-size: 52px;
+    font-weight: 700;
+    color: #fff;
+    opacity: 0.95;
+    line-height: 1;
+  }
+  /* For real logo images (replace .logo-text with <img class="logo-img">) */
+  .logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 4px;
+    box-sizing: border-box;
+  }
+
+  /* Second logo (CC Cafe) - make it 5px bigger inside the white circle */
+  .logo-img.logo-2 {
+    padding: 0;
+    width: calc(100% + 10px);
+    height: calc(100% + 10px);
+    margin: -5px;
+  }
+  .logo-ring {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 4px dashed rgba(200,146,42,0.68);
+    animation: spin 26s linear infinite;
+    pointer-events: none;
+  }
+
+  /* Auto-resize logos beautifully on mobile */
+  @media (max-width: 480px) {
+    .logo-holder {
+      gap: 48px;
+    }
+    .logo-circle {
+      width: 136px;
+      height: 136px;
+    }
+    .logo-img {
+      padding: 4px;
+    }
+    .logo-text {
+      font-size: 40px;
+    }
+    .logo-ring {
+      inset: -5px;
+      border-width: 3.5px;
+    }
   }
 
   .hero-badge {
