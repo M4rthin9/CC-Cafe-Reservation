@@ -141,6 +141,18 @@
 
   #resultArea { display: none; }
   #thankYouArea { display: none; }
+
+  /* ===== Visitor Approval (per-relative อนุมัติเข้า/ห้ามเข้า) - shared with admin.html ===== */
+  .visitor-approval { margin-top:6px; font-size:11px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .visitor-approval .lbl { color:var(--text2); font-size:10px; flex-shrink:0; }
+  .approval-badge { padding:1px 6px; border-radius:10px; font-size:10px; font-weight:600; white-space:nowrap; }
+  .approval-badge.yes { background:#dcfce7; color:#166534; }
+  .approval-badge.no { background:#fee2e2; color:#991b1b; }
+  .approval-badge.pending { background:#fef3c7; color:#854d0e; }
+  .visitor-list { font-size:12px; }
+  .visitor-item { padding:5px 8px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; margin-bottom:3px; display:flex; justify-content:space-between; align-items:center; }
+  .visitor-section { margin-top:6px; }
+  .visitor-section-label { font-size:11px; color:var(--text2); margin-bottom:3px; }
 </style>
 </head>
 <body>
@@ -375,6 +387,26 @@ function renderResult(row) {
   const totalPersons = visitorCount + 1;
   const total = parseInt(row.total) || totalPersons * 1000;
 
+  let visitorsDetailHtml = '';
+  const mainAppr = (row.visitorApproved || '').trim();
+  const mainLabel = mainAppr==='yes' ? '✅ เข้าได้' : mainAppr==='no' ? '❌ เข้าไม่ได้' : '';
+  visitorsDetailHtml += `<div class="visitor-item"><span>👤 ${escHtml(row.visitorName||'—')}</span>${mainLabel ? '<span class="approval-badge '+(mainAppr==='yes'?'yes':mainAppr==='no'?'no':'pending')+'">'+mainLabel+'</span>' : ''}</div>`;
+  if (row.extraVisitorNames && row.extraVisitorNames.trim()) {
+    const isNew = row.extraVisitorNames.includes(';;') || row.extraVisitorNames.includes('|');
+    let exs = [];
+    if (isNew) {
+      exs = row.extraVisitorNames.split(';;').map(e=>{const p=e.split('|');return {name:(p[0]||'').trim()};}).filter(e=>e.name);
+    } else {
+      exs = row.extraVisitorNames.split(/,(?![^(]*\))/).map(e=>{const m=e.trim().match(/^(.+?)\s*\(/);return {name:m?m[1].trim():e.trim()};}).filter(e=>e.name);
+    }
+    const eAppr = String(row.extraVisitorApproved||'').split(';;');
+    exs.forEach((v,i)=>{
+      const a = (eAppr[i]||'').trim();
+      const lb = a==='yes'?'✅ เข้าได้':a==='no'?'❌ เข้าไม่ได้':'';
+      visitorsDetailHtml += `<div class="visitor-item"><span>👤 ${escHtml(v.name)}</span>${lb ? '<span class="approval-badge '+(a==='yes'?'yes':a==='no'?'no':'pending')+'">'+lb+'</span>' : ''}</div>`;
+    });
+  }
+
   const area = document.getElementById('resultArea');
   area.style.display = 'block';
 
@@ -456,6 +488,7 @@ function renderResult(row) {
         <div class="info-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>
         <div class="info-row"><span class="lbl">👥 จำนวน</span><span class="val">ญาติ ${visitorCount} + ผู้ต้องขัง 1 = ${totalPersons} คน</span></div>
         <div class="info-row"><span class="lbl">💰 ค่าบริการอาหาร</span><span class="val">${total.toLocaleString()} บาท</span></div>
+        ${visitorsDetailHtml ? `<div class="visitor-section"><div class="visitor-section-label">รายชื่อผู้เข้าเยี่ยม (สถานะหลังตรวจสอบ)</div>${visitorsDetailHtml}</div>` : ''}
       </div>
     </div>
 
@@ -472,7 +505,7 @@ function renderResult(row) {
         </div>
         
         <div style="margin: 10px auto 15px; width: 200px; height: 200px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-          <img src="./asset/2569-05-22 10_10_08-.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;">
+          <img src="src/asset/2569-05-22 10_10_08-.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;">
         </div>
 
         <div style="font-size:16px;font-weight:700;color:#0a4a55;margin-bottom:4px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
@@ -754,6 +787,9 @@ function getDemoRows() {
       visitorId: '1234567890123',
       visitorPhone: '081-234-5678',
       relation: 'คู่สมรส',
+      extraVisitorNames: 'สมหญิง ใจดี|1234567890124|คู่สมรส;;น้องชาย ใจดี|1234567890125|พี่น้อง',
+      visitorApproved: 'yes',
+      extraVisitorApproved: 'yes;;no',
       prisonerName: 'สมศักดิ์ มั่นคง',
       prisonerId: '56781234',
       wing: 'แดน 3',
@@ -761,7 +797,7 @@ function getDemoRows() {
       visitDateISO: '2026-05-25',
       visitorCount: 2,
       totalPersons: 3,
-      total: 3000,
+      total: 2000,
       status: 'รอชำระเงิน'
     },
     {

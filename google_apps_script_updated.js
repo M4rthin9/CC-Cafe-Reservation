@@ -89,7 +89,40 @@ function doPost(e) {
     return jsonResp({ status: 'error', message: 'Ref not found' });
   }
 
-  // ── อัปโหลดสลิปไป Google Drive แล้ว return URL (เรียกจาก status.html ก่อน) ──
+  if (action === 'updateVisitorApproval') {
+    if (String(body.pass) !== String(STAFF_PASS)) return jsonResp({ status: 'error', message: 'Unauthorized' });
+    if (!body.ref) return jsonResp({ status: 'error', message: 'Missing ref' });
+    const sheet = getSheet();
+    let data  = sheet.getDataRange().getValues();
+    let headers = data[0];
+    const refIdx = headers.indexOf('ref');
+    let vaIdx = headers.indexOf('visitorApproved');
+    let evaIdx = headers.indexOf('extraVisitorApproved');
+    if (vaIdx === -1 || evaIdx === -1) {
+      let nextCol = headers.length + 1;
+      if (vaIdx === -1) { sheet.getRange(1, nextCol).setValue('visitorApproved'); vaIdx = nextCol - 1; nextCol++; }
+      if (evaIdx === -1) { sheet.getRange(1, nextCol).setValue('extraVisitorApproved'); evaIdx = nextCol - 1; }
+      data = sheet.getDataRange().getValues();
+      headers = data[0];
+    }
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][refIdx] === body.ref) {
+        if (body.visitorApproved !== undefined) sheet.getRange(i + 1, vaIdx + 1).setValue(body.visitorApproved);
+        if (body.extraVisitorApproved !== undefined) sheet.getRange(i + 1, evaIdx + 1).setValue(body.extraVisitorApproved);
+        if (body.visitorCount !== undefined) {
+          const vcIdx = headers.indexOf('visitorCount');
+          if (vcIdx > -1) sheet.getRange(i + 1, vcIdx + 1).setValue(body.visitorCount);
+        }
+        if (body.total !== undefined) {
+          const tIdx = headers.indexOf('total');
+          if (tIdx > -1) sheet.getRange(i + 1, tIdx + 1).setValue(body.total);
+        }
+        return jsonResp({ status: 'ok' });
+      }
+    }
+    return jsonResp({ status: 'error', message: 'Ref not found' });
+  }
+
   if (action === 'uploadSlip') {
     if (String(body.pass) !== String(STAFF_PASS)) return jsonResp({ status: 'error', message: 'Unauthorized' });
     if (!body.base64Data) return jsonResp({ status: 'error', message: 'Missing base64Data' });
@@ -183,7 +216,7 @@ function ensureHeaders(sheet) {
   if (sheet.getLastRow() > 0) return;
   const headers = [
     'ref','timestamp','visitorName','visitorId','visitorPhone','relation',
-    'extraVisitorNames',
+    'extraVisitorNames','visitorApproved','extraVisitorApproved',
     'prisonerName','prisonerId','wing','visitDate','visitDateISO',
     'visitorCount','totalPersons','total','status','slipImage'
   ];
