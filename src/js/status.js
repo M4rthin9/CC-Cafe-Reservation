@@ -1,245 +1,8 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ตรวจสอบสถานะการจอง — ทัณฑสถานบำบัดพิเศษกลาง</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-<style>
-  :root {
-    --blue: #185FA5;
-    --blue-dark: #0C447C;
-    --blue-light: #E6F1FB;
-    --green: #3B6D11;
-    --green-light: #EAF3DE;
-    --gold: #C8922A;
-    --gold-light: #FDF3E3;
-    --red: #E24B4A;
-    --red-light: #FFF0F0;
-    --bg: #f0f4f9;
-    --bg2: #ffffff;
-    --border: #dde3ec;
-    --text: #1a1d23;
-    --text2: #6b7280;
-    --radius: 12px;
-    --radius-sm: 8px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--text); min-height: 100vh; }
-  .app { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
-
-  /* Header */
-  .header {
-    text-align: center; margin-bottom: 1.5rem; padding: 1.5rem;
-    background: linear-gradient(135deg, #0C3A6B 0%, #185FA5 100%);
-    border-radius: var(--radius); color: #fff; position: relative; overflow: hidden;
-  }
-  .header::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse 60% 80% at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 60%);
-  }
-  .back-link {
-    position: absolute; top: 14px; left: 14px;
-    display: flex; align-items: center; gap: 4px;
-    color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; z-index: 1;
-  }
-  .back-link:hover { color: #fff; }
-  .badge { display: inline-block; background: rgba(200,146,42,0.3); border: 1px solid rgba(200,146,42,0.5); color: #f5d08a; font-size: 11px; padding: 3px 12px; border-radius: 20px; margin-bottom: 10px; letter-spacing: 0.5px; position: relative; }
-  .header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; position: relative; }
-  .header p { font-size: 13px; color: rgba(255,255,255,0.7); position: relative; }
-
-  /* Search */
-  .search-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-  .section-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-  .search-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-  .tab-btn { flex: 1; padding: 9px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-size: 13px; font-weight: 600; font-family: inherit; background: var(--bg); color: var(--text2); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-  .tab-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-  label { font-size: 13px; color: var(--text2); font-weight: 500; display: block; margin-bottom: 5px; }
-  input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; background: var(--bg); color: var(--text); font-family: inherit; transition: border-color 0.15s; }
-  input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24,95,165,0.1); background: #fff; }
-
-  /* Buttons */
-  .btn-primary { width: 100%; padding: 13px; background: var(--blue); color: #fff; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .btn-primary:hover { background: var(--blue-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(24,95,165,0.25); }
-  .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
-  .btn-secondary { width: 100%; padding: 12px; background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
-  .btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
-
-  /* Result card */
-  .result-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 1rem; }
-  .result-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-  .result-ref { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
-  .result-ref strong { font-size: 18px; font-weight: 700; color: var(--blue); letter-spacing: 2px; }
-  .result-body { padding: 1rem 1.25rem; }
-  .info-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border); gap: 10px; }
-  .info-row:last-child { border-bottom: none; }
-  .info-row .lbl { color: var(--text2); flex-shrink: 0; min-width: 110px; }
-  .info-row .val { font-weight: 600; text-align: right; }
-
-  /* Status pills */
-  .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-  .status-pending  { background: #FFF9E6; color: #C8922A; border: 1px solid rgba(200,146,42,0.3); }
-  .status-approved { background: var(--green-light); color: var(--green); border: 1px solid rgba(59,109,17,0.25); }
-  .status-rejected { background: var(--red-light); color: var(--red); border: 1px solid rgba(226,75,74,0.25); }
-  .status-paid     { background: #e8f0fe; color: #1a56db; border: 1px solid rgba(26,86,219,0.25); }
-
-  /* Payment section */
-  .pay-section { background: var(--green-light); border: 1.5px solid rgba(59,109,17,0.3); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
-  .pay-section h3 { font-size: 15px; font-weight: 700; color: var(--green); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-  .pay-section p { font-size: 13px; color: #3a5520; margin-bottom: 1rem; }
-
-  /* Upload */
-  .upload-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 1.75rem; text-align: center; cursor: pointer; transition: all 0.15s; background: var(--bg); position: relative; }
-  .upload-area:hover { border-color: var(--blue); background: var(--blue-light); }
-  .upload-area.drag-over { border-color: var(--blue); background: var(--blue-light); transform: scale(1.01); }
-  .upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-  .upload-icon { font-size: 32px; color: var(--text2); }
-  .upload-area p { font-size: 13px; color: var(--text2); margin-top: 6px; }
-  .upload-area .hint { font-size: 11px; color: var(--text2); margin-top: 4px; opacity: 0.7; }
-  .preview-img { max-width: 100%; max-height: 220px; border-radius: var(--radius-sm); margin-top: 12px; display: none; object-fit: contain; }
-  .upload-progress { margin-top: 10px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; display: none; }
-  .upload-progress-bar { height: 100%; background: var(--blue); border-radius: 3px; transition: width 0.3s; width: 0%; }
-
-  /* Not found */
-  .not-found { text-align: center; padding: 2.5rem 1rem; }
-  .not-found-icon { font-size: 48px; margin-bottom: 1rem; }
-  .not-found h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-  .not-found p { font-size: 14px; color: var(--text2); line-height: 1.7; }
-
-  /* Rejected notice */
-  .rejected-notice { background: var(--red-light); border: 1px solid rgba(226,75,74,0.3); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; }
-  .rejected-notice h3 { color: var(--red); font-size: 15px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-  .rejected-notice p { font-size: 13px; color: #7a2020; line-height: 1.7; }
-
-  /* Paid notice */
-  .paid-notice { background: #e8f0fe; border: 1px solid rgba(26,86,219,0.25); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; }
-  .paid-notice h3 { color: #1a56db; font-size: 15px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-  .paid-notice p { font-size: 13px; color: #1a3a8a; line-height: 1.7; }
-
-  /* Alert / error strip */
-  .alert-strip { border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; margin-top: 8px; display: none; }
-  .alert-strip.err  { background: var(--red-light); color: #7a2020; border: 1px solid rgba(226,75,74,0.3); }
-  .alert-strip.ok   { background: var(--green-light); color: #2a5010; border: 1px solid rgba(59,109,17,0.25); }
-
-  /* Overlay */
-  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
-  .overlay.show { display: flex; }
-  .spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  .overlay p { color: #fff; font-size: 15px; font-weight: 500; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Thank you page */
-  .thankyou-page { text-align: center; padding: 1.5rem 0.5rem; }
-  .success-icon-big { width: 80px; height: 80px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 40px; border: 3px solid rgba(59,109,17,0.3); }
-  .ref-box-sm { background: linear-gradient(135deg, #0C3A6B 0%, #185FA5 100%); border-radius: var(--radius); padding: 14px 24px; display: inline-block; margin: 1rem 0; }
-  .ref-box-sm .ref-label { font-size: 11px; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
-  .ref-box-sm span { font-size: 24px; font-weight: 700; letter-spacing: 3px; color: #fff; display: block; }
-
-  #resultArea { display: none; }
-  #thankYouArea { display: none; }
-
-  /* ===== Visitor Approval (per-relative) - shared for consistency ===== */
-  .visitor-approval { margin-top:6px; font-size:11px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
-  .visitor-approval .lbl { color:var(--text2); font-size:10px; flex-shrink:0; }
-  .approval-badge { padding:1px 6px; border-radius:10px; font-size:10px; font-weight:600; white-space:nowrap; }
-  .approval-badge.yes { background:#dcfce7; color:#166534; }
-  .approval-badge.no { background:#fee2e2; color:#991b1b; }
-  .approval-badge.pending { background:#fef3c7; color:#854d0e; }
-  .visitor-item { padding:5px 8px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; margin-bottom:3px; display:flex; justify-content:space-between; align-items:center; font-size:12px; }
-  .visitor-section { margin-top:6px; }
-  .visitor-section-label { font-size:11px; color:var(--text2); margin-bottom:3px; }
-</style>
-</head>
-<body>
-<div class="app">
-
-  <div class="header">
-    <a href="index.html" class="back-link"><i class="ti ti-arrow-left"></i> หน้าหลัก</a>
-    <div class="badge">ตรวจสอบสถานะ</div>
-    <h1>ตรวจสอบสถานะการจอง</h1>
-    <p>ใช้เลขอ้างอิง (Ref No.) หรือเลขประจำตัวผู้ต้องขัง</p>
-  </div>
-
-  <!-- Search -->
-  <div class="search-section">
-    <div class="section-title"><i class="ti ti-search"></i> ค้นหาการจอง</div>
-
-    <div class="search-tabs">
-      <button class="tab-btn active" id="tabRef" onclick="switchTab('ref')">
-        <i class="ti ti-hash"></i> Ref No.
-      </button>
-      <button class="tab-btn" id="tabPrisoner" onclick="switchTab('prisoner')">
-        <i class="ti ti-lock"></i> เลขผู้ต้องขัง
-      </button>
-    </div>
-
-    <div class="tab-content active" id="tabContentRef">
-      <label>เลขอ้างอิง (เช่น VIS-12345)</label>
-      <input type="text" id="searchRef" placeholder="VIS-XXXXX" style="text-transform:uppercase;letter-spacing:1px"
-        onkeydown="if(event.key==='Enter') doSearch()">
-    </div>
-    <div class="tab-content" id="tabContentPrisoner">
-      <label>หมายเลขผู้ต้องขัง</label>
-      <input type="text" id="searchPrisoner" placeholder="เช่น 12345678"
-        onkeydown="if(event.key==='Enter') doSearch()">
-    </div>
-
-    <div style="margin-top:12px">
-      <button class="btn-primary" id="searchBtn" onclick="doSearch()">
-        <i class="ti ti-search"></i> ตรวจสอบสถานะ
-      </button>
-    </div>
-  </div>
-
-  <!-- Result Area -->
-  <div id="resultArea"></div>
-
-  <!-- Thank You Area -->
-  <div id="thankYouArea">
-    <div class="thankyou-page">
-      <div class="success-icon-big">🎉</div>
-      <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">ชำระเงินและจองสำเร็จ!</h2>
-      <p style="font-size:14px;color:var(--text2);margin-bottom:1rem">เจ้าหน้าที่จะยืนยันนัดหมายผ่านโทรศัพท์ภายใน 1 วันทำการ</p>
-
-      <div class="ref-box-sm">
-        <div class="ref-label">เลขอ้างอิง</div>
-        <span id="tyRefNumber">VIS-00000</span>
-      </div>
-
-      <div id="tySummary" style="background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border);padding:14px;text-align:left;margin:1rem 0;font-size:13px;line-height:2.2"></div>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:1rem">
-        <button class="btn-secondary" onclick="resetSearch()" style="flex:1;min-width:160px">
-          <i class="ti ti-search"></i> ค้นหาอีกครั้ง
-        </button>
-        <a href="index.html" class="btn-primary" style="text-decoration:none;flex:1;min-width:160px">
-          <i class="ti ti-home"></i> กลับหน้าหลัก
-        </a>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<!-- Overlay -->
-<div class="overlay" id="overlay">
-  <div class="spinner"></div>
-  <p id="overlayMsg">กำลังค้นหา...</p>
-</div>
-
-<script>
 // ===== CONFIG =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYTAy4xe5z6tv5y0F3mjLqMdvYuothFRWUWz6MAkpq6xbusyOTFHvu7-YA2Z8HMhGDjw/exec';
 const STAFF_PASS = '10900';
 
 // ===== SAFE FETCH WRAPPER =====
-// BUG FIX: Google Apps Script requires redirect:'follow' and Content-Type:'text/plain'
-// to avoid CORS preflight failure. Using 'application/json' triggers a preflight
-// that Apps Script cannot handle, causing the request to silently fail.
 async function appsScriptPost(payload) {
   const resp = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
@@ -317,7 +80,6 @@ async function doSearch() {
     else throw new Error(data.message || 'error');
   } catch(err) {
     console.error('Fetch error:', err);
-    // Demo fallback only if URL is placeholder
     if (APPS_SCRIPT_URL.includes('YOUR_GOOGLE')) {
       rows = getDemoRows();
     } else {
@@ -394,17 +156,37 @@ function renderResult(row) {
   const totalPersons = visitorCount + 1;
   const total = parseInt(row.total) || totalPersons * 1000;
 
+  let visitorsDetailHtml = '';
+  const mainAppr = (row.visitorApproved || '').trim();
+  const mainLabel = mainAppr==='yes' ? '✅ เข้าได้' : mainAppr==='no' ? '❌ เข้าไม่ได้' : '';
+  visitorsDetailHtml += `<div class="visitor-item"><span>👤 ${escHtml(row.visitorName||'—')}</span>${mainLabel ? '<span class="approval-badge '+(mainAppr==='yes'?'yes':mainAppr==='no'?'no':'pending')+'">'+mainLabel+'</span>' : ''}</div>`;
+  if (row.extraVisitorNames && row.extraVisitorNames.trim()) {
+    const isNew = row.extraVisitorNames.includes(';;') || row.extraVisitorNames.includes('|');
+    let exs = [];
+    if (isNew) {
+      exs = row.extraVisitorNames.split(';;').map(e=>{const p=e.split('|');return {name:(p[0]||'').trim()};}).filter(e=>e.name);
+    } else {
+      exs = row.extraVisitorNames.split(/,(?![^(]*\))/).map(e=>{const m=e.trim().match(/^(.+?)\s*\(/);return {name:m?m[1].trim():e.trim()};}).filter(e=>e.name);
+    }
+    const eAppr = String(row.extraVisitorApproved||'').split(';;');
+    exs.forEach((v,i)=>{
+      const a = (eAppr[i]||'').trim();
+      const lb = a==='yes'?'✅ เข้าได้':a==='no'?'❌ เข้าไม่ได้':'';
+      visitorsDetailHtml += `<div class="visitor-item"><span>👤 ${escHtml(v.name)}</span>${lb ? '<span class="approval-badge '+(a==='yes'?'yes':a==='no'?'no':'pending')+'">'+lb+'</span>' : ''}</div>`;
+    });
+  }
+
   const area = document.getElementById('resultArea');
   area.style.display = 'block';
 
   let paymentBlock = '';
-  const sLower = status.toLowerCase();
+  const sLower = normalizeStatus(status).toLowerCase();
 
   if (sLower === 'รอชำระเงิน' || sLower === 'อนุมัติ' || sLower === 'approved') {
     paymentBlock = `
       <div class="pay-section">
         <h3>✅ การจองได้รับการอนุมัติ — กรุณาชำระเงิน</h3>
-        <p>เจ้าหน้าที่ตรวจสอบประวัติวินัยเรียบร้อยแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเยี่ยม</p>
+        <p>เจ้าหน้าที่ตรวจสอบประวัติวินัยเรียบร้อยแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเข้าร่วมกิจกรรม</p>
         <div style="text-align:center;margin-bottom:1rem">
           <div style="font-size:13px;color:var(--text2)">ยอดที่ต้องชำระ</div>
           <div style="font-size:28px;font-weight:700;color:var(--blue);margin:8px 0">${total.toLocaleString()} บาท</div>
@@ -436,7 +218,7 @@ function renderResult(row) {
     paymentBlock = `
       <div style="background:#d1fae5;border:1px solid rgba(6,95,70,0.25);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
         <h3 style="color:#065f46;font-size:15px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;">🎉 การจองเสร็จสมบูรณ์</h3>
-        <p style="font-size:13px;color:#064e3b;line-height:1.7;">เจ้าหน้าที่ยืนยันการชำระเงินเรียบร้อยแล้ว กรุณานำเลขอ้างอิงมาแสดงในวันเยี่ยม</p>
+        <p style="font-size:13px;color:#064e3b;line-height:1.7;">เจ้าหน้าที่ยืนยันการชำระเงินเรียบร้อยแล้ว กรุณานำเลขอ้างอิงมาแสดงในวันเข้าร่วมกิจกรรม</p>
       </div>
     `;
   } else if (sLower === 'ยกเลิก') {
@@ -450,7 +232,6 @@ function renderResult(row) {
       </a>
     `;
   } else {
-    // Pending / รอตรวจสอบ
     paymentBlock = `
       <div style="background:var(--gold-light);border:1px solid rgba(200,146,42,0.3);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
         <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:4px;display:flex;align-items:center;gap:8px;">⏳ รอเจ้าหน้าที่ตรวจสอบ</div>
@@ -469,32 +250,36 @@ function renderResult(row) {
         <div>${statusPill}</div>
       </div>
       <div class="result-body">
-        <div class="info-row"><span class="lbl">👤 ผู้เยี่ยม</span><span class="val">${escHtml(row.visitorName || '—')}</span></div>
+        <div class="info-row"><span class="lbl">👤 ผู้ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitorName || '—')}</span></div>
         <div class="info-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${escHtml(row.visitorPhone || '—')}</span></div>
         <div class="info-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${escHtml(row.prisonerName || '—')} (#${escHtml(row.prisonerId || '—')})</span></div>
         <div class="info-row"><span class="lbl">🏢 แดน</span><span class="val">${escHtml(row.wing || '—')}</span></div>
-        <div class="info-row"><span class="lbl">📅 วันที่เยี่ยม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>
+        <div class="info-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>
         <div class="info-row"><span class="lbl">👥 จำนวน</span><span class="val">ญาติ ${visitorCount} + ผู้ต้องขัง 1 = ${totalPersons} คน</span></div>
-        <div class="info-row"><span class="lbl">💰 ค่าบริการ</span><span class="val">${total.toLocaleString()} บาท</span></div>
+        <div class="info-row"><span class="lbl">💰 ค่าบริการอาหาร</span><span class="val">${total.toLocaleString()} บาท</span></div>
+        ${visitorsDetailHtml ? `<div class="visitor-section"><div class="visitor-section-label">รายชื่อผู้เข้าเยี่ยม (สถานะหลังตรวจสอบ)</div>${visitorsDetailHtml}</div>` : ''}
       </div>
     </div>
 
     <div id="paymentArea">${paymentBlock}</div>
 
-    <!-- Payment form (hidden until showPayment()) -->
     <div id="paymentForm" style="display:none">
       <div class="section-title" style="margin-top:1rem;font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;">
         <i class="ti ti-credit-card"></i> รายละเอียดการชำระเงิน
       </div>
 
-      <!-- Bank Info -->
       <div style="background:linear-gradient(135deg,#e8f4f8,#d0eaf3);border:2px solid #03b3c0;border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem;text-align:center;">
         <div style="display:inline-flex;align-items:center;gap:8px;background:#03b3c0;color:#fff;font-size:13px;font-weight:700;padding:6px 18px;border-radius:20px;margin-bottom:14px;">
-          🏦 ธนาคารกรุงไทย
+          📱 PromptPay QR Code
         </div>
-        <div style="font-size:13px;color:#2a6a75;margin-bottom:6px;font-weight:500;">เลขบัญชี</div>
-        <div style="font-size:32px;font-weight:800;color:#0a4a55;letter-spacing:3px;margin-bottom:8px;">137-1-09488-8</div>
-        <div style="font-size:16px;font-weight:600;color:#1a5a65;margin-bottom:12px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
+        
+        <div style="margin: 10px auto 15px; width: 200px; height: 200px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+          <img src="src/asset/promptpay-qr.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;">
+        </div>
+
+        <div style="font-size:16px;font-weight:700;color:#0a4a55;margin-bottom:4px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
+        <div style="font-size:14px;font-weight:600;color:#1a5a65;margin-bottom:12px;">ชื่อบัญชี: ร้านสงเคราะห์ผู้ต้องขัง</div>
+
         <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 14px;font-size:13px;color:#1a5a65;line-height:1.8;">
           💰 ยอดที่ต้องชำระ: <strong style="font-size:18px;color:#0a4a55;">${total.toLocaleString()} บาท</strong><br>
           <span style="font-size:12px;color:#2a6a75;">${totalPersons} คน × 1,000 บาท</span>
@@ -504,7 +289,6 @@ function renderResult(row) {
         </div>
       </div>
 
-      <!-- Upload section -->
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
         <div class="section-title" style="font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;">
           <i class="ti ti-upload"></i> อัปโหลดสลิปการโอนเงิน
@@ -543,8 +327,18 @@ function renderResult(row) {
 }
 
 // ===== STATUS PILL =====
+function normalizeStatus(s) {
+  const v = (s || '').toString().trim().toLowerCase();
+  if (['อนุมัติ', 'approved', 'รอชำระเงิน'].includes(v)) return 'รอชำระเงิน';
+  if (['rejected', 'ไม่อนุมัติ'].includes(v)) return 'ไม่อนุมัติ';
+  if (['paid', 'ชำระแล้ว'].includes(v)) return 'ชำระแล้ว';
+  if (['done', 'เสร็จสิ้น'].includes(v)) return 'เสร็จสิ้น';
+  if (v === 'ยกเลิก') return 'ยกเลิก';
+  return s || 'รอตรวจสอบ';
+}
+
 function getStatusPill(status) {
-  const s = (status || '').toLowerCase();
+  const s = normalizeStatus(status);
   if (s === 'รอชำระเงิน') return `<span class="status-pill status-approved">✅ อนุมัติ — รอชำระเงิน</span>`;
   if (s.includes('อนุมัติ') || s === 'approved') return `<span class="status-pill status-approved">✅ อนุมัติแล้ว</span>`;
   if (s.includes('ไม่อนุมัติ') || s === 'rejected') return `<span class="status-pill status-rejected">❌ ไม่อนุมัติ</span>`;
@@ -590,12 +384,10 @@ function handleUpload(e) {
 }
 
 function processFile(file) {
-  // BUG FIX: validate file size (10MB limit)
   if (file.size > 10 * 1024 * 1024) {
     showUploadAlert('err', '❌ ไฟล์ใหญ่เกิน 10MB กรุณาเลือกไฟล์ที่เล็กกว่า');
     return;
   }
-  // BUG FIX: validate file type
   if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
     showUploadAlert('err', '❌ รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG) เท่านั้น');
     return;
@@ -604,7 +396,6 @@ function processFile(file) {
   slipUploaded = true;
   hideUploadAlert();
 
-  // Show preview
   if (file.type.startsWith('image/')) {
     const reader = new FileReader();
     reader.onload = ev => {
@@ -633,17 +424,14 @@ function hideUploadAlert() {
 }
 
 // ===== UPLOAD SLIP TO APPS SCRIPT =====
-// BUG FIX: Use correct headers (text/plain) + redirect:'follow' for CORS compatibility
 async function uploadSlipViaAppsScript(file, ref) {
-  // Convert file to base64 data URI
   const base64 = await new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result); // data:image/...;base64,...
+    reader.onload = e => resolve(e.target.result);
     reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์ได้'));
     reader.readAsDataURL(file);
   });
 
-  // Animate progress bar
   animateProgress(10, 60);
 
   const result = await appsScriptPost({
@@ -686,13 +474,11 @@ async function submitPayment() {
 
   let slipUrl = '';
   try {
-    // Step 1: Upload image to Google Drive via Apps Script
     slipUrl = await uploadSlipViaAppsScript(slipFile, currentBooking.ref);
   } catch (uploadErr) {
     console.error('Slip upload error:', uploadErr);
     setOverlay(false);
     submitBtn.disabled = false;
-    // Reset progress bar
     const wrap = document.getElementById('uploadProgress');
     if (wrap) { wrap.style.display = 'none'; }
     showUploadAlert('err',
@@ -701,7 +487,6 @@ async function submitPayment() {
     return;
   }
 
-  // Step 2: Save URL + update status in Sheet
   setOverlay(true, 'กำลังบันทึกการชำระเงิน...');
   try {
     const result = await appsScriptPost({
@@ -714,13 +499,10 @@ async function submitPayment() {
     if (result.status !== 'ok') throw new Error(result.message || 'บันทึกไม่สำเร็จ');
   } catch (err) {
     console.error('Update status error:', err);
-    // Don't block UX — slip already uploaded to Drive
-    // Still show thank you since the critical step (upload) succeeded
   } finally {
     setOverlay(false);
   }
 
-  // Show thank you
   showThankYou();
 }
 
@@ -736,7 +518,7 @@ function showThankYou() {
 
   document.getElementById('tySummary').innerHTML = `
     <div>📋 <strong>Ref No.:</strong> ${escHtml(row.ref)}</div>
-    <div>👤 <strong>ผู้เยี่ยม:</strong> ${escHtml(row.visitorName)}</div>
+    <div>👤 <strong>ผู้ร่วมกิจกรรม:</strong> ${escHtml(row.visitorName)}</div>
     <div>🔒 <strong>ผู้ต้องขัง:</strong> ${escHtml(row.prisonerName)} (#${escHtml(row.prisonerId)})</div>
     <div>🏢 <strong>แดน:</strong> ${escHtml(row.wing)}</div>
     <div>📅 <strong>วันที่:</strong> ${escHtml(row.visitDate)}</div>
@@ -784,6 +566,9 @@ function getDemoRows() {
       visitorId: '1234567890123',
       visitorPhone: '081-234-5678',
       relation: 'คู่สมรส',
+      extraVisitorNames: 'สมหญิง ใจดี|1234567890124|คู่สมรส;;น้องชาย ใจดี|1234567890125|พี่น้อง',
+      visitorApproved: 'yes',
+      extraVisitorApproved: 'yes;;no',
       prisonerName: 'สมศักดิ์ มั่นคง',
       prisonerId: '56781234',
       wing: 'แดน 3',
@@ -791,7 +576,7 @@ function getDemoRows() {
       visitDateISO: '2026-05-25',
       visitorCount: 2,
       totalPersons: 3,
-      total: 3000,
+      total: 2000,
       status: 'รอชำระเงิน'
     },
     {
@@ -813,6 +598,3 @@ function getDemoRows() {
     }
   ];
 }
-</script>
-</body>
-</html>

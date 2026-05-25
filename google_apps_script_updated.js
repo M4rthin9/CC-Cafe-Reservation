@@ -92,10 +92,13 @@ function doPost(e) {
   if (action === 'updateVisitorApproval') {
     if (String(body.pass) !== String(STAFF_PASS)) return jsonResp({ status: 'error', message: 'Unauthorized' });
     if (!body.ref) return jsonResp({ status: 'error', message: 'Missing ref' });
+
     const sheet = getSheet();
     let data  = sheet.getDataRange().getValues();
     let headers = data[0];
     const refIdx = headers.indexOf('ref');
+
+    // Ensure approval columns exist (add at end if missing) - only once
     let vaIdx = headers.indexOf('visitorApproved');
     let evaIdx = headers.indexOf('extraVisitorApproved');
     if (vaIdx === -1 || evaIdx === -1) {
@@ -104,23 +107,53 @@ function doPost(e) {
       if (evaIdx === -1) { sheet.getRange(1, nextCol).setValue('extraVisitorApproved'); evaIdx = nextCol - 1; }
       data = sheet.getDataRange().getValues();
       headers = data[0];
+      vaIdx = headers.indexOf('visitorApproved');
+      evaIdx = headers.indexOf('extraVisitorApproved');
     }
+
+    // Find the row
+    let rowIndex = -1;
     for (let i = 1; i < data.length; i++) {
-      if (data[i][refIdx] === body.ref) {
-        if (body.visitorApproved !== undefined) sheet.getRange(i + 1, vaIdx + 1).setValue(body.visitorApproved);
-        if (body.extraVisitorApproved !== undefined) sheet.getRange(i + 1, evaIdx + 1).setValue(body.extraVisitorApproved);
-        if (body.visitorCount !== undefined) {
-          const vcIdx = headers.indexOf('visitorCount');
-          if (vcIdx > -1) sheet.getRange(i + 1, vcIdx + 1).setValue(body.visitorCount);
-        }
-        if (body.total !== undefined) {
-          const tIdx = headers.indexOf('total');
-          if (tIdx > -1) sheet.getRange(i + 1, tIdx + 1).setValue(body.total);
-        }
-        return jsonResp({ status: 'ok' });
+      if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+        rowIndex = i;
+        break;
       }
     }
-    return jsonResp({ status: 'error', message: 'Ref not found' });
+    if (rowIndex === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
+
+    const row = rowIndex + 1; // 1-based for Range
+
+    // Always update the approval flags in the SAME cells
+    if (body.visitorApproved !== undefined) {
+      sheet.getRange(row, vaIdx + 1).setValue(body.visitorApproved);
+    }
+    if (body.extraVisitorApproved !== undefined) {
+      sheet.getRange(row, evaIdx + 1).setValue(body.extraVisitorApproved);
+    }
+
+    // ===== SERVER-SIDE PRICE RECALC (fixes the bug) =====
+    // Count approved relatives (main + extras 'yes')
+    // Always +1 for the prisoner (standard model)
+    const mainApproved = (body.visitorApproved || '').toString().trim().toLowerCase() === 'yes' ? 1 : 0;
+
+    let extraYesCount = 0;
+    if (body.extraVisitorApproved) {
+      extraYesCount = String(body.extraVisitorApproved)
+        .split(';;')
+        .filter(v => (v || '').toString().trim().toLowerCase() === 'yes').length;
+    }
+
+    const approvedRelatives = mainApproved + extraYesCount;
+    const correctVisitorCount = approvedRelatives;
+    const correctTotal = (approvedRelatives + 1) * 1000;   // relatives + prisoner
+
+    // Update visitorCount and total in the SAME existing cells (never append row)
+    const vcIdx = headers.indexOf('visitorCount');
+    const tIdx  = headers.indexOf('total');
+    if (vcIdx > -1) sheet.getRange(row, vcIdx + 1).setValue(correctVisitorCount);
+    if (tIdx  > -1) sheet.getRange(row, tIdx  + 1).setValue(correctTotal);
+
+    return jsonResp({ status: 'ok', visitorCount: correctVisitorCount, total: correctTotal });
   }
 
   if (action === 'uploadSlip') {
