@@ -84,24 +84,39 @@
 
     <div class="section">
       <div class="section-title"><i class="ti ti-lock"></i> ข้อมูลผู้ต้องขัง</div>
+
+      <!-- NEW: Prisoner search helper to reduce typos (connects to sheet master data) -->
+      <div class="prisoner-search">
+        <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block;">
+          🔍 ค้นหาจากฐานข้อมูลผู้ต้องขัง (แนะนำ — ลดข้อผิดพลาด)
+        </label>
+        <input type="text" id="prisonerSearch" placeholder="พิมพ์เลขผู้ต้องขัง หรือ ชื่อ-นามสกุล..." oninput="filterPrisonerSuggestions()">
+        <div id="prisonerSuggestions" class="suggestions-dropdown"></div>
+        <div id="prisonerLoadStatus" style="font-size:11px;margin-top:6px;color:var(--text2);"></div>
+        <div id="prisonerMatchStatus" style="font-size:11px;margin-top:4px;color:var(--green);display:none;"></div>
+      </div>
+
       <div class="form-grid">
         <div class="form-group">
           <label>ชื่อ-นามสกุลผู้ต้องขัง <span style="color:var(--red)">*</span></label>
-          <input type="text" id="prisonerName" placeholder="เช่น สมศักดิ์ มั่นคง">
+          <input type="text" id="prisonerName" placeholder="เช่น สมศักดิ์ มั่นคง" onblur="checkPrisonerMatch()">
         </div>
         <div class="form-group">
           <label>หมายเลขผู้ต้องขัง <span style="color:var(--red)">*</span></label>
-          <input type="text" id="prisonerId" placeholder="เช่น 12345678">
+          <input type="text" id="prisonerId" placeholder="เช่น 12345678" onblur="checkPrisonerMatch()">
         </div>
         <div class="form-group full">
           <label>แดน <span style="color:var(--red)">*</span></label>
-          <select id="wing">
+          <select id="wing" onchange="checkPrisonerMatch()">
             <option value="">-- เลือกแดน --</option>
             <option>แดน 1</option><option>แดน 2</option><option>แดน 3</option><option>แดน 4</option>
             <option>แดน 5</option><option>แดน 6</option><option>แดน 7</option><option>แดน 8</option>
             <option>แดน 9</option><option>แดน 10</option><option>แดน 11</option><option>แดน 12</option>
           </select>
         </div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:6px;">
+        💡 แนะนำ: ใช้ช่องค้นหาด้านบนเพื่อเลือกจากฐานข้อมูลโดยตรง (จะกรอกชื่อ + เลข + แดน อัตโนมัติ)
       </div>
     </div>
 

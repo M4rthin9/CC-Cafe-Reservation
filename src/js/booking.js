@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYTAy4xe5z6tv5y0F3mjLqMdvYuothFRWUWz6MAkpq6xbusyOTFHvu7-YA2Z8HMhGDjw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfOtYJomd52MxJgKBDxQYH-HlOpVOk0ZMPO4Lc7ehjJAMxCl0hf84wWBf4mctun03xLw/exec';
 const QUOTA = 20;
 
 // ===== CALENDAR =====
@@ -146,6 +146,135 @@ function getExtraVisitors() {
   return extras;
 }
 
+// ===== PRISONER MASTER DATA (from Google Sheet via Apps Script) =====
+let prisonerMaster = [];
+
+async function loadPrisonerMaster() {
+  const statusEl = document.getElementById('prisonerLoadStatus');
+  if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขังจากฐานข้อมูล...';
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL + '?action=getPrisoners');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    if (data.status === 'ok' && Array.isArray(data.prisoners)) {
+      prisonerMaster = data.prisoners;
+      if (statusEl) {
+        statusEl.textContent = `✓ โหลดรายชื่อสำเร็จ (${prisonerMaster.length} คน)`;
+        statusEl.style.color = 'var(--green)';
+      }
+      console.log('[PrisonerMaster] Loaded', prisonerMaster.length, 'records');
+    } else {
+      throw new Error('Invalid response from server');
+    }
+  } catch (e) {
+    console.error('[PrisonerMaster] Fetch failed:', e);
+    if (statusEl) {
+      let msg = '⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้';
+      if (e.message) msg += ` (${e.message})`;
+      statusEl.textContent = msg + ' — กรอกเองได้ชั่วคราว';
+      statusEl.style.color = 'var(--red)';
+    }
+  }
+}
+
+function filterPrisonerSuggestions() {
+  const q = document.getElementById('prisonerSearch').value.trim().toLowerCase();
+  const container = document.getElementById('prisonerSuggestions');
+  container.innerHTML = '';
+  container.style.display = 'none';
+
+  if (!q || prisonerMaster.length === 0) return;
+
+  const matches = prisonerMaster.filter(p =>
+    p.prisonerId.toLowerCase().includes(q) ||
+    p.prisonerName.toLowerCase().includes(q)
+  ).slice(0, 8); // limit results
+
+  if (matches.length === 0) return;
+
+  matches.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'suggestion-item';
+    div.innerHTML = `
+      <div style="flex:1">
+        <strong style="font-size:15px;">${p.prisonerName}</strong>
+      </div>
+      <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
+        #${p.prisonerId}<br>
+        <span style="color:var(--blue);font-weight:600;">${p.wing || ''}</span>
+      </div>
+    `;
+    div.onclick = () => selectPrisoner(p);
+    container.appendChild(div);
+  });
+  container.style.display = 'block';
+}
+
+function selectPrisoner(p) {
+  // Auto-fill the three prisoner fields
+  document.getElementById('prisonerId').value = p.prisonerId;
+  document.getElementById('prisonerName').value = p.prisonerName;
+  document.getElementById('wing').value = p.wing || '';
+
+  // Clear search + hide dropdown
+  document.getElementById('prisonerSearch').value = '';
+  document.getElementById('prisonerSuggestions').innerHTML = '';
+  document.getElementById('prisonerSuggestions').style.display = 'none';
+
+  // Show nice confirmation
+  const statusEl = document.getElementById('prisonerMatchStatus');
+  statusEl.textContent = `✓ เลือกจากฐานข้อมูล: ${p.prisonerName} (#${p.prisonerId}) — ${p.wing}`;
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--green)';
+
+  // Optional: highlight the fields briefly
+  ['prisonerId', 'prisonerName', 'wing'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.borderColor = 'var(--green)';
+      setTimeout(() => { el.style.borderColor = ''; }, 1200);
+    }
+  });
+}
+
+function checkPrisonerMatch() {
+  const idEl = document.getElementById('prisonerId');
+  const nameEl = document.getElementById('prisonerName');
+  const wingEl = document.getElementById('wing');
+  const statusEl = document.getElementById('prisonerMatchStatus');
+
+  if (!idEl || !nameEl || !wingEl || prisonerMaster.length === 0) {
+    if (statusEl) statusEl.style.display = 'none';
+    return;
+  }
+
+  const pid = idEl.value.trim();
+  const pname = nameEl.value.trim();
+  const pwing = wingEl.value.trim();
+
+  if (!pid && !pname) {
+    statusEl.style.display = 'none';
+    return;
+  }
+
+  const match = prisonerMaster.find(p =>
+    p.prisonerId === pid ||
+    (p.prisonerName.toLowerCase() === pname.toLowerCase() && p.wing === pwing)
+  );
+
+  if (match) {
+    statusEl.textContent = `✓ ตรงกับฐานข้อมูล: ${match.prisonerName} (#${match.prisonerId}) — ${match.wing}`;
+    statusEl.style.color = 'var(--green)';
+    statusEl.style.display = 'block';
+  } else {
+    statusEl.textContent = '⚠ ไม่พบในฐานข้อมูลผู้ต้องขัง — กรุณาตรวจสอบอีกครั้ง';
+    statusEl.style.color = 'var(--red)';
+    statusEl.style.display = 'block';
+  }
+}
+
 // ===== VALIDATION =====
 function validate() {
   const fields = [
@@ -173,6 +302,25 @@ function validate() {
   }
   if (!selectedDate) { alert('กรุณาเลือกวันที่ต้องการร่วมกิจกรรม'); return false; }
   if ((bookings[selectedDate] || 0) >= QUOTA) { alert('วันที่เลือกเต็มแล้ว กรุณาเลือกวันอื่น'); return false; }
+
+  // Optional: soft validation against prisoner master data (if loaded)
+  if (prisonerMaster.length > 0) {
+    const pid = document.getElementById('prisonerId').value.trim();
+    const pname = document.getElementById('prisonerName').value.trim();
+    const pwing = document.getElementById('wing').value.trim();
+    const exists = prisonerMaster.some(p =>
+      p.prisonerId === pid ||
+      (p.prisonerName.toLowerCase() === pname.toLowerCase() && p.wing === pwing)
+    );
+    if (!exists) {
+      const proceed = confirm('⚠️ ไม่พบข้อมูลผู้ต้องขังนี้ในฐานข้อมูล\n\nคุณต้องการดำเนินการต่อหรือไม่?\n(เจ้าหน้าที่จะตรวจสอบอีกครั้ง)');
+      if (!proceed) {
+        document.getElementById('prisonerId').focus();
+        return false;
+      }
+    }
+  }
+
   if (!document.getElementById('consent').checked) { alert('กรุณายืนยันและยินยอมก่อนดำเนินการ'); return false; }
   return true;
 }
@@ -407,3 +555,15 @@ async function loadBookingCounts() {
 
 renderCalendar(); // show immediately (with 0 quotas), load will refresh counts from server
 loadBookingCounts();
+
+// Load prisoner master data from Google Sheet (for autocomplete + validation in prisoner info section)
+loadPrisonerMaster();
+
+// Close prisoner suggestions when clicking outside the search box
+document.addEventListener('click', (e) => {
+  const searchBox = document.getElementById('prisonerSearch');
+  const suggBox = document.getElementById('prisonerSuggestions');
+  if (searchBox && suggBox && !searchBox.contains(e.target) && !suggBox.contains(e.target)) {
+    suggBox.style.display = 'none';
+  }
+});

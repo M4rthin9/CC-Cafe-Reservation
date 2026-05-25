@@ -171,3 +171,52 @@
   .visitor-item { padding:5px 8px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; margin-bottom:3px; display:flex; justify-content:space-between; align-items:center; font-size:12px; }
   .visitor-section { margin-top:6px; }
   .visitor-section-label { font-size:11px; color:var(--text2); margin-bottom:3px; }
+
+  /* ===== Prisoner Search + Autocomplete (new for database lookup) ===== */
+  .prisoner-search {
+    background: var(--blue-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+  }
+  .suggestions-dropdown {
+    position: relative;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-top: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    z-index: 100;
+    font-size: 13px;
+  }
+  .suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .suggestion-item:last-child {
+    border-bottom: none;
+  }
+  .suggestion-item:hover {
+    background: var(--blue-light);
+  }
+  .suggestion-item .pid {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text2);
+    background: #f8f9fa;
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .suggestion-item .pwing {
+    font-size: 11px;
+    color: var(--blue);
+    font-weight: 600;
+  }
