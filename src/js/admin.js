@@ -660,5 +660,303 @@ function exportFilteredCSV() {
   URL.revokeObjectURL(url);
 }
 
+// ===== HELPER: Parse extra visitors (same logic as detail view) =====
+function parseExtraVisitors(row) {
+  if (!row || !row.extraVisitorNames || !String(row.extraVisitorNames).trim()) return [];
+  const str = String(row.extraVisitorNames);
+  const isNew = str.includes(';;') || str.includes('|');
+  if (isNew) {
+    return str.split(';;').map(e => {
+      const p = e.split('|');
+      return { name: (p[0]||'').trim(), id: (p[1]||'').trim(), relation: (p[2]||'').trim() };
+    }).filter(e => e.name);
+  } else {
+    return str.split(/,(?![^(]*\))/).map(e => {
+      const m = e.trim().match(/^(.+?)\s*\(([^,)]+?)(?:,\s*([^)]+))?\)$/);
+      if (m) return { name: m[1].trim(), id: (m[2]||'').trim(), relation: (m[3]||'').trim() };
+      return { name: e.trim(), id: '', relation: '' };
+    }).filter(e => e.name);
+  }
+}
+
+// ===== PRINT REPORT: Sorted by Ref No. (respects current filters) =====
+function printReport() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const fs = document.getElementById('filterStatus').value;
+  const fd = document.getElementById('filterDate').value;
+
+  let filtered = allRows.filter(r => {
+    if (!r.ref || String(r.ref).trim() === '') return false;
+    if (fs && r.status !== fs) return false;
+    if (fd && r.visitDate !== fd) return false;
+    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    alert('ไม่มีข้อมูลตาม filter ที่เลือก');
+    return;
+  }
+
+  // Arrange / sort by Ref No.
+  filtered = [...filtered].sort((a, b) => String(a.ref || '').localeCompare(String(b.ref || '')));
+
+  const now = new Date().toLocaleString('th-TH');
+
+  // Calculate grand totals
+  let totalVisitors = 0;
+  let totalPrice = 0;
+  filtered.forEach(r => {
+    const cnt = parseInt(r.visitorCount) || 1;
+    const prc = parseInt(r.total) || (cnt * 1000);
+    totalVisitors += cnt;
+    totalPrice += prc;
+  });
+  const totalPrisoners = filtered.length;
+
+  let html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>รายงานการจอง CC Cafe</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
+  body { font-family: 'Sarabun', system-ui, sans-serif; padding: 20px 24px; margin:0; color:#000; background:#fff; line-height:1.45; font-size:14px; }
+  h1 { font-size:20px; margin:0 0 4px; font-weight:700; text-align:center; }
+  .meta { font-size:12px; color:#333; text-align:center; margin-bottom:16px; }
+  .ref-block { 
+    margin-bottom:18px; 
+    page-break-inside: avoid; 
+    border: 2px solid #000; 
+    padding: 10px 12px; 
+    border-radius: 6px; 
+    background:#fff; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .ref-num { 
+    display: inline-block; 
+    background: #0f766e; 
+    color: #fff; 
+    padding: 3px 10px; 
+    border-radius: 4px; 
+    font-size: 13px; 
+    font-weight: 700; 
+    margin-right: 8px;
+  }
+  .section { 
+    margin-top: 8px; 
+    border: 1px solid #555; 
+    padding: 7px 9px; 
+    border-radius: 4px; 
+    background: #f8f9fa;
+  }
+  .section.prisoner { background: #f0f7f0; border-color: #166534; }
+  .section-title { 
+    font-weight: 700; 
+    font-size: 13px; 
+    margin-bottom: 4px; 
+    color: #0f766e; 
+  }
+  .section.prisoner .section-title { color: #166534; }
+  .info-line { margin: 2px 0; font-size: 13px; }
+  .info-line b { font-size: 14px; }
+  .extra-box { 
+    margin-top: 7px; 
+    background: #fff8e7; 
+    border: 1px solid #b45309; 
+    padding: 6px 8px; 
+    border-radius: 4px; 
+  }
+  .extra-title { 
+    font-weight: 700; 
+    font-size: 12px; 
+    color: #92400e; 
+    margin-bottom: 3px; 
+  }
+  .extra-line { 
+    font-size: 12.5px; 
+    padding-left: 8px; 
+    margin: 2px 0; 
+  }
+  .price-box { 
+    margin-top: 10px; 
+    text-align: right; 
+    background: #fefce8; 
+    border: 3px solid #854d0e; 
+    padding: 8px 12px; 
+    border-radius: 5px; 
+  }
+  .price-box .small { font-size: 12px; color: #713f12; }
+  .price-box .big { 
+    font-size: 16px; 
+    font-weight: 800; 
+    color: #713f12; 
+    margin-top: 2px; 
+  }
+  .grand-summary { 
+    margin-top: 30px; 
+    page-break-before: always; 
+    text-align: center; 
+  }
+  .grand-box { 
+    display: inline-block; 
+    border: 5px solid #000; 
+    padding: 18px 28px; 
+    font-size: 16px; 
+    line-height: 1.8; 
+    background: #fff; 
+    text-align: left; 
+    min-width: 380px;
+  }
+  .grand-box .label { font-size: 15px; }
+  .grand-box .number { font-size: 22px; font-weight: 800; }
+  .grand-box .total-line { 
+    margin-top: 10px; 
+    padding-top: 10px; 
+    border-top: 3px solid #000; 
+    font-size: 18px; 
+    font-weight: 800; 
+  }
+  .note { 
+    text-align: center; 
+    font-size: 11px; 
+    color: #444; 
+    margin: 12px 0; 
+    font-style: italic; 
+  }
+  @media print {
+    @page { size: A4; margin: 10mm 8mm; }
+    body { padding: 4mm 6mm; font-size: 10.5px; line-height: 1.28; }
+    h1 { font-size: 14px; margin-bottom: 1px; }
+    .meta { font-size: 9.5px; margin-bottom: 6px; }
+    .note { display: none; } /* hide note in print to save space */
+    .ref-block { 
+      padding: 5px 7px; 
+      margin-bottom: 4mm; 
+      border-width: 1.5px;
+    }
+    .ref-num { 
+      padding: 2px 6px; 
+      font-size: 10px; 
+      margin-right: 5px;
+    }
+    .section { 
+      margin-top: 3px; 
+      padding: 3px 5px; 
+      border-width: 0.8px;
+    }
+    .section-title { font-size: 10.5px; margin-bottom: 1px; }
+    .info-line { margin: 1px 0; font-size: 10.5px; }
+    .info-line b { font-size: 11px; }
+    .extra-box { margin-top: 3px; padding: 3px 5px; }
+    .extra-title { font-size: 10px; margin-bottom: 1px; }
+    .extra-line { font-size: 10px; padding-left: 4px; margin: 1px 0; }
+    .price-box { 
+      margin-top: 4px; 
+      padding: 4px 6px; 
+      border-width: 2px;
+    }
+    .price-box .small { font-size: 9.5px; }
+    .price-box .big { font-size: 12px; }
+    .grand-summary { margin-top: 6mm; }
+    .grand-box { 
+      padding: 8px 12px; 
+      font-size: 11.5px; 
+      line-height: 1.5;
+      min-width: 320px;
+      border-width: 3px;
+    }
+    .grand-box .label { font-size: 11px; }
+    .grand-box .number { font-size: 15px; }
+    .grand-box .total-line { font-size: 13px; margin-top: 4px; padding-top: 4px; }
+    .grand-box > div:first-child { font-size: 12px !important; margin-bottom: 4px !important; }
+  }
+</style></head><body>`;
+
+  html += `<h1>รายงานการจองกิจกรรม<br>ร้าน Chance & Change Cafe</h1>`;
+  html += `<div class="meta">ทัณฑสถานบำบัดพิเศษกลาง • พิมพ์เมื่อ ${now} • เรียงตามเลขที่อ้างอิง</div>`;
+  html += `<div class="note">รายงานนี้แสดงข้อมูลการจองแต่ละเลขที่ กรุณาตรวจสอบให้ถูกต้องก่อนนำไปใช้</div>`;
+
+  filtered.forEach((r, i) => {
+    const extras = parseExtraVisitors(r);
+    const people = parseInt(r.visitorCount) || 1;
+    const price = parseInt(r.total) || (people * 1000);
+
+    html += `<div class="ref-block">`;
+
+    // Header with number and ref
+    html += `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">`;
+    html += `<div><span class="ref-num">รายการที่ ${i+1}</span> <span style="font-size:13px; font-weight:800;">เลขที่ ${r.ref}</span></div>`;
+    html += `<div style="font-size:10.5px; text-align:right; color:#333;">วันที่นัด: <b>${r.visitDate || '-'}</b></div>`;
+    html += `</div>`;
+
+    // Main visitor (ผู้จองหลัก)
+    html += `<div class="section">`;
+    html += `<div class="section-title">👤 ผู้จองหลัก (คนที่กรอกข้อมูล)</div>`;
+    html += `<div class="info-line">ชื่อ-นามสกุล: <b>${r.visitorName || '-'}</b></div>`;
+    html += `<div class="info-line">โทรศัพท์: ${r.visitorPhone || '-'}</div>`;
+    html += `<div class="info-line">เลขบัตรประชาชน: ${r.visitorId || '-'}</div>`;
+    html += `<div class="info-line">ความสัมพันธ์กับผู้ต้องขัง: ${r.relation || '-'}</div>`;
+    html += `</div>`;
+
+    // Prisoner
+    html += `<div class="section prisoner">`;
+    html += `<div class="section-title">🧍 ผู้ต้องขังที่มาเยี่ยม</div>`;
+    html += `<div class="info-line">ชื่อ: <b>${r.prisonerName || '-'}</b></div>`;
+    html += `<div class="info-line">เลขประจำตัว: ${r.prisonerId || '-'}</div>`;
+    html += `<div class="info-line">แดนที่อยู่: ${r.wing || '-'}</div>`;
+    html += `</div>`;
+
+    // Extra visitors - very simple for elderly
+    if (extras.length > 0) {
+      html += `<div class="extra-box">`;
+      html += `<div class="extra-title">👥 ผู้เข้าร่วมเพิ่มเติม (${extras.length} คน)</div>`;
+      extras.forEach((e, ei) => {
+        html += `<div class="extra-line">• ${e.name || '-'} &nbsp;&nbsp;บัตร: ${e.id || '-'} &nbsp;&nbsp;ความสัมพันธ์: ${e.relation || '-'}</div>`;
+      });
+      html += `</div>`;
+    }
+
+    // Total people for this booking + PRICE on right bottom (big and clear)
+    html += `<div class="price-box">`;
+    html += `<div class="small">รวมผู้เข้าร่วมในรายการนี้ <b>${people} คน</b></div>`;
+    html += `<div class="big" style="font-size:14px;">ค่าบริการรายการนี้: ${price.toLocaleString('th-TH')} บาท</div>`;
+    html += `</div>`;
+
+    html += `</div>`; // end ref-block
+  });
+
+  // ========== GRAND TOTAL SUMMARY (last page, very clear for elderly) ==========
+  html += `<div class="grand-summary">`;
+  html += `<div class="grand-box">`;
+  html += `<div style="font-size:15px; font-weight:800; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:4px; text-align:center;">📋 สรุปยอดรวมทั้งหมด</div>`;
+
+  html += `<div class="label">จำนวนผู้เข้าร่วมกิจกรรมทั้งหมด</div>`;
+  html += `<div class="number">${totalVisitors} คน</div>`;
+
+  html += `<div class="label" style="margin-top:8px;">จำนวนผู้ต้องขังที่เยี่ยมทั้งหมด</div>`;
+  html += `<div class="number">${totalPrisoners} คน</div>`;
+
+  html += `<div class="total-line">`;
+  html += `ยอดรวมค่าบริการทั้งหมด<br>`;
+  html += `<span style="font-size:26px; font-weight:900;">${totalPrice.toLocaleString('th-TH')} บาท</span>`;
+  html += `</div>`;
+  html += `</div>`;
+
+  html += `<div style="margin-top:14px; font-size:11px; color:#444;">(ค่าบริการ 1,000 บาท ต่อ 1 คน รวมผู้ต้องขัง)</div>`;
+  html += `<div style="margin-top:20px; font-size:10px; color:#555;">พิมพ์จากระบบเจ้าหน้าที่ • ทัณฑสถานบำบัดพิเศษกลาง • ${now}</div>`;
+  html += `</div>`;
+
+  html += `</body></html>`;
+
+  const w = window.open('', '_blank', 'width=1200,height=850');
+  if (!w) {
+    alert('กรุณาอนุญาต Popup เพื่อเปิดหน้าพิมพ์รายงาน');
+    return;
+  }
+  w.document.write(html);
+  w.document.close();
+
+  setTimeout(() => {
+    try { w.focus(); w.print(); } catch(e){}
+  }, 650);
+}
+
 document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModal(); closeDetailModal(); } });
 document.getElementById('passInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });

@@ -107,8 +107,10 @@
           <select class="filter-select" id="filterDate" onchange="resetToFirstPage();renderTable()">
             <option value="">ทุกวัน</option>
           </select>
-          <button class="refresh-btn" onclick="resetToFirstPage();loadData()">🔄 โหลดใหม่</button>
-          <button onclick="exportFilteredCSV()" style="margin-left:8px;background:#185FA5;color:#fff;border:1px solid #185FA5;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">📤 Export CSV</button>
+           <button class="refresh-btn" onclick="resetToFirstPage();loadData()">🔄 โหลดใหม่</button>
+           <button onclick="exportFilteredCSV()" style="margin-left:8px;background:#185FA5;color:#fff;border:1px solid #185FA5;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">📤 Export CSV</button>
+           <button onclick="printReport()" style="margin-left:8px;background:#0f766e;color:#fff;border:1px solid #0f766e;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ พิมพ์รายงาน</button>
+
         </div>
 
         <div class="table-wrap">
