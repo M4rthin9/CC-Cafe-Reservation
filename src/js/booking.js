@@ -213,30 +213,27 @@ function filterPrisonerSuggestions() {
 }
 
 function selectPrisoner(p) {
-  // Auto-fill the three prisoner fields
+  // Set hidden fields (used by validate/submit/confirm)
   document.getElementById('prisonerId').value = p.prisonerId;
   document.getElementById('prisonerName').value = p.prisonerName;
   document.getElementById('wing').value = p.wing || '';
+
+  // Update read-only display
+  document.getElementById('dispPrisonerName').textContent = p.prisonerName;
+  document.getElementById('dispPrisonerId').textContent = p.prisonerId;
+  document.getElementById('dispWing').textContent = p.wing || '';
+  document.getElementById('selectedPrisonerDisplay').style.display = 'block';
 
   // Clear search + hide dropdown
   document.getElementById('prisonerSearch').value = '';
   document.getElementById('prisonerSuggestions').innerHTML = '';
   document.getElementById('prisonerSuggestions').style.display = 'none';
 
-  // Show nice confirmation
+  // Show confirmation (below search)
   const statusEl = document.getElementById('prisonerMatchStatus');
   statusEl.textContent = `✓ เลือกจากฐานข้อมูล: ${p.prisonerName} (#${p.prisonerId}) — ${p.wing}`;
   statusEl.style.display = 'block';
   statusEl.style.color = 'var(--green)';
-
-  // Optional: highlight the fields briefly
-  ['prisonerId', 'prisonerName', 'wing'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.style.borderColor = 'var(--green)';
-      setTimeout(() => { el.style.borderColor = ''; }, 1200);
-    }
-  });
 }
 
 function checkPrisonerMatch() {
@@ -497,6 +494,18 @@ function showPage(n) {
 function resetAll() {
   document.querySelectorAll('input[type=text],input[type=tel]').forEach(i => i.value = '');
   document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  // clear prisoner hidden fields + display
+  const pName = document.getElementById('prisonerName');
+  const pId = document.getElementById('prisonerId');
+  const pWing = document.getElementById('wing');
+  if (pName) pName.value = '';
+  if (pId) pId.value = '';
+  if (pWing) pWing.value = '';
+  const disp = document.getElementById('selectedPrisonerDisplay');
+  if (disp) disp.style.display = 'none';
+  const pStatus = document.getElementById('prisonerMatchStatus');
+  if (pStatus) pStatus.style.display = 'none';
+
   document.getElementById('consent').checked = false;
   document.getElementById('extraVisitorsContainer').style.display = 'none';
   document.getElementById('extraVisitorsList').innerHTML = '';
