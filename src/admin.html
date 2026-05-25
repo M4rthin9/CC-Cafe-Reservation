@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>หน้าเจ้าหน้าที่ — ตรวจสอบการจอง</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/css/admin.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-icon">🔐</div>
+    <h1>หน้าเจ้าหน้าที่</h1>
+    <p>ทัณฑสถานบำบัดพิเศษกลาง</p>
+    <input type="password" class="login-input" id="passInput" placeholder="รหัสผ่าน" onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="login-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-err" id="loginErr">รหัสผ่านไม่ถูกต้อง</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dash" id="dash">
+  <div class="topbar">
+    <div>
+      <h1>🏛️ ระบบตรวจสอบการจองเยี่ยม</h1>
+      <div style="font-size:12px;opacity:0.8">ทัณฑสถานบำบัดพิเศษกลาง</div>
+    </div>
+    <div class="topbar-right">
+      <span id="topDate" style="font-size:13px;opacity:0.85"></span>
+      <button onclick="doLogout()">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="stats">
+      <div class="stat-card blue">
+        <div class="stat-label">📋 ทั้งหมด</div>
+        <div class="stat-val" id="statTotal">0</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-label">⏳ รอตรวจสอบ</div>
+        <div class="stat-val" id="statWait">0</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">✅ อนุมัติ/รอชำระ</div>
+        <div class="stat-val" id="statOk">0</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">❌ ไม่อนุมัติ</div>
+        <div class="stat-val" id="statReject">0</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" oninput="renderTable()">
+      <select class="filter-select" id="filterStatus" onchange="renderTable()">
+        <option value="">ทุกสถานะ</option>
+        <option value="รอตรวจสอบ">รอตรวจสอบ</option>
+        <option value="รอชำระเงิน">รอชำระเงิน</option>
+        <option value="ชำระแล้ว">ชำระแล้ว</option>
+        <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+        <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+      </select>
+      <select class="filter-select" id="filterDate" onchange="renderTable()">
+        <option value="">ทุกวัน</option>
+      </select>
+      <button class="refresh-btn" onclick="loadData()">🔄 โหลดใหม่</button>
+      <button onclick="exportFilteredCSV()" style="margin-left:8px;background:#185FA5;color:#fff;border:1px solid #185FA5;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">📤 Export CSV (ตาม Filter)</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>รายการจองทั้งหมด</h2>
+        <span class="table-count" id="tableCount">0 รายการ</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>เลขอ้างอิง</th>
+              <th>วันที่จอง</th>
+              <th class="hide-mobile">วันที่ร่วมกิจกรรม</th>
+              <th>ผู้เข้าร่วมกิจกรรม</th>
+              <th class="hide-mobile">ผู้ต้องขัง</th>
+              <th class="hide-mobile">แดน</th>
+              <th class="hide-mobile">จำนวน/ยอด</th>
+              <th>สถานะ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="9" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="last-updated" id="lastUpdated">อัพเดทล่าสุด: —</div>
+    </div>
+  </div>
+</div>
+
+<!-- Slip Modal -->
+<div class="modal-bg" id="modalBg" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>🧾 สลิปการโอนเงิน</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-bg" id="detailModalBg" onclick="closeDetailModal(event)">
+  <div class="modal modal-detail">
+    <div class="modal-head">
+      <h3>📋 รายละเอียดการจอง</h3>
+      <button class="modal-close" onclick="closeDetailModal()">×</button>
+    </div>
+    <div class="modal-body" id="detailModalBody"></div>
+  </div>
+</div>
+
+<script src="src/js/admin.js" defer></script>
+</body>
+</html>
