@@ -14,6 +14,8 @@ function doLogin() {
     document.getElementById('loginWrap').style.display = 'none';
     document.getElementById('dash').style.display = 'block';
     document.getElementById('topDate').textContent = new Date().toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'});
+    switchView('home');
+    renderDashboardHome();
     loadData();
   } else {
     document.getElementById('loginErr').style.display = 'block';
@@ -26,6 +28,12 @@ function doLogout() {
   document.getElementById('dash').style.display = 'none';
   document.getElementById('passInput').value = '';
   allRows = [];
+  // reset views to home
+  const h = document.getElementById('view-home');
+  const r = document.getElementById('view-reservations');
+  if (h) h.style.display = '';
+  if (r) r.style.display = 'none';
+  document.querySelectorAll('.sb-link').forEach(a => a.classList.toggle('active', a.getAttribute('data-view') === 'home'));
 }
 
 // ===== LOAD DATA =====
@@ -52,6 +60,7 @@ async function loadData() {
   updateStats();
   buildDateFilter();
   renderTable();
+  renderDashboardHome();
 }
 
 // ===== DEMO DATA =====
@@ -232,6 +241,72 @@ function renderPagination(totalPages, totalFiltered) {
   container.innerHTML = html;
 }
 
+function switchView(v) {
+  document.querySelectorAll('.view').forEach(el => {
+    el.style.display = (el.id === 'view-' + v) ? '' : 'none';
+  });
+  document.querySelectorAll('.sb-link').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('data-view') === v);
+  });
+  if (v === 'reservations' && allRows.length > 0) {
+    renderTable();
+  }
+  if (v === 'home') {
+    renderDashboardHome();
+  }
+}
+
+function renderDashboardHome() {
+  const container = document.getElementById('statusBars');
+  const recentEl = document.getElementById('recentBookings');
+  if (!container || !recentEl) return;
+
+  const total = allRows.length;
+  const counts = {};
+  allRows.forEach(r => {
+    const s = normalizeStatus(r.status);
+    counts[s] = (counts[s] || 0) + 1;
+  });
+
+  const order = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
+  const cols = ['#b45309', '#1a56db', '#0369a1', '#166534', '#dc2626', '#6b7280'];
+  let bars = '';
+  const max = Math.max(1, ...Object.values(counts));
+  order.forEach((s, i) => {
+    const c = counts[s] || 0;
+    const pct = total ? Math.round((c / total) * 100) : 0;
+    const w = Math.round((c / max) * 100);
+    bars += `<div class="status-bar">
+      <div class="status-bar-label">${s}</div>
+      <div class="status-bar-track"><div class="status-bar-fill" style="width:${w}%;background:${cols[i]}"></div></div>
+      <div class="status-bar-val">${c} <span style="font-size:10px;opacity:.6">(${pct}%)</span></div>
+    </div>`;
+  });
+  container.innerHTML = bars || '<div style="color:#888;font-size:12px">ไม่มีข้อมูล</div>';
+
+  // recent 5
+  if (!total) {
+    recentEl.innerHTML = '<div style="color:#888;font-size:12px">ยังไม่มีข้อมูล</div>';
+    return;
+  }
+  let rhtml = '';
+  allRows.slice(0, 5).forEach(r => {
+    const idx = allRows.indexOf(r);
+    const s = normalizeStatus(r.status);
+    let bcls = 'badge-wait';
+    if (s === 'รอชำระเงิน') bcls = 'badge-pay';
+    else if (s === 'ชำระแล้ว') bcls = 'badge-paid';
+    else if (s === 'เสร็จสิ้น') bcls = 'badge-done';
+    else if (s === 'ไม่อนุมัติ') bcls = 'badge-reject';
+    else if (s === 'ยกเลิก') bcls = 'badge-cancel';
+    rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:5px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;gap:8px;align-items:center;">
+      <div style="flex:1;min-width:0"><b style="font-size:12px">${r.ref}</b><div style="font-size:11px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.visitorName || ''}</div></div>
+      <div><span class="badge ${bcls}" style="font-size:10px;padding:1px 7px">${s}</span></div>
+    </div>`;
+  });
+  recentEl.innerHTML = rhtml;
+}
+
 // ===== UPDATE STATUS =====
 async function updateStatus(idx, newStatus) {
   const row = allRows[idx];
@@ -247,6 +322,7 @@ async function updateStatus(idx, newStatus) {
   } catch(e) { /* demo mode */ }
   updateStats();
   renderTable();
+  renderDashboardHome();
 }
 
 // ===== CONFIRM PAYMENT (ยืนยันการชำระเงิน) =====
@@ -264,6 +340,7 @@ async function confirmPayment(idx) {
   } catch(e) { /* demo mode */ }
   updateStats();
   renderTable();
+  renderDashboardHome();
 }
 
 // ===== REJECT PAYMENT (ปฏิเสธการชำระเงิน) =====
@@ -283,6 +360,7 @@ async function rejectPayment(idx) {
   alert('ปฏิเสธการชำระเงินแล้ว (สถานะกลับไปเป็น "รอชำระเงิน")');
   updateStats();
   renderTable();
+  renderDashboardHome();
 }
 
 // ===== CANCEL BOOKING =====
@@ -300,6 +378,7 @@ async function cancelBooking(idx) {
   } catch(e) { /* demo mode */ }
   updateStats();
   renderTable();
+  renderDashboardHome();
 }
 
 /* ===== Per-visitor approval (update + recalc price + overwrite row) ===== */
