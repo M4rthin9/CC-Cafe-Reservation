@@ -157,8 +157,10 @@ function doLogout() {
 async function loadData() {
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent(PASSWORD));
-    const data = await resp.json();
+    const resp = await fetch(APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent(PASSWORD), { redirect: 'follow' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    const data = JSON.parse(text);
     if (data.status !== 'ok') throw new Error(data.message);
     allRows = data.rows || [];
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
@@ -325,6 +327,23 @@ async function rejectPayment(idx) {
     });
   } catch(e) { /* demo mode */ }
   alert('ปฏิเสธการชำระเงินแล้ว (สถานะกลับไปเป็น "รอชำระเงิน")');
+  updateStats();
+  renderTable();
+}
+
+// ===== CANCEL BOOKING =====
+async function cancelBooking(idx) {
+  const row = allRows[idx];
+  if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
+  row.status = 'ยกเลิก';
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'cancelBooking', ref: row.ref, pass: PASSWORD })
+    });
+  } catch(e) { /* demo mode */ }
   updateStats();
   renderTable();
 }

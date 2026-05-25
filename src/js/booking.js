@@ -9,14 +9,13 @@ const HOLIDAYS = {
   '2026-05-01':'แรงงาน','2026-05-04':'ฉัตรมงคล','2026-05-11':'วิสาขบูชา',
   '2026-06-03':'วันพระราชินี','2026-07-10':'อาสาฬหบูชา','2026-07-28':'วันเฉลิม ร.10',
   '2026-08-12':'วันแม่','2026-10-13':'วันสวรรคต ร.9','2026-10-23':'จุฬาลงกรณ์',
-  '2026-12-05':'วันพ่อ','2026-12-10':'รัฐธรรมนูญ','2026-12-31':'วันสิ้นปี','2026-05-25':'เต็ม (20/20)','2026-06-01':'หยุดชดเชย',
-  '2026-05-26':'ปิดจอง (18/20)', // เพิ่มตัวอย่างวันปิดจอง
+  '2026-12-05':'วันพ่อ','2026-12-10':'รัฐธรรมนูญ','2026-12-31':'วันสิ้นปี','2026-06-01':'หยุดชกเชย','2026-05-26':'(18/20) ปิดจอง',
 };
 
 let calYear, calMonth, selectedDate = null;
-let bookings = { '2026-05-25': 20 };
+let bookings = {}; // will be loaded from server; no hardcoded demo
 
-const today = new Date(2026, 4, 25); // 25 May 2026 — bookings open from 26 May
+const today = new Date(); // use real current date (dynamic)
 calYear  = today.getFullYear();
 calMonth = today.getMonth();
 
@@ -52,13 +51,13 @@ function renderCalendar() {
   
   const todayStr = toLocalDateStr(today);
 
-  // ──คำนวณช่วงวันที่อนุญาตให้จอง (7 ถึง 10 วันล่วงหน้า) ──
+  // ──คำนวณช่วงวันที่อนุญาตให้จอง (พรุ่งนี้ ถึง 30 วันล่วงหน้า) ──
   const minAllowedDate = new Date(today);
-  minAllowedDate.setDate(today.getDate() + 0);
+  minAllowedDate.setDate(today.getDate() + 1);
   const minAllowedStr = toLocalDateStr(minAllowedDate);
 
   const maxAllowedDate = new Date(today);
-  maxAllowedDate.setDate(today.getDate() + 14);
+  maxAllowedDate.setDate(today.getDate() + 30);
   const maxAllowedStr = toLocalDateStr(maxAllowedDate);
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -73,11 +72,11 @@ function renderCalendar() {
     const isFull = quota >= QUOTA;
     const isSel  = selectedDate === dateStr;
     
-    // ── ตรวจสอบเงื่อนไข: ถ้านอกเหนือจากวันที่ 7 ถึง 10 วันล่วงหน้า ให้ถือว่าจองไม่ได้ ──
+    // ── ตรวจสอบเงื่อนไข: ถ้านอกเหนือจากช่วงที่อนุญาต ให้ถือว่าจองไม่ได้ ──
     const isNotWithinWindow = dateStr < minAllowedStr || dateStr > maxAllowedStr;
 
     let cls = 'day-btn';
-    // วันที่ผ่านมาแล้ว หรือวันไม่อยู่ในเงื่อนไข 7-10 วัน จะแสดงเป็นสีเทาจาง (.past)
+    // วันที่ผ่านมาแล้ว หรือวันไม่อยู่ในช่วงที่อนุญาต จะแสดงเป็นสีเทาจาง (.past)
     if (isPast || isNotWithinWindow) cls += ' past'; 
     else if (isHol) cls += ' holiday';
     else if (isWknd) cls += ' weekend';
@@ -88,7 +87,7 @@ function renderCalendar() {
     const holLabel = isHol ? `<span class="hol-label">${HOLIDAYS[dateStr]}</span>` : '';
     const quotaLabel = (!isPast && !isNotWithinWindow && !isHol && !isWknd) ? `<span class="quota">${quota}/${QUOTA}</span>` : '';
     
-    // กำหนดให้บล็อกการกด ถ้าเกิดเงื่อนไขอย่างใดอย่างหนึ่งรวมถึงการอยู่นอกช่วง 7-10 วันด้วย
+    // กำหนดให้บล็อกการกด ถ้าเกิดเงื่อนไขอย่างใดอย่างหนึ่ง
     const isBlocked = isPast || isNotWithinWindow || isHol || isWknd || isFull;
 
     grid.insertAdjacentHTML('beforeend',
@@ -197,7 +196,7 @@ function goToConfirm() {
     <div class="summary-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${document.getElementById('visitorPhone').value.trim()}</span></div>
     <div class="summary-row"><span class="lbl">🔗 ความสัมพันธ์</span><span class="val">${document.getElementById('relation').value}</span></div>
     <div class="summary-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${document.getElementById('prisonerName').value.trim()} (#${document.getElementById('prisonerId').value.trim()})</span></div>
-    <div class="summary-row"><span class="lbl">🏢 แแดน</span><span class="val">${document.getElementById('wing').value}</span></div>
+    <div class="summary-row"><span class="lbl">🏢 แดน</span><span class="val">${document.getElementById('wing').value}</span></div>
     <div class="summary-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${thDate}</span></div>
     <div class="summary-row"><span class="lbl">👥 จำนวนรวม</span><span class="val">ผู้เข้าร่วมกิจกรรม ${n} คน + ผู้ต้องขัง 1 = <strong>${totalPersons} คน</strong></span></div>
     <div class="summary-row"><span class="lbl">💰 ค่าบริการอาหาร (ประมาณ)</span><span class="val">${(totalPersons * 1000).toLocaleString()} บาท (ชำระหลังอนุมัติ)</span></div>
@@ -264,8 +263,8 @@ async function submitBooking() {
     slipImage: ''
   };
 
-  document.getElementById('overlay').classList.add('show');
-  // (already enabled above, keep for demo/no-script-url path)
+  // overlay already shown from duplicate check; do NOT add again
+  let submitSuccess = false;
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -276,19 +275,31 @@ async function submitBooking() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const result = JSON.parse(await resp.text());
     if (result.status !== 'ok') throw new Error(result.message || 'ไม่สำเร็จ');
+    submitSuccess = true;
   } catch (err) {
-    if (APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-      console.warn('Demo mode — Apps Script URL not configured');
+    const isDemoMode = APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+    if (isDemoMode) {
+      console.warn('Demo mode — Apps Script URL not configured (fake success for demo)');
+      submitSuccess = true;
     } else {
       console.error('Submit error:', err);
-      // Don't alert user on network error — ref is already shown
+      submitSuccess = false;
     }
   } finally {
     document.getElementById('overlay').classList.remove('show');
   }
 
+  if (!submitSuccess) {
+    document.getElementById('submitBtn').disabled = false;
+    alert('❌ การส่งคำขอจองล้มเหลว\n\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองใหม่อีกครั้ง\nหรือติดต่อเจ้าหน้าที่หากปัญหายังคงอยู่');
+    return;
+  }
+
+  // ✅ Success path (real save or demo)
   document.getElementById('refNumber').textContent = ref;
-  // ✅ ไม่เพิ่ม bookings[] ที่นี่อีกต่อไป — นับเฉพาะ "ชำระแล้ว" จาก sheet จริง
+
+  // Optimistic update local quota (counts pending bookings too)
+  bookings[selectedDate] = (bookings[selectedDate] || 0) + 1;
   renderCalendar();
 
   document.getElementById('finalSummary').innerHTML = `
@@ -392,4 +403,5 @@ async function loadBookingCounts() {
   renderCalendar();
 }
 
+renderCalendar(); // show immediately (with 0 quotas), load will refresh counts from server
 loadBookingCounts();
