@@ -56,8 +56,8 @@
 
     <!-- Controls -->
     <div class="controls">
-      <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" oninput="renderTable()">
-      <select class="filter-select" id="filterStatus" onchange="renderTable()">
+      <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" oninput="resetToFirstPage();renderTable()">
+      <select class="filter-select" id="filterStatus" onchange="resetToFirstPage();renderTable()">
         <option value="">ทุกสถานะ</option>
         <option value="รอตรวจสอบ">รอตรวจสอบ</option>
         <option value="รอชำระเงิน">รอชำระเงิน</option>
@@ -65,10 +65,10 @@
         <option value="เสร็จสิ้น">เสร็จสิ้น</option>
         <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
       </select>
-      <select class="filter-select" id="filterDate" onchange="renderTable()">
+      <select class="filter-select" id="filterDate" onchange="resetToFirstPage();renderTable()">
         <option value="">ทุกวัน</option>
       </select>
-      <button class="refresh-btn" onclick="loadData()">🔄 โหลดใหม่</button>
+      <button class="refresh-btn" onclick="resetToFirstPage();loadData()">🔄 โหลดใหม่</button>
       <button onclick="exportFilteredCSV()" style="margin-left:8px;background:#185FA5;color:#fff;border:1px solid #185FA5;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">📤 Export CSV (ตาม Filter)</button>
     </div>
 
@@ -98,6 +98,7 @@
           </tbody>
         </table>
       </div>
+      <div id="pagination" class="pagination"></div>
       <div class="last-updated" id="lastUpdated">อัพเดทล่าสุด: —</div>
     </div>
   </div>

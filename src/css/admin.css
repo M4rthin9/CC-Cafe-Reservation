@@ -115,7 +115,7 @@ tr:hover td { background: #f8f9fa; }
 .modal-body img { max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); }
 .modal-body .no-slip { color: var(--text2); font-size: 13px; padding: 2rem; text-align: center; }
 
-.last-updated { font-size: 12px; color: var(--text2); padding: 10px 1.25rem; border-top: 1px solid var(--border); }
+.last-updated { font-size: 12px; color: var(--text2); padding: 10px 1.25rem; }
 
 /* ===== Visitor Approval (per-relative อนุมัติเข้า/ห้ามเข้า) ===== */
 .visitor-approval { margin-top:6px; font-size:11px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
@@ -138,4 +138,87 @@ tr:hover td { background: #f8f9fa; }
 @media(max-width:700px) {
   .hide-mobile { display: none; }
   td, th { padding: 8px 10px; }
+}
+
+/* Pagination */
+.pagination {
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+}
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 1.25rem;
+  font-size: 13px;
+}
+.page-size {
+  color: var(--text2);
+  white-space: nowrap;
+}
+.page-size select {
+  padding: 3px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  font-family: inherit;
+  cursor: pointer;
+}
+.page-info {
+  color: var(--text);
+  white-space: nowrap;
+  font-size: 12px;
+}
+.page-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.page-nav button,
+.page-nav span.page-current {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1;
+}
+.page-nav button:hover:not(:disabled) {
+  background: var(--blue-light);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.page-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.page-nav span.page-current {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--blue);
+  font-weight: 600;
+}
+.page-nav span.page-ellipsis {
+  padding: 0 4px;
+  color: var(--text2);
+}
+@media(max-width:600px) {
+  .pagination-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .page-nav {
+    justify-content: center;
+  }
 }

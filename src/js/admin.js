@@ -4,6 +4,8 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfOtYJomd52MxJ
 
 // ===== STATE =====
 let allRows = [];
+let currentPage = 1;
+let pageSize = 10;
 
 // ===== LOGIN =====
 function doLogin() {
@@ -96,12 +98,22 @@ function renderTable() {
     if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
     return true;
   });
-  document.getElementById('tableCount').textContent = rows.length + ' รายการ';
-  if (!rows.length) {
+  const totalFiltered = rows.length;
+  document.getElementById('tableCount').textContent = totalFiltered + ' รายการ';
+
+  const totalPages = Math.ceil(totalFiltered / pageSize) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIdx = (currentPage - 1) * pageSize;
+  const pageRows = rows.slice(startIdx, startIdx + pageSize);
+
+  if (!totalFiltered) {
     document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="empty-state">ไม่พบข้อมูล</td></tr>';
+    renderPagination(0, 0);
     return;
   }
-  document.getElementById('tableBody').innerHTML = rows.map((r, idx) => {
+  document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
   const s = normalizeStatus(r.status);
   let badgeClass = 'badge-wait';
   if (s === 'รอชำระเงิน') badgeClass = 'badge-pay';
@@ -149,6 +161,75 @@ function renderTable() {
       </td>
     </tr>`;
   }).join('');
+  renderPagination(totalPages, totalFiltered);
+}
+
+function changePage(p) {
+  if (p < 1) return;
+  currentPage = p;
+  renderTable();
+}
+
+function changePageSize(newSize) {
+  pageSize = parseInt(newSize, 10) || 10;
+  currentPage = 1;
+  renderTable();
+}
+
+function resetToFirstPage() {
+  currentPage = 1;
+}
+
+function renderPagination(totalPages, totalFiltered) {
+  const container = document.getElementById('pagination');
+  if (!container) return;
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalFiltered);
+  let html = `
+    <div class="pagination-bar">
+      <div class="page-size">
+        แสดง 
+        <select onchange="changePageSize(this.value)">
+          <option value="5" ${pageSize===5?'selected':''}>5</option>
+          <option value="10" ${pageSize===10?'selected':''}>10</option>
+          <option value="20" ${pageSize===20?'selected':''}>20</option>
+          <option value="50" ${pageSize===50?'selected':''}>50</option>
+        </select>
+        รายการ
+      </div>
+      <div class="page-info">หน้า ${currentPage} / ${totalPages} <span style="color:var(--text2)">(${startItem}-${endItem} จาก ${totalFiltered})</span></div>
+      <div class="page-nav">
+        <button onclick="changePage(${currentPage-1})" ${currentPage===1 ? 'disabled' : ''}>←</button>
+  `;
+  // page number buttons (compact)
+  const maxButtons = 5;
+  let startP = Math.max(1, currentPage - Math.floor(maxButtons/2));
+  let endP = Math.min(totalPages, startP + maxButtons - 1);
+  if (endP - startP + 1 < maxButtons) startP = Math.max(1, endP - maxButtons + 1);
+  if (startP > 1) {
+    html += `<button onclick="changePage(1)">1</button>`;
+    if (startP > 2) html += `<span class="page-ellipsis">…</span>`;
+  }
+  for (let p = startP; p <= endP; p++) {
+    if (p === currentPage) {
+      html += `<span class="page-current">${p}</span>`;
+    } else {
+      html += `<button onclick="changePage(${p})">${p}</button>`;
+    }
+  }
+  if (endP < totalPages) {
+    if (endP < totalPages - 1) html += `<span class="page-ellipsis">…</span>`;
+    html += `<button onclick="changePage(${totalPages})">${totalPages}</button>`;
+  }
+  html += `
+        <button onclick="changePage(${currentPage+1})" ${currentPage===totalPages ? 'disabled' : ''}>→</button>
+      </div>
+    </div>`;
+  container.innerHTML = html;
 }
 
 // ===== UPDATE STATUS =====
