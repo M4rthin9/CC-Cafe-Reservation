@@ -1,6 +1,6 @@
 // ===== CONFIG =====
 const PASSWORD = '10900';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDKFHSHDj-I3sCeRYlfBxL5MQmM8GG5WQFN5jVNiNngDgqoEbtdXRTaf2JtTaHe2KEmw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxVj7NhzAuUAHqv_v4OiKtlVD8A1x73PzxLFAZ0TCJCgdTipYNcghaYfuIhn70-JADGg/exec';
 
 // ===== STATE =====
 let allRows = [];
