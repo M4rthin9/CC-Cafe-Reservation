@@ -1,35 +1,31 @@
 :root {
-  /* Applesque Luxury Light Palette - shared theme */
-  --studio-white: #F5F5F7;
-  --pure-white: #FFFFFF;
-  --velvet-obsidian: #1D1D1F;
-  --muted-platinum: #86868B;
-  --apple-blue: #0066CC;
-  --tech-silver: #E8E8ED;
+  /* Refined Politico-inspired palette — harmonious & eye-friendly (shared) */
+  --primary: #8C2525;
+  --primary-dark: #6F1C1C;
 
-  /* Legacy aliases for existing rules */
-  --bg: #F5F5F7;
-  --bg2: #FFFFFF;
-  --border: #E8E8ED;
-  --text: #1D1D1F;
-  --text2: #86868B;
-  --text-muted: #86868B;
-  --blue: #0066CC;
-  --blue-dark: #0055aa;
-  --blue-light: #F0F6FC;
+  --bg: #ffffff;
+  --bg2: #f8f8f8;
+  --border: #e5e5e5;
 
-  --green: #3a8a3a;
-  --green-light: #f0f7f0;
-  --gold: #a37d2e;
-  --gold-light: #f9f4e9;
-  --red: #c84040;
-  --red-light: #fdf0f0;
+  --text: #0d0f16;
+  --text2: #2f343a;
+  --text-muted: #6b7280;
 
-  --primary: #1D1D1F;
-  --primary-dark: #111113;
+  --blue: #1E4A6E;
+  --blue-dark: #153A57;
+  --blue-light: #E8EEF5;
 
-  --radius: 16px;
-  --radius-sm: 10px;
+  --green: #4A7C59;
+  --green-light: #E8F0E9;
+
+  --gold: #8B6B2E;
+  --gold-light: #F5E8C7;
+
+  --red: #8C2525;
+  --red-light: #F8E8E8;
+
+  --radius: 14px;
+  --radius-sm: 8px;
 }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--text); min-height: 100vh; }
