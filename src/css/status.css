@@ -53,10 +53,10 @@ label { font-size: 13px; color: var(--text2); font-weight: 500; display: block; 
 input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; background: var(--bg); color: var(--text); font-family: inherit; transition: border-color 0.15s; }
   input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24,95,165,0.1); background: #fff; }
 [data-theme="dark"] input { background: var(--bg2); color: var(--text); }
-[data-theme="dark"] input:focus { background: #2a2a2a; color: #fff; box-shadow: 0 0 0 3px rgba(229,152,102,0.2); }
+[data-theme="dark"] input:focus { background: #2a2a2a; color: #fff; box-shadow: 0 0 0 3px rgba(255,0,153,0.2); }
 @media (prefers-color-scheme: dark) {
   input { background: var(--bg2); color: var(--text); }
-  input:focus { background: #2a2a2a; color: #fff; box-shadow: 0 0 0 3px rgba(229,152,102,0.2); }
+  input:focus { background: #2a2a2a; color: #fff; box-shadow: 0 0 0 3px rgba(255,0,153,0.2); }
 }
 
 
@@ -155,88 +155,96 @@ input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border
 /* Dark theme using provided palette */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121212;
-    --bg2: #1e1e1e;
-    --border: #7F8C8D;
+    --bg: #0D0D0D;
+    --bg2: #161616;
+    --border: #2a2a2a;
     --text: #FFFFFF;
-    --text2: #7F8C8D;
-    --blue: #E59866;
-    --blue-dark: #c97a4a;
-    --blue-light: #2c2520;
-    --gold: #E59866;
-    --gold-light: #2c2520;
-    --green: #82E0AA;
-    --green-light: #1e3a2a;
-    --red: #E24B4A;
-    --red-light: #3a2525;
+    --text2: #888888;
+    --blue: #1E90FF;
+    --blue-dark: #1878d3;
+    --blue-light: #0f2f4d;
+    --green: #00FF85;
+    --green-light: #0a2a1a;
+    --red: #ff6b6b;
+    --red-light: #3a1a1a;
     --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --hover: #FF0099;
   }
 }
 [data-theme="dark"] {
-  --bg: #121212;
-  --bg2: #1e1e1e;
-  --border: #7F8C8D;
+  --bg: #0D0D0D;
+  --bg2: #161616;
+  --border: #2a2a2a;
   --text: #FFFFFF;
-  --text2: #7F8C8D;
-  --blue: #E59866;
-  --blue-dark: #c97a4a;
-  --blue-light: #2c2520;
-  --gold: #E59866;
-  --gold-light: #2c2520;
-  --green: #82E0AA;
-  --green-light: #1e3a2a;
-  --red: #E24B4A;
-  --red-light: #3a2525;
+  --text2: #888888;
+  --blue: #1E90FF;
+  --blue-dark: #1878d3;
+  --blue-light: #0f2f4d;
+  --green: #00FF85;
+  --green-light: #0a2a1a;
+  --red: #ff6b6b;
+  --red-light: #3a1a1a;
   --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --hover: #FF0099;
 }
 /* Dark overrides */
-[data-theme="dark"] .header { background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); }
-[data-theme="dark"] .status-pending { background: #2c2520; color: #E59866; border-color: rgba(229,152,102,0.3); }
-[data-theme="dark"] .status-approved { background: #1e3a2a; color: #82E0AA; border-color: rgba(130,224,170,0.25); }
-[data-theme="dark"] .status-rejected { background: #3a2525; color: #E24B4A; border-color: rgba(226,75,74,0.25); }
-[data-theme="dark"] .status-paid { background: #1e2a4a; color: #7aa3ff; border-color: rgba(122,163,255,0.25); }
-[data-theme="dark"] .pay-section { background: #1e3a2a; border-color: rgba(130,224,170,0.3); color: #ccc; }
-[data-theme="dark"] .pay-section h3 { color: #82E0AA; }
+[data-theme="dark"] .header { background: linear-gradient(135deg, #1a1a1a 0%, #0D0D0D 100%); }
+[data-theme="dark"] .status-pending { background: #1f1f1f; color: #1E90FF; border-color: rgba(30,144,255,0.3); }
+[data-theme="dark"] .status-approved { background: #0a2a1a; color: #00FF85; border-color: rgba(0,255,133,0.25); }
+[data-theme="dark"] .status-rejected { background: #3a1a1a; color: #ff6b6b; border-color: rgba(255,107,107,0.25); }
+[data-theme="dark"] .status-paid { background: #0f2f4d; color: #1E90FF; border-color: rgba(30,144,255,0.25); }
+[data-theme="dark"] .pay-section { background: #0a2a1a; border-color: rgba(0,255,133,0.3); color: #ccc; }
+[data-theme="dark"] .pay-section h3 { color: #00FF85; }
 [data-theme="dark"] .pay-section p { color: #a3c88a; }
-[data-theme="dark"] .upload-area { background: #1e1e1e; }
-[data-theme="dark"] .upload-area:hover { background: #2c2520; }
-[data-theme="dark"] .rejected-notice { background: #3a2525; border-color: rgba(226,75,74,0.3); }
-[data-theme="dark"] .rejected-notice h3 { color: #E24B4A; }
+[data-theme="dark"] .upload-area { background: #161616; }
+[data-theme="dark"] .upload-area:hover { background: #2a0f1f; }
+[data-theme="dark"] .rejected-notice { background: #3a1a1a; border-color: rgba(255,107,107,0.3); }
+[data-theme="dark"] .rejected-notice h3 { color: #ff6b6b; }
 [data-theme="dark"] .rejected-notice p { color: #c88a8a; }
-[data-theme="dark"] .paid-notice { background: #1e2a4a; border-color: rgba(122,163,255,0.25); }
-[data-theme="dark"] .paid-notice h3 { color: #7aa3ff; }
+[data-theme="dark"] .paid-notice { background: #0f2f4d; border-color: rgba(30,144,255,0.25); }
+[data-theme="dark"] .paid-notice h3 { color: #1E90FF; }
 [data-theme="dark"] .paid-notice p { color: #a3b8e0; }
-[data-theme="dark"] .alert-strip.err { background: #3a2525; color: #c88a8a; border-color: rgba(226,75,74,0.3); }
-[data-theme="dark"] .alert-strip.ok { background: #1e3a2a; color: #a3c88a; border-color: rgba(130,224,170,0.25); }
-[data-theme="dark"] .ref-box-sm { background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); }
-[data-theme="dark"] .visitor-item { background: #1e1e1e; border-color: #7F8C8D; }
-[data-theme="dark"] .approval-badge.yes { background: #1e3a2a; color: #82E0AA; }
-[data-theme="dark"] .approval-badge.no { background: #3a2525; color: #E24B4A; }
-[data-theme="dark"] .approval-badge.pending { background: #2c2520; color: #E59866; }
+[data-theme="dark"] .alert-strip.err { background: #3a1a1a; color: #c88a8a; border-color: rgba(255,107,107,0.3); }
+[data-theme="dark"] .alert-strip.ok { background: #0a2a1a; color: #a3c88a; border-color: rgba(0,255,133,0.25); }
+[data-theme="dark"] .ref-box-sm { background: linear-gradient(135deg, #1a1a1a 0%, #0D0D0D 100%); }
+[data-theme="dark"] .visitor-item { background: #161616; border-color: #2a2a2a; }
+[data-theme="dark"] .approval-badge.yes { background: #0a2a1a; color: #00FF85; }
+[data-theme="dark"] .approval-badge.no { background: #3a1a1a; color: #ff6b6b; }
+[data-theme="dark"] .approval-badge.pending { background: #1f1f1f; color: #1E90FF; }
+
+/* Hover effects using vivid pink */
+[data-theme="dark"] .upload-area:hover { background: #2a0f1f; border-color: #FF0099; }
+[data-theme="dark"] .btn-secondary:hover { border-color: #FF0099; color: #FF0099; }
+[data-theme="dark"] .btn-primary:hover { background: #FF0099; }
 @media (prefers-color-scheme: dark) {
-  .header { background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); }
-  .status-pending { background: #2c2520; color: #E59866; border-color: rgba(229,152,102,0.3); }
-  .status-approved { background: #1e3a2a; color: #82E0AA; border-color: rgba(130,224,170,0.25); }
-  .status-rejected { background: #3a2525; color: #E24B4A; border-color: rgba(226,75,74,0.25); }
-  .status-paid { background: #1e2a4a; color: #7aa3ff; border-color: rgba(122,163,255,0.25); }
-  .pay-section { background: #1e3a2a; border-color: rgba(130,224,170,0.3); color: #ccc; }
-  .pay-section h3 { color: #82E0AA; }
+  .header { background: linear-gradient(135deg, #1a1a1a 0%, #0D0D0D 100%); }
+  .status-pending { background: #1f1f1f; color: #1E90FF; border-color: rgba(30,144,255,0.3); }
+  .status-approved { background: #0a2a1a; color: #00FF85; border-color: rgba(0,255,133,0.25); }
+  .status-rejected { background: #3a1a1a; color: #ff6b6b; border-color: rgba(255,107,107,0.25); }
+  .status-paid { background: #0f2f4d; color: #1E90FF; border-color: rgba(30,144,255,0.25); }
+  .pay-section { background: #0a2a1a; border-color: rgba(0,255,133,0.3); color: #ccc; }
+  .pay-section h3 { color: #00FF85; }
   .pay-section p { color: #a3c88a; }
-  .upload-area { background: #1e1e1e; }
-  .upload-area:hover { background: #2c2520; }
-  .rejected-notice { background: #3a2525; border-color: rgba(226,75,74,0.3); }
-  .rejected-notice h3 { color: #E24B4A; }
+  .upload-area { background: #161616; }
+  .upload-area:hover { background: #2a0f1f; }
+  .rejected-notice { background: #3a1a1a; border-color: rgba(255,107,107,0.3); }
+  .rejected-notice h3 { color: #ff6b6b; }
   .rejected-notice p { color: #c88a8a; }
-  .paid-notice { background: #1e2a4a; border-color: rgba(122,163,255,0.25); }
-  .paid-notice h3 { color: #7aa3ff; }
+  .paid-notice { background: #0f2f4d; border-color: rgba(30,144,255,0.25); }
+  .paid-notice h3 { color: #1E90FF; }
   .paid-notice p { color: #a3b8e0; }
-  .alert-strip.err { background: #3a2525; color: #c88a8a; border-color: rgba(226,75,74,0.3); }
-  .alert-strip.ok { background: #1e3a2a; color: #a3c88a; border-color: rgba(130,224,170,0.25); }
-  .ref-box-sm { background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); }
-  .visitor-item { background: #1e1e1e; border-color: #7F8C8D; }
-  .approval-badge.yes { background: #1e3a2a; color: #82E0AA; }
-  .approval-badge.no { background: #3a2525; color: #E24B4A; }
-  .approval-badge.pending { background: #2c2520; color: #E59866; }
+  .alert-strip.err { background: #3a1a1a; color: #c88a8a; border-color: rgba(255,107,107,0.3); }
+  .alert-strip.ok { background: #0a2a1a; color: #a3c88a; border-color: rgba(0,255,133,0.25); }
+  .ref-box-sm { background: linear-gradient(135deg, #1a1a1a 0%, #0D0D0D 100%); }
+  .visitor-item { background: #161616; border-color: #2a2a2a; }
+  .approval-badge.yes { background: #0a2a1a; color: #00FF85; }
+  .approval-badge.no { background: #3a1a1a; color: #ff6b6b; }
+  .approval-badge.pending { background: #1f1f1f; color: #1E90FF; }
+
+  /* Hover effects using vivid pink */
+  .upload-area:hover { background: #2a0f1f; border-color: #FF0099; }
+  .btn-secondary:hover { border-color: #FF0099; color: #FF0099; }
+  .btn-primary:hover { background: #FF0099; }
 }
 
 /* Theme toggle button (works in light + dark) */
@@ -265,12 +273,12 @@ input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border
   box-shadow: 0 6px 16px rgba(0,0,0,0.3);
 }
 [data-theme="dark"] .theme-toggle {
-  background: #1e1e1e;
-  border-color: #7F8C8D;
+  background: #161616;
+  border-color: #2a2a2a;
 }
 @media (prefers-color-scheme: dark) {
   .theme-toggle {
-    background: #1e1e1e;
-    border-color: #7F8C8D;
+    background: #161616;
+    border-color: #2a2a2a;
   }
 }
