@@ -1,31 +1,35 @@
 :root {
-  /* Politico-inspired light theme (high-contrast news-magazine style) */
-  --primary: #d71920;           /* signature Politico red */
-  --primary-dark: #b9131a;
+  /* Applesque Luxury Light Palette - shared theme */
+  --studio-white: #F5F5F7;
+  --pure-white: #FFFFFF;
+  --velvet-obsidian: #1D1D1F;
+  --muted-platinum: #86868B;
+  --apple-blue: #0066CC;
+  --tech-silver: #E8E8ED;
 
-  --bg: #ffffff;
-  --bg2: #f8f8f8;               /* subtle secondary surface */
-  --border: #e5e5e5;
+  /* Legacy aliases for existing rules */
+  --bg: #F5F5F7;
+  --bg2: #FFFFFF;
+  --border: #E8E8ED;
+  --text: #1D1D1F;
+  --text2: #86868B;
+  --text-muted: #86868B;
+  --blue: #0066CC;
+  --blue-dark: #0055aa;
+  --blue-light: #F0F6FC;
 
-  --text: #0d0f16;              /* near-black body/headings */
-  --text2: #2f343a;             /* secondary text */
-  --text-muted: #6b7280;
+  --green: #3a8a3a;
+  --green-light: #f0f7f0;
+  --gold: #a37d2e;
+  --gold-light: #f9f4e9;
+  --red: #c84040;
+  --red-light: #fdf0f0;
 
-  --blue: #004a77;              /* deep editorial blue for links/secondary */
-  --blue-dark: #003a5e;
-  --blue-light: #e8f0f7;
+  --primary: #1D1D1F;
+  --primary-dark: #111113;
 
-  --green: #77bf69;
-  --green-light: #f0f7ef;
-
-  --gold: #ffd128;
-  --gold-light: #fffbeb;
-
-  --red: #d71920;
-  --red-light: #fce8e8;
-
-  --radius: 12px;
-  --radius-sm: 8px;
+  --radius: 16px;
+  --radius-sm: 10px;
 }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--text); min-height: 100vh; }

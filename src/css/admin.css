@@ -1,4 +1,12 @@
 :root {
+  /* Applesque Luxury Light Palette (admin dashboard) */
+  --studio-white: #F5F5F7;
+  --pure-white: #FFFFFF;
+  --velvet-obsidian: #1D1D1F;
+  --muted-platinum: #86868B;
+  --apple-blue: #0066CC;
+  --tech-silver: #E8E8ED;
+
   --blue: #185FA5;
   --blue-dark: #0C447C;
   --blue-light: #E6F1FB;
@@ -8,11 +16,11 @@
   --yellow-light: #fef3c7;
   --red: #E24B4A;
   --red-light: #fef2f2;
-  --bg: #f0f2f5;
-  --bg2: #ffffff;
-  --border: #e0e3e8;
-  --text: #1a1d23;
-  --text2: #6b7280;
+  --bg: #F5F5F7;
+  --bg2: #FFFFFF;
+  --border: #E8E8ED;
+  --text: #1D1D1F;
+  --text2: #86868B;
   --radius: 12px;
   --radius-sm: 8px;
 }

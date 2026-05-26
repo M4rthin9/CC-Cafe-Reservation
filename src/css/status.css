@@ -1,32 +1,37 @@
 :root {
-  /* Politico-inspired light theme */
-  --primary: #d71920;
-  --primary-dark: #b9131a;
+  /* Applesque Luxury Light Palette - shared theme */
+  --studio-white: #F5F5F7;
+  --pure-white: #FFFFFF;
+  --velvet-obsidian: #1D1D1F;
+  --muted-platinum: #86868B;
+  --apple-blue: #0066CC;
+  --tech-silver: #E8E8ED;
 
-  --bg: #ffffff;
-  --bg2: #f8f8f8;
-  --border: #e5e5e5;
+  /* Legacy aliases for existing rules */
+  --bg: #F5F5F7;
+  --bg2: #FFFFFF;
+  --border: #E8E8ED;
+  --text: #1D1D1F;
+  --text2: #86868B;
+  --text-muted: #86868B;
 
-  --text: #0d0f16;
-  --text2: #2f343a;
-  --text-muted: #6b7280;
+  --blue: #0066CC;
+  --blue-dark: #0055aa;
+  --blue-light: #F0F6FC;
+  --blue-mid: #0066CC;
 
-  --blue: #004a77;
-  --blue-dark: #003a5e;
-  --blue-light: #e8f0f7;
-  --blue-mid: #004a77;
+  --green: #3a8a3a;
+  --green-light: #f0f7f0;
+  --gold: #a37d2e;
+  --gold-light: #f9f4e9;
+  --red: #c84040;
+  --red-light: #fdf0f0;
 
-  --green: #77bf69;
-  --green-light: #f0f7ef;
-
-  --gold: #ffd128;
-  --gold-light: #fffbeb;
-
-  --red: #d71920;
-  --red-light: #fce8e8;
+  --primary: #1D1D1F;
+  --primary-dark: #111113;
 
   --radius: 12px;
-  --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
 }
 * { box-sizing: border-box; margin: 0; }
 body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--text); }
