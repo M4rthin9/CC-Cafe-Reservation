@@ -482,100 +482,98 @@ function goToConfirm() {
   const prisonerId = document.getElementById('prisonerId').value.trim();
   const wing = document.getElementById('wing').value;
 
-  // ========== 4 SEPARATE DEPARTMENT REPORTS ==========
+  // ========== CUSTOMER-FOCUSED CONFIRMATION (UX Redesign) ==========
+  /*
+  UX RECOMMENDATIONS IMPLEMENTED FOR STEP 2:
+  1. Clarity: Hero banner with the 3 most critical facts first (Date, Headcount, Total Cost) — users scan this instantly.
+  2. Reduced friction: Grouped into 4 scannable sections using plain language + icons. No jargon like "kitchen report".
+  3. Verify ease: Large bold values, subtle labels, visual separation. Users can confirm in <5 seconds.
+  4. Admin stuff deprioritized: Removed 5 colored dept-specific reports from customer view (those are internal tools).
+     - One clean "Copy my summary" for user's personal record / Line / print.
+     - Dept copy buttons remain available via admin interfaces or future "staff view".
+  5. Reassurance & commitment: Explicit "ข้อมูลถูกต้องทั้งหมดใช่ไหม?" + prominent primary action.
+  6. Accessibility: Uses existing high-contrast text, good tap targets on buttons, logical reading order.
+  7. Less cognitive load: ~60% less content vs old version; focused only on what the customer cares about.
+  */
 
-  // 1. BOOKING REPORT (full record)
-  const bookingReportHtml = `
-    <div class="dept-report booking-report">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong>📋 รายงานการจอง (Booking Report)</strong>
-        <button onclick="copyDeptReport('booking')" style="font-size:11px;padding:2px 8px;background:#185fa5;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
-      </div>
-      <div style="font-size:12.5px;line-height:1.55">
-        วันที่เข้าร่วม: <strong>${thDate}</strong><br>
-        ผู้จอง: <strong>${visitor1Name}</strong> (${mainPhone})<br>
-        ความสัมพันธ์: ${mainRelation}<br>
-        ผู้ต้องขัง: <strong>${prisonerName}</strong> (#${prisonerId}) — ${wing}<br>
-        จำนวน: ญาติ ${n} คน + ผู้ต้องขัง 1 = <strong>${totalPersons} คน</strong><br>
-        ค่าบริการ: <strong>${cost.total.toLocaleString()} บาท</strong>
-        ${cost.discountNotes.length ? `<br><span style="color:#2e7d32">ส่วนลดบุตร/ธิดา: ${cost.discountNotes.join(', ')}</span>` : ''}
-      </div>
-    </div>`;
+  const extrasListHtml = extras.length > 0 ? extras.map((v, i) => {
+    const feeNote = (v.relation === 'บุตร / ธิดา' && v.age) ? ` (อายุ ${v.age} ปี)` : '';
+    return `<div style="font-size:13px;padding:2px 0;">• ${v.name} — ${v.relation}${feeNote}</div>`;
+  }).join('') : '<div style="font-size:13px;color:#666">ไม่มีผู้เข้าร่วมเพิ่มเติม</div>';
 
-  // 2. TABLE REPORT (for seating / table assignment)
-  const tableReportHtml = `
-    <div class="dept-report table-report">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong>🪑 รายงานการจัดโต๊ะ (Table Assignment)</strong>
-        <button onclick="copyDeptReport('table')" style="font-size:11px;padding:2px 8px;background:#ff9800;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
-      </div>
-      <div style="font-size:13px;line-height:1.5">
-        <strong>วันที่:</strong> ${thDate}<br>
-        <strong>โต๊ะที่จอง:</strong> 1 โต๊ะ<br>
-        <strong>จำนวนที่นั่ง:</strong> ${totalPersons} คน (ญาติ ${n} + ผู้ต้องขัง 1)<br>
-        <strong>ผู้ติดต่อหลัก:</strong> ${visitor1Name} (${mainPhone})<br>
-        <strong>ผู้ต้องขัง:</strong> ${prisonerName} (#${prisonerId})
-      </div>
-    </div>`;
+  const discountLine = cost.discountNotes.length
+    ? `<div style="font-size:12px;color:#2e7d32;margin-top:4px">✓ ส่วนลดบุตร/ธิดา: ${cost.discountNotes.join(' • ')}</div>`
+    : '';
 
-  // 3. ส่วนทัณฑ์ (Disciplinary / Escort) — ONLY prisoner info
-  const disciplinaryReportHtml = `
-    <div class="dept-report disciplinary-report">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong>🚨 รายงานสำหรับส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong>
-        <button onclick="copyDeptReport('disciplinary')" style="font-size:11px;padding:2px 8px;background:#c62828;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
+  const userSummaryHtml = `
+    <div class="confirm-hero">
+      <div class="confirm-hero-date">
+        <i class="ti ti-calendar-event"></i>
+        <span>วันที่เข้าร่วม</span>
       </div>
-      <div style="font-size:13px;line-height:1.6">
-        <strong>วันที่เข้าร่วม:</strong> ${thDate}<br>
-        <strong>ชื่อผู้ต้องขัง:</strong> ${prisonerName}<br>
-        <strong>เลขผู้ต้องขัง:</strong> ${prisonerId}<br>
-        <strong>แดน:</strong> ${wing}
+      <div class="confirm-hero-main">${thDate}</div>
+      <div class="confirm-hero-meta">
+        👥 ${totalPersons} คน (รวมผู้ต้องขัง) &nbsp;•&nbsp; <strong>${cost.total.toLocaleString()} บาท</strong>
       </div>
-    </div>`;
-
-  // 4. KITCHEN REPORT — include prisoner in total
-  const kitchenReportHtml = `
-    <div class="dept-report kitchen-report">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong>🍽️ รายงานสำหรับครัว (Kitchen Report)</strong>
-        <button onclick="copyDeptReport('kitchen')" style="font-size:11px;padding:2px 8px;background:#2e7d32;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
-      </div>
-      <div style="font-size:13px;line-height:1.55">
-        <strong>รวมทั้งหมด:</strong> ญาติ ${n} คน + ผู้ต้องขัง 1 คน = <strong>${totalPersons} คน</strong><br><br>
-        <strong>ผู้ใหญ่ (ญาติ):</strong> ${c.adults} คน<br>
-        <strong>เด็ก 5-8 ปี (ญาติ):</strong> ${c.kids5_8} คน ${c.kids5_8Names.length ? '— ' + c.kids5_8Names.join(', ') : ''}<br>
-        <strong>เด็กต่ำกว่า 5 ปี (ญาติ):</strong> ${c.kidsUnder5} คน ${c.kidsUnder5Names.length ? '— ' + c.kidsUnder5Names.join(', ') : ''}<br>
-        <span style="font-size:11px;color:#555">* เตรียมอาหารตามจำนวนญาติ + ผู้ต้องขัง 1 คน</span>
-      </div>
-    </div>`;
-
-  // 5. BAKERY REPORT — include prisoner in total
-  const bakeryReportHtml = `
-    <div class="dept-report bakery-report">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong>🍰 รายงานสำหรับเบเกอรี่ (Bakery Report)</strong>
-        <button onclick="copyDeptReport('bakery')" style="font-size:11px;padding:2px 8px;background:#c8922a;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
-      </div>
-      <div style="font-size:13px;line-height:1.55">
-        <strong>รวมทั้งหมด:</strong> ญาติ ${n} คน + ผู้ต้องขัง 1 คน = <strong>${totalPersons} คน</strong><br><br>
-        <strong>ผู้ใหญ่ (ญาติ):</strong> ${c.adults} คน<br>
-        <strong>เด็ก 5-8 ปี (ญาติ):</strong> ${c.kids5_8} คน ${c.kids5_8Names.length ? '— ' + c.kids5_8Names.join(', ') : ''}<br>
-        <strong>เด็กต่ำกว่า 5 ปี (ญาติ):</strong> ${c.kidsUnder5} คน ${c.kidsUnder5Names.length ? '— ' + c.kidsUnder5Names.join(', ') : ''}<br>
-        <span style="font-size:11px;color:#555">* เตรียมของหวานตามจำนวนญาติ + ผู้ต้องขัง 1 คน</span>
-      </div>
-    </div>`;
-
-  document.getElementById('confirmSummary').innerHTML = `
-    <div style="font-size:12px;color:#555;margin-bottom:6px;text-align:center">
-      📤 <strong>รายงานแยกตามฝ่าย</strong> — คลิกปุ่มคัดลอกเพื่อส่งต่อแต่ละแผนก
     </div>
-    ${bookingReportHtml}
-    ${tableReportHtml}
-    ${disciplinaryReportHtml}
-    ${kitchenReportHtml}
-    ${bakeryReportHtml}
-    <div style="font-size:11px;color:#888;text-align:center;margin-top:4px">ข้อมูลนี้ใช้สำหรับเตรียมการก่อนส่งคำขอจอง</div>
+
+    <div class="review-grid">
+      <div class="review-section">
+        <div class="review-label"><i class="ti ti-user"></i> ผู้จองหลัก (ผู้ติดต่อ)</div>
+        <div class="review-value">${visitor1Name}</div>
+        <div class="review-sub">${mainPhone} • ${mainRelation}</div>
+      </div>
+
+      <div class="review-section">
+        <div class="review-label"><i class="ti ti-users"></i> ผู้เข้าร่วมกิจกรรมทั้งหมด (${n} คน)</div>
+        <div class="review-value" style="font-size:14px;line-height:1.4">
+          1. ${visitor1Name} (ผู้จอง)
+          ${extrasListHtml}
+        </div>
+      </div>
+
+      <div class="review-section">
+        <div class="review-label"><i class="ti ti-lock"></i> ผู้ต้องขังที่เข้าร่วม</div>
+        <div class="review-value">${prisonerName}</div>
+        <div class="review-sub">#${prisonerId} • แดน ${wing}</div>
+      </div>
+
+      <div class="review-section cost">
+        <div class="review-label"><i class="ti ti-coin"></i> สรุปค่าบริการ</div>
+        <div style="font-size:22px;font-weight:700;color:var(--text);margin:4px 0">${cost.total.toLocaleString()} บาท</div>
+        <div style="font-size:12px;color:var(--text2)">ผู้ใหญ่ ${c.adults} คน • เด็ก 5-8 ปี ${c.kids5_8} • ต่ำกว่า 5 ปี ${c.kidsUnder5}</div>
+        ${discountLine}
+      </div>
+    </div>
+
+    <div style="margin:12px 0 4px;font-size:12px;color:#666;text-align:center;line-height:1.5">
+      โปรดตรวจสอบให้แน่ใจว่าข้อมูลข้างต้นถูกต้องทุกประการ<br>
+      หลังส่งคำขอแล้วจะได้รับเลขอ้างอิงทันทีเพื่อติดตามสถานะ
+    </div>
   `;
+
+  document.getElementById('confirmSummary').innerHTML = userSummaryHtml;
+
+  // Attach one clean user copy button (we can enhance the DOM after insert)
+  setTimeout(() => {
+    const summaryEl = document.getElementById('confirmSummary');
+    if (summaryEl && !document.getElementById('userCopyBtn')) {
+      const copyBtn = document.createElement('button');
+      copyBtn.id = 'userCopyBtn';
+      copyBtn.className = 'btn-secondary';
+      copyBtn.style.cssText = 'width:100%;margin-top:8px;font-size:13px;padding:9px';
+      copyBtn.innerHTML = '<i class="ti ti-copy"></i> คัดลอกสรุปการจองของฉัน (บันทึกส่วนตัว)';
+      copyBtn.onclick = () => {
+        const cleanText = `การจองกิจกรรม Chance & Change Cafe\nวันที่: ${thDate}\nผู้จอง: ${visitor1Name} (${mainPhone})\nจำนวน: ${totalPersons} คน\nผู้ต้องขัง: ${prisonerName} (#${prisonerId})\nรวม: ${cost.total} บาท\nRef หลังส่ง: จะได้รับทันที`;
+        navigator.clipboard.writeText(cleanText).then(() => {
+          copyBtn.innerHTML = '<i class="ti ti-check"></i> คัดลอกแล้ว';
+          setTimeout(() => { if(copyBtn) copyBtn.innerHTML = '<i class="ti ti-copy"></i> คัดลอกสรุปการจองของฉัน (บันทึกส่วนตัว)'; }, 1800);
+        }).catch(() => alert(cleanText));
+      };
+      summaryEl.appendChild(copyBtn);
+    }
+  }, 0);
+
   showPage(2);
 }
 

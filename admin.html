@@ -206,25 +206,7 @@
 
   <script src="src/js/admin.js" defer></script>
 
-<button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">🌙</button>
-<script>
-(function(){
-  const root = document.documentElement;
-  const btn = document.getElementById('themeToggle');
-  function apply(t){
-    if(t==='dark'){ root.setAttribute('data-theme','dark'); btn.textContent='☀️'; }
-    else { root.removeAttribute('data-theme'); btn.textContent='🌙'; }
-  }
-  const saved = localStorage.getItem('theme');
-  if(saved) apply(saved);
-  else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) apply('dark');
-  btn.onclick = () => {
-    const next = root.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
-    apply(next);
-    localStorage.setItem('theme', next);
-  };
-})();
-</script>
+
 </body>
 </html>
 
