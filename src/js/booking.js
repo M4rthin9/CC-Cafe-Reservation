@@ -129,8 +129,27 @@ function updateExtraVisitors() {
         '<input type="text" id="extraVisitorId' + i + '" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17"></div>' +
       '</div>' +
       '<div class="form-group"><label>ความสัมพันธ์ <span style=\"color:var(--red)\">*</span></label>' +
-      '<select id="extraVisitorRelation' + i + '">' + relOpts + '</select></div>';
+      '<select id="extraVisitorRelation' + i + '">' + relOpts + '</select></div>' +
+      '<div class="form-group" id="ageGroup' + i + '" style="display:none;margin-top:6px;">' +
+      '<label>อายุ (ปี) <span style=\"color:var(--red)\">*</span></label>' +
+      '<input type="number" id="extraVisitorAge' + i + '" min="0" max="120" placeholder="อายุ (ปี) · &lt;5 ฟรี, 5-8=500, &gt;8=1000">' +
+      '</div>';
     list.appendChild(div);
+    // attach conditional age field for บุตร/ธิดา
+    const relEl = div.querySelector('#extraVisitorRelation' + i);
+    if (relEl) {
+      relEl.onchange = function() {
+        const ag = document.getElementById('ageGroup' + i);
+        const ai = document.getElementById('extraVisitorAge' + i);
+        if (!ag) return;
+        if (this.value === 'บุตร / ธิดา') {
+          ag.style.display = 'block';
+        } else {
+          ag.style.display = 'none';
+          if (ai) ai.value = '';
+        }
+      };
+    }
   }
 }
 
@@ -141,12 +160,42 @@ function getExtraVisitors() {
     const nameEl = document.getElementById('extraVisitorName' + i);
     const idEl   = document.getElementById('extraVisitorId' + i);
     const relEl  = document.getElementById('extraVisitorRelation' + i);
-    if (nameEl) extras.push({ name: nameEl.value.trim(), id: idEl ? idEl.value.trim() : '', relation: relEl ? relEl.value : '' });
+    const ageEl  = document.getElementById('extraVisitorAge' + i);
+    if (nameEl) extras.push({
+      name: nameEl.value.trim(),
+      id: idEl ? idEl.value.trim() : '',
+      relation: relEl ? relEl.value : '',
+      age: ageEl ? ageEl.value.trim() : ''
+    });
   }
   return extras;
 }
 
-// ===== PRISONER MASTER DATA (from Google Sheet via Apps Script) =====
+function calculateTotal() {
+  const n = parseInt(document.getElementById('visitorCount').value) || 1;
+  const extras = getExtraVisitors();
+  let extraFees = 0;
+  const discountNotes = [];
+  extras.forEach((v, idx) => {
+    let fee = 1000;
+    if (v.relation === 'บุตร / ธิดา') {
+      const a = parseInt(v.age, 10);
+      if (!isNaN(a)) {
+        if (a < 5) fee = 0;
+        else if (a <= 8) fee = 500;
+      }
+    }
+    extraFees += fee;
+    if (v.relation === 'บุตร / ธิดา' && fee < 1000) {
+      discountNotes.push(`คนที่ ${idx + 2}: ${fee === 0 ? 'ฟรี' : fee + ' บาท'}`);
+    }
+  });
+  const total = 1000 + 1000 + extraFees; // main + prisoner + extras (variable)
+  return { total, extraFees, discountNotes, numVisitors: n, numExtras: extras.length };
+}
+
+ // ===== PRISONER MASTER DATA (from Google Sheet via Apps Script) =====
+
 let prisonerMaster = [];
 
 async function loadPrisonerMaster() {
@@ -296,6 +345,15 @@ function validate() {
     if (idEl && !idEl.value.trim()) { alert('กรุณากรอกเลขบัตรประชาชนผู้เข้าร่วมกิจกรรมคนที่ ' + i); idEl.focus(); return false; }
     const relEl = document.getElementById('extraVisitorRelation' + i);
     if (relEl && !relEl.value) { alert('กรุณาเลือกความสัมพันธ์ผู้ร่วมกิจกรรมคนที่ ' + i); relEl.focus(); return false; }
+    if (relEl && relEl.value === 'บุตร / ธิดา') {
+      const ageEl = document.getElementById('extraVisitorAge' + i);
+      const a = ageEl ? parseInt(ageEl.value, 10) : NaN;
+      if (!ageEl || isNaN(a) || a < 0) {
+        alert('กรุณากรอกอายุ (ปี) สำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i + ' (บุตร/ธิดา)');
+        if (ageEl) ageEl.focus();
+        return false;
+      }
+    }
   }
   if (!selectedDate) { alert('กรุณาเลือกวันที่ต้องการร่วมกิจกรรม'); return false; }
   if ((bookings[selectedDate] || 0) >= QUOTA) { alert('วันที่เลือกเต็มแล้ว กรุณาเลือกวันอื่น'); return false; }
@@ -335,8 +393,15 @@ function goToConfirm() {
   const visitor1Id   = document.getElementById('visitorId').value.trim();
   let visitorRowsHtml = `<div class="summary-row"><span class="lbl">👤 ผู้ร่วมกิจกรรมคนที่ 1</span><span class="val">${visitor1Name}<br><span style="font-size:12px;color:var(--text2)">${visitor1Id}</span></span></div>`;
   extras.forEach((v, idx) => {
-    visitorRowsHtml += `<div class="summary-row"><span class="lbl">👤 ผู้ร่วมกิจกรรมคนที่ ${idx+2}</span><span class="val">${v.name}<br><span style="font-size:12px;color:var(--text2)">${v.id} · ${v.relation}</span></span></div>`;
+    const agePart = (v.relation === 'บุตร / ธิดา' && v.age) ? ' · อายุ ' + v.age + ' ปี' : '';
+    visitorRowsHtml += `<div class="summary-row"><span class="lbl">👤 ผู้ร่วมกิจกรรมคนที่ ${idx+2}</span><span class="val">${v.name}<br><span style="font-size:12px;color:var(--text2)">${v.id} · ${v.relation}${agePart}</span></span></div>`;
   });
+
+  const cost = calculateTotal();
+  let costHtml = `<div class="summary-row"><span class="lbl">💰 ค่าบริการอาหาร (ประมาณ)</span><span class="val">${cost.total.toLocaleString()} บาท (ชำระหลังอนุมัติ)</span></div>`;
+  if (cost.discountNotes.length) {
+    costHtml += `<div style="font-size:12px;color:#2e7d32;margin:4px 0 0 0;padding-left:4px;">✨ ส่วนลดบุตร/ธิดา: ${cost.discountNotes.join(' · ')}</div>`;
+  }
 
   document.getElementById('confirmSummary').innerHTML = `
     ${visitorRowsHtml}
@@ -346,7 +411,7 @@ function goToConfirm() {
     <div class="summary-row"><span class="lbl">🏢 แดน</span><span class="val">${document.getElementById('wing').value}</span></div>
     <div class="summary-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${thDate}</span></div>
     <div class="summary-row"><span class="lbl">👥 จำนวนรวม</span><span class="val">ผู้เข้าร่วมกิจกรรม ${n} คน + ผู้ต้องขัง 1 = <strong>${totalPersons} คน</strong></span></div>
-    <div class="summary-row"><span class="lbl">💰 ค่าบริการอาหาร (ประมาณ)</span><span class="val">${(totalPersons * 1000).toLocaleString()} บาท (ชำระหลังอนุมัติ)</span></div>
+    ${costHtml}
   `;
   showPage(2);
 }
@@ -363,7 +428,7 @@ async function submitBooking() {
   const now = new Date().toLocaleString('th-TH');
 
   const extras = getExtraVisitors();
-  const extraNamesStr = extras.map(v => v.name + '|' + v.id + '|' + v.relation).join(';;');
+  const extraNamesStr = extras.map(v => v.name + '|' + v.id + '|' + v.relation + '|' + (v.age || '')).join(';;');
 
   const prisonerId = document.getElementById('prisonerId').value.trim();
 
@@ -390,6 +455,7 @@ async function submitBooking() {
     console.warn('Duplicate check skipped:', err);
   }
 
+  const cost = calculateTotal();
   const data = {
     ref,
     timestamp: now,
@@ -405,7 +471,7 @@ async function submitBooking() {
     visitDateISO: selectedDate,
     visitorCount: n,
     totalPersons,
-    total: totalPersons * 1000,
+    total: cost.total,
     status: 'รอตรวจสอบ',
     slipImage: ''
   };
@@ -456,6 +522,7 @@ async function submitBooking() {
     <div>🏢 <strong>แดน</strong> ${data.wing}</div>
     <div>📅 <strong>วันที่:</strong> ${thDate}</div>
     <div>👥 <strong>จำนวนรวม:</strong> ${totalPersons} คน</div>
+    <div>💰 <strong>ค่าบริการ:</strong> ${data.total.toLocaleString()} บาท</div>
     <div style="color:var(--gold);font-weight:600">⏳ สถานะ: รอตรวจสอบวินัย</div>
   `;
 
