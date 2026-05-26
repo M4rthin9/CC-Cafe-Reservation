@@ -1503,12 +1503,36 @@ function printSingleReport(type, date) {
 
     const combinedAdults = visitorAdults + tables; // รวมผู้ต้องขังเป็นผู้ใหญ่
 
-    content = `<h2>🍽️🍰 ครัว + เบเกอรี่ (เตรียมอาหารและของหวาน) - ${date}</h2>`;
-    content += `<p>จำนวนโต๊ะ: <strong>${tables}</strong> โต๊ะ<br>`;
-    content += `รวมผู้เข้าร่วม: <strong>${relatives + tables}</strong> คน (ญาติ + ผู้ต้องขัง)<br><br>`;
-    content += `ผู้ใหญ่ (รวมผู้ต้องขัง): <strong>${combinedAdults}</strong> คน<br>`;
-    content += `เด็ก 5-8 ปี: <strong>${k5}</strong> คน<br>`;
-    content += `ต่ำกว่า 5 ปี: <strong>${ku}</strong> คน</p>`;
+    const reportBody = `
+      <div style="border:2px solid #333; padding:12px; margin-bottom:8px; font-size:13px;">
+        <strong style="font-size:15px;">🍽️🍰 ครัว + เบเกอรี่ — วันที่ ${date}</strong><br><br>
+        จำนวนโต๊ะ: <strong>${tables} โต๊ะ</strong><br>
+        รวมผู้เข้าร่วม: <strong>${relatives + tables} คน</strong> (ญาติ ${relatives} + ผู้ต้องขัง ${tables})<br><br>
+        <strong>ผู้ใหญ่ (รวมผู้ต้องขัง):</strong> ${combinedAdults} คน<br>
+        <strong>เด็ก 5-8 ปี:</strong> ${k5} คน<br>
+        <strong>ต่ำกว่า 5 ปี:</strong> ${ku} คน
+      </div>
+    `;
+
+    // Duplicate for tear-off: Kitchen copy + Bakery copy
+    content = `
+      <h2 style="text-align:center; margin-bottom:8px;">🍽️🍰 ครัว + เบเกอรี่ — วันที่ ${date}</h2>
+      <p style="text-align:center; font-size:12px; color:#555; margin-bottom:12px;">พิมพ์ 1 ครั้ง → ตัดตรงกลาง ส่งครัว 1 ชุด / เบเกอรี่ 1 ชุด</p>
+
+      <!-- สำหรับครัว -->
+      ${reportBody}
+
+      <div style="text-align:center; margin:12px 0; border-top:2px dashed #c62828; padding-top:8px; color:#c62828; font-weight:700;">
+        ✂️ ตัดตรงนี้ — ส่งครัว
+      </div>
+
+      <!-- สำหรับเบเกอรี่ (ซ้ำ) -->
+      ${reportBody}
+
+      <div style="text-align:center; margin-top:12px; color:#888; font-size:11px;">
+        พิมพ์จากระบบ CC Cafe Reservation • ทัณฑสถานบำบัดพิเศษกลาง
+      </div>
+    `;
   }
 
   else if (type === 'table') {
