@@ -274,27 +274,52 @@ function renderDashboardHome() {
     counts[s] = (counts[s] || 0) + 1;
   });
 
+  // === New: Horizontal Stacked Bar (cleaner overview) ===
   const order = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
-  const cols = ['#b45309', '#1a56db', '#0369a1', '#166534', '#dc2626', '#6b7280'];
-  let bars = '';
-  const max = Math.max(1, ...Object.values(counts));
+  const cols = ['#D4AF37', '#0B2545', '#0A203D', '#2E5238', '#8B0000', '#6B7280'];
+
+  let stackedHTML = `<div class="status-stacked">`;
+  let legendHTML = `<div class="status-legend">`;
+
   order.forEach((s, i) => {
     const c = counts[s] || 0;
     const pct = total ? Math.round((c / total) * 100) : 0;
-    const w = Math.round((c / max) * 100);
-    bars += `<div class="status-bar">
-      <div class="status-bar-label">${s}</div>
-      <div class="status-bar-track"><div class="status-bar-fill" style="width:${w}%;background:${cols[i]}"></div></div>
-      <div class="status-bar-val">${c} <span style="font-size:10px;opacity:.6">(${pct}%)</span></div>
-    </div>`;
+
+    if (c > 0) {
+      stackedHTML += `<div class="status-segment" style="width:${pct}%; background:${cols[i]}" title="${s}: ${c} (${pct}%)"></div>`;
+    }
+
+    legendHTML += `
+      <div class="legend-item">
+        <span class="legend-dot" style="background:${cols[i]}"></span>
+        <span>${s}</span>
+        <strong>${c}</strong>
+      </div>`;
   });
-  container.innerHTML = bars || '<div style="color:#888;font-size:12px">ไม่มีข้อมูล</div>';
+
+  stackedHTML += `</div>`;
+  legendHTML += `</div>`;
+
+  container.innerHTML = `
+    ${stackedHTML}
+    ${legendHTML}
+    <div style="font-size:11px;color:var(--text2);margin-top:6px;text-align:right;">
+      รวม ${total} รายการ
+    </div>
+  `;
 
   // recent 5
   if (!total) {
     recentEl.innerHTML = '<div style="color:#888;font-size:12px">ยังไม่มีข้อมูล</div>';
+    document.getElementById('statUniquePrisoners').textContent = '0';
+    document.getElementById('statThisWeek').textContent = '0';
+    document.getElementById('statThisMonth').textContent = '0';
+    document.getElementById('statUniqueVisitors').textContent = '0';
+    const chartEl = document.getElementById('trendChart');
+    if (chartEl) chartEl.getContext && chartEl.getContext('2d').clearRect(0,0,chartEl.width,chartEl.height);
     return;
   }
+
   let rhtml = '';
   allRows.slice(0, 5).forEach(r => {
     const idx = allRows.indexOf(r);
@@ -311,7 +336,211 @@ function renderDashboardHome() {
     </div>`;
   });
   recentEl.innerHTML = rhtml;
+
+  // ===== NEW: Additional professional metrics =====
+  const uniquePrisoners = new Set();
+  const uniqueVisitors = new Set();
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7)); // Monday
+  startOfWeek.setHours(0,0,0,0);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let weekCount = 0, monthCount = 0;
+
+  allRows.forEach(r => {
+    if (r.prisonerId) uniquePrisoners.add(String(r.prisonerId).trim());
+    const vid = r.visitorId || r.visitorName;
+    if (vid) uniqueVisitors.add(String(vid).trim());
+
+    // Prefer ISO date for accuracy
+    let visitKey = r.visitDateISO;
+    if (!visitKey && r.visitDate) {
+      // Fallback: try to parse Thai date (rough) or use timestamp date
+      const ts = r.timestamp ? new Date(r.timestamp.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1')) : null;
+      if (ts && !isNaN(ts)) visitKey = ts.toISOString().slice(0,10);
+    }
+    if (visitKey) {
+      const vDate = new Date(visitKey);
+      if (!isNaN(vDate)) {
+        if (vDate >= startOfWeek) weekCount++;
+        if (vDate >= startOfMonth) monthCount++;
+      }
+    }
+  });
+
+  const uniqueP = document.getElementById('statUniquePrisoners');
+  const thisWeekEl = document.getElementById('statThisWeek');
+  const thisMonthEl = document.getElementById('statThisMonth');
+  const uniqueV = document.getElementById('statUniqueVisitors');
+
+  if (uniqueP) uniqueP.textContent = uniquePrisoners.size;
+  if (thisWeekEl) thisWeekEl.textContent = weekCount;
+  if (thisMonthEl) thisMonthEl.textContent = monthCount;
+  if (uniqueV) uniqueV.textContent = uniqueVisitors.size;
+
+  // Last updated in header
+  const lastUpdatedEl = document.getElementById('overviewLastUpdated');
+  if (lastUpdatedEl) {
+    lastUpdatedEl.textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  // Trend Chart
+  drawReservationTrendChart();
 }
+
+let trendDataCache = []; // for hover detection
+
+function drawReservationTrendChart() {
+  const canvas = document.getElementById('trendChart');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d', { alpha: true });
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Aggregate last 14 days
+  const dateCounts = {};
+  const today = new Date();
+  const days = [];
+
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push(key);
+    dateCounts[key] = 0;
+  }
+
+  allRows.forEach(r => {
+    let key = r.visitDateISO;
+    if (!key && r.visitDate) {
+      const ts = r.timestamp ? new Date(r.timestamp.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1')) : null;
+      if (ts && !isNaN(ts)) key = ts.toISOString().slice(0, 10);
+    }
+    if (key && dateCounts.hasOwnProperty(key)) dateCounts[key]++;
+  });
+
+  const values = days.map(d => dateCounts[d]);
+  const maxVal = Math.max(1, ...values);
+
+  const w = canvas.width = canvas.offsetWidth || 620;
+  const h = canvas.height = 220;
+  const paddingLeft = 32;
+  const paddingBottom = 28;
+  const paddingTop = 18;
+  const chartW = w - paddingLeft - 8;
+  const chartH = h - paddingBottom - paddingTop;
+  const barGap = 5;
+  const barW = Math.max(6, (chartW - (days.length - 1) * barGap) / days.length);
+
+  trendDataCache = []; // reset for hover
+
+  // Light grid lines
+  ctx.strokeStyle = 'rgba(11,37,69,0.08)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 4; i++) {
+    const y = paddingTop + (chartH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, y);
+    ctx.lineTo(paddingLeft + chartW, y);
+    ctx.stroke();
+  }
+
+  // Bars + store positions for hover
+  days.forEach((day, i) => {
+    const val = values[i];
+    const barH = Math.max(3, Math.round((val / maxVal) * chartH));
+    const x = paddingLeft + i * (barW + barGap);
+    const y = h - paddingBottom - barH;
+
+    // Store data for tooltip
+    trendDataCache.push({
+      x, y, width: barW, height: barH,
+      date: day,
+      count: val,
+      label: new Date(day).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })
+    });
+
+    // Navy bar
+    ctx.fillStyle = val > 0 ? '#0B2545' : '#E8E0D1';
+    ctx.fillRect(x, y, barW, barH);
+
+    // Gold top accent
+    if (val > 0) {
+      ctx.fillStyle = '#D4AF37';
+      ctx.fillRect(x, y, barW, 2.5);
+    }
+
+    // Value label
+    if (val > 0) {
+      ctx.fillStyle = '#1C2433';
+      ctx.font = 'bold 10px Sarabun, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(val, x + barW / 2, y - 5);
+    }
+
+    // Day label
+    const labelDate = new Date(day);
+    const label = labelDate.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit' });
+    ctx.fillStyle = '#3F4755';
+    ctx.font = '9px Sarabun, sans-serif';
+    ctx.fillText(label, x + barW / 2, h - 8);
+  });
+
+  // Y-axis max
+  ctx.fillStyle = '#6B7280';
+  ctx.font = '9px Sarabun, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(maxVal, paddingLeft - 6, paddingTop + 3);
+}
+
+// Simple hover tooltip for trend chart
+const trendCanvas = document.getElementById('trendChart');
+if (trendCanvas) {
+  trendCanvas.addEventListener('mousemove', (e) => {
+    if (!trendDataCache.length) return;
+
+    const rect = trendCanvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    let found = null;
+    for (const item of trendDataCache) {
+      if (mouseX >= item.x && mouseX <= item.x + item.width &&
+          mouseY >= item.y && mouseY <= item.y + item.height) {
+        found = item;
+        break;
+      }
+    }
+
+    if (found) {
+      trendCanvas.style.cursor = 'pointer';
+      trendCanvas.title = `${found.label} — ${found.count} รายการ`;
+    } else {
+      trendCanvas.style.cursor = 'default';
+      trendCanvas.title = '';
+    }
+  });
+
+  trendCanvas.addEventListener('mouseleave', () => {
+    trendCanvas.style.cursor = 'default';
+    trendCanvas.title = '';
+  });
+}
+
+// Redraw trend chart on window resize (when overview is visible)
+window.addEventListener('resize', () => {
+  const homeView = document.getElementById('view-home');
+  if (homeView && homeView.style.display !== 'none' && document.getElementById('trendChart')) {
+    // debounce lightly
+    clearTimeout(window._trendResizeTimer);
+    window._trendResizeTimer = setTimeout(() => {
+      if (typeof drawReservationTrendChart === 'function') {
+        drawReservationTrendChart();
+      }
+    }, 120);
+  }
+});
 
 // ===== UPDATE STATUS =====
 async function updateStatus(idx, newStatus) {

@@ -344,7 +344,7 @@ tr:hover td { background: #f8f9fa; }
 .status-bar-track {
   flex: 1;
   height: 8px;
-  background: #f1f5f9;
+  background: var(--border);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -355,10 +355,201 @@ tr:hover td { background: #f8f9fa; }
 }
 .status-bar-val { width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* make original stats a bit tighter in dashboard */
-#view-home .stats { margin-bottom: 12px; }
+/* === New Horizontal Stacked Bar for Status Overview === */
+.status-stacked {
+  display: flex;
+  height: 22px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
 
-/* hide original .stats if somehow outside */
+.status-segment {
+  height: 100%;
+  transition: filter 0.15s ease;
+  cursor: pointer;
+}
+
+.status-segment:hover {
+  filter: brightness(1.1);
+}
+
+.status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 11px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text2);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-item strong {
+  font-weight: 600;
+  color: var(--text);
+  margin-left: 2px;
+}
+
+/* ===== Overview Dashboard Redesign (Artisanal Hope & Institutional Elegance) ===== */
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--antique-gold);
+}
+
+.overview-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--blue);
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.overview-subtitle {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 4px;
+}
+
+.overview-meta {
+  font-size: 12px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+/* Metrics Rows */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .metrics-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}
+
+@media (max-width: 480px) {
+  .metrics-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat-val { font-size: 22px !important; }
+  .overview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+.metrics-row.primary .stat-card {
+  border-left: 4px solid var(--blue);
+  padding-left: 14px;
+}
+
+.metrics-row.secondary .stat-card {
+  border-left: 3px solid var(--antique-gold);
+  background: var(--bg2);
+}
+
+/* Enhanced Stat Cards */
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(11, 37, 69, 0.08);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.stat-val {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+}
+
+.metrics-row.secondary .stat-val {
+  font-size: 22px;
+}
+
+/* Dash Cards */
+.dash-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: 0 1px 4px rgba(11, 37, 69, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.dash-card:hover {
+  box-shadow: 0 4px 14px rgba(11, 37, 69, 0.07);
+}
+
+.dash-card-h {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dash-card-h span {
+  font-size: 15px;
+}
+
+/* Trend Section */
+.trend-section {
+  margin-top: 4px;
+}
+
+@media (min-width: 1200px) {
+  #trendChart {
+    height: 240px !important;
+  }
+}
+
+.chart-caption {
+  font-size: 11px;
+  color: var(--text2);
+  text-align: center;
+  margin-top: 8px;
+  opacity: 0.85;
+}
+
+/* Legacy .stats fallback */
+#view-home .stats { margin-bottom: 4px; }
 .dash .stats { margin-bottom: 1rem; }
 
 /* sidebar responsive (fixed) */
