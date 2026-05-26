@@ -248,15 +248,21 @@ function switchView(v) {
   document.querySelectorAll('.sb-link').forEach(a => {
     a.classList.toggle('active', a.getAttribute('data-view') === v);
   });
-  if (v === 'reservations' && allRows.length > 0) {
+
+  if (v === 'reservations') {
     renderTable();
+  } else if (v === 'reports') {
+    populateReportsDateFilter();
+    renderReportsView();
   }
+
   if (v === 'home') {
     renderDashboardHome();
   }
 }
 
 function renderDashboardHome() {
+
   const container = document.getElementById('statusBars');
   const recentEl = document.getElementById('recentBookings');
   if (!container || !recentEl) return;
@@ -535,13 +541,18 @@ function viewDetail(idx) {
     if (isNewFormat) {
       extras = r.extraVisitorNames.split(';;').map(e => {
         const parts = e.split('|');
-        return { name: (parts[0]||'').trim(), id: (parts[1]||'').trim(), relation: (parts[2]||'').trim() };
+        return { 
+          name: (parts[0]||'').trim(), 
+          id: (parts[1]||'').trim(), 
+          relation: (parts[2]||'').trim(),
+          age: (parts[3]||'').trim()
+        };
       }).filter(e => e.name);
     } else {
       extras = r.extraVisitorNames.split(/,(?![^(]*\))/).map(e => {
         const m = e.trim().match(/^(.+?)\s*\(([^,)]+?)(?:,\s*([^)]+))?\)$/);
-        if (m) return { name: m[1].trim(), id: (m[2]||'').trim(), relation: (m[3]||'').trim() };
-        return { name: e.trim(), id: '', relation: '' };
+        if (m) return { name: m[1].trim(), id: (m[2]||'').trim(), relation: (m[3]||'').trim(), age: '' };
+        return { name: e.trim(), id: '', relation: '', age: '' };
       }).filter(e => e.name);
     }
     extras.forEach((v, i) => {
@@ -668,15 +679,74 @@ function parseExtraVisitors(row) {
   if (isNew) {
     return str.split(';;').map(e => {
       const p = e.split('|');
-      return { name: (p[0]||'').trim(), id: (p[1]||'').trim(), relation: (p[2]||'').trim() };
+      return { 
+        name: (p[0]||'').trim(), 
+        id: (p[1]||'').trim(), 
+        relation: (p[2]||'').trim(),
+        age: (p[3]||'').trim()
+      };
     }).filter(e => e.name);
   } else {
     return str.split(/,(?![^(]*\))/).map(e => {
       const m = e.trim().match(/^(.+?)\s*\(([^,)]+?)(?:,\s*([^)]+))?\)$/);
-      if (m) return { name: m[1].trim(), id: (m[2]||'').trim(), relation: (m[3]||'').trim() };
-      return { name: e.trim(), id: '', relation: '' };
+      if (m) return { name: m[1].trim(), id: (m[2]||'').trim(), relation: (m[3]||'').trim(), age: '' };
+      return { name: e.trim(), id: '', relation: '', age: '' };
     }).filter(e => e.name);
   }
+}
+
+// ===== HELPER: Compute department report data (same logic as booking page) =====
+function computeDeptReportData(row) {
+  const n = parseInt(row.visitorCount) || 1;
+  const totalPersons = n + 1;
+
+  const extras = parseExtraVisitors(row); // now includes .age
+
+  let adults = 1; // main visitor
+  let kids5_8 = 0, kidsUnder5 = 0;
+  const kids5_8Names = [], kidsUnder5Names = [];
+
+  extras.forEach(v => {
+    if (v.relation === 'บุตร / ธิดา') {
+      const a = parseInt(v.age, 10);
+      if (!isNaN(a)) {
+        if (a < 5) {
+          kidsUnder5++;
+          kidsUnder5Names.push(v.name);
+        } else if (a <= 8) {
+          kids5_8++;
+          kids5_8Names.push(v.name);
+        } else {
+          adults++;
+        }
+      } else {
+        adults++;
+      }
+    } else {
+      adults++;
+    }
+  });
+
+  const total = parseInt(row.total) || totalPersons * 1000;
+
+  return {
+    n,
+    totalPersons,
+    adults,
+    kids5_8,
+    kidsUnder5,
+    kids5_8Names,
+    kidsUnder5Names,
+    total,
+    prisonerName: row.prisonerName || '—',
+    prisonerId: row.prisonerId || '—',
+    wing: row.wing || '—',
+    visitDate: row.visitDate || '—',
+    visitorName: row.visitorName || '—',
+    visitorPhone: row.visitorPhone || '—',
+    relation: row.relation || '—',
+    ref: row.ref || '—'
+  };
 }
 
 // ===== HELPER: Get current filtered & sorted rows (respects UI filters) =====
@@ -1030,6 +1100,464 @@ function printPrisonerVinaiList() {
   setTimeout(() => {
     try { w.focus(); w.print(); } catch(e){}
   }, 400);
+}
+
+// ===== DAILY AGGREGATED DEPARTMENT REPORTS (respects current filters) =====
+function renderDailyDeptReports() {
+  const container = document.getElementById('dailyReportsContent');
+  const section = document.getElementById('dailyReportsSection');
+  if (!container || !section) return;
+
+  const filtered = getCurrentFilteredSorted();
+  if (filtered.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  // Group by visit date
+  const byDate = {};
+  filtered.forEach(r => {
+    const dateKey = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
+    if (!byDate[dateKey]) byDate[dateKey] = [];
+    byDate[dateKey].push(r);
+  });
+
+  let html = '';
+
+  Object.keys(byDate).sort().forEach(date => {
+    const rows = byDate[date];
+
+    let totalAdults = 0, totalKids5_8 = 0, totalKidsUnder5 = 0;
+    let prisoners = [];
+    let totalTables = rows.length;
+
+    rows.forEach(r => {
+      const d = computeDeptReportData(r);
+      totalAdults += d.adults;
+      totalKids5_8 += d.kids5_8;
+      totalKidsUnder5 += d.kidsUnder5;
+
+      if (r.prisonerName && !prisoners.includes(r.prisonerName)) {
+        prisoners.push(r.prisonerName);
+      }
+    });
+
+    const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
+    const totalPeople = totalRelatives + rows.length; // +1 prisoner per booking
+
+    html += `
+      <div style="border:1px solid var(--border); border-radius:8px; padding:12px; background:var(--bg2);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px; color:var(--blue);">${date}</div>
+        
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:8px; font-size:12px;">
+          <!-- ส่วนทัณฑ์ -->
+          <div style="background:#fff5f5; border:1px solid #c62828; border-radius:6px; padding:8px;">
+            <strong style="color:#c62828">🚨 ส่วนทัณฑ์</strong><br>
+            <div style="margin-top:4px;">${prisoners.length} คน</div>
+            <div style="font-size:11px; color:#666; margin-top:2px;">${prisoners.slice(0,3).join(', ')}${prisoners.length > 3 ? ' ...' : ''}</div>
+          </div>
+
+          <!-- Table -->
+          <div style="background:#fff8f0; border:1px solid #ff9800; border-radius:6px; padding:8px;">
+            <strong style="color:#e65100">🪑 โต๊ะ</strong><br>
+            <div style="margin-top:4px; font-weight:700;">${totalTables} โต๊ะ</div>
+            <div style="font-size:11px;">รวม ${totalPeople} คน</div>
+          </div>
+
+          <!-- Kitchen -->
+          <div style="background:#f0fff0; border:1px solid #2e7d32; border-radius:6px; padding:8px;">
+            <strong style="color:#1b5e20">🍽️ ครัว</strong><br>
+            ผู้ใหญ่: <strong>${totalAdults}</strong><br>
+            เด็ก 5-8: <strong>${totalKids5_8}</strong><br>
+            ต่ำกว่า 5: <strong>${totalKidsUnder5}</strong>
+          </div>
+
+          <!-- Bakery -->
+          <div style="background:#fffdf5; border:1px solid #c8922a; border-radius:6px; padding:8px;">
+            <strong style="color:#8d6e00">🍰 เบเกอรี่</strong><br>
+            ผู้ใหญ่: <strong>${totalAdults}</strong><br>
+            เด็ก 5-8: <strong>${totalKids5_8}</strong><br>
+            ต่ำกว่า 5: <strong>${totalKidsUnder5}</strong>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  section.style.display = 'block';
+}
+
+function printDailyDeptReports() {
+  const filtered = getCurrentFilteredSorted();
+  if (filtered.length === 0) {
+    alert('ไม่มีข้อมูลตาม filter ที่เลือก');
+    return;
+  }
+
+  const byDate = {};
+  filtered.forEach(r => {
+    const dateKey = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
+    if (!byDate[dateKey]) byDate[dateKey] = [];
+    byDate[dateKey].push(r);
+  });
+
+  const now = new Date().toLocaleString('th-TH');
+
+  let html = `
+    <html><head><meta charset="UTF-8">
+    <title>รายงานประจำวัน - แยกตามฝ่าย</title>
+    <style>
+      body { font-family: 'Sarabun', sans-serif; font-size:13px; padding:20px; }
+      h1 { text-align:center; margin-bottom:4px; }
+      .date-block { border:2px solid #333; margin-bottom:20px; padding:12px; page-break-inside:avoid; }
+      .date-title { font-size:16px; font-weight:700; border-bottom:1px solid #ccc; padding-bottom:4px; margin-bottom:8px; }
+      .dept { margin-bottom:8px; padding:6px; border:1px solid #aaa; border-radius:4px; }
+      .dept strong { display:block; margin-bottom:4px; }
+      table { width:100%; border-collapse:collapse; margin-top:8px; }
+      th, td { border:1px solid #999; padding:4px 6px; text-align:left; font-size:12px; }
+    </style>
+    </head><body>
+    <h1>รายงานสรุปประจำวัน (แยกตามฝ่าย)</h1>
+    <div style="text-align:center; margin-bottom:16px; color:#555;">พิมพ์เมื่อ ${now}</div>
+  `;
+
+  Object.keys(byDate).sort().forEach(date => {
+    const rows = byDate[date];
+    let totalAdults=0, total5_8=0, totalUnder5=0, prisoners=[];
+
+    rows.forEach(r => {
+      const d = computeDeptReportData(r);
+      totalAdults += d.adults;
+      total5_8 += d.kids5_8;
+      totalUnder5 += d.kidsUnder5;
+      if (r.prisonerName && !prisoners.includes(r.prisonerName)) prisoners.push(r.prisonerName);
+    });
+
+    const totalTables = rows.length;
+    const totalRel = rows.reduce((s,r) => s + (parseInt(r.visitorCount)||1), 0);
+
+    html += `<div class="date-block">`;
+    html += `<div class="date-title">${date}</div>`;
+
+    // ส่วนทัณฑ์
+    html += `<div class="dept" style="border-color:#c62828;">`;
+    html += `<strong style="color:#c62828">🚨 ส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong>`;
+    html += `จำนวน: <strong>${prisoners.length} คน</strong><br>`;
+    html += prisoners.map(p => `• ${p}`).join('<br>');
+    html += `</div>`;
+
+    // Table
+    html += `<div class="dept" style="border-color:#ff9800;">`;
+    html += `<strong style="color:#e65100">🪑 การจัดโต๊ะ</strong>`;
+    html += `จำนวนโต๊ะ: <strong>${totalTables} โต๊ะ</strong><br>`;
+    html += `รวมผู้เข้าร่วม: ${totalRel + totalTables} คน (ญาติ ${totalRel} + ผู้ต้องขัง ${totalTables})<br>`;
+    html += `<strong>รวมทั้งหมด: ${totalRel + totalTables} คน</strong>`;
+    html += `</div>`;
+
+    // Kitchen + Bakery (combined)
+    const combinedAdults = totalAdults + totalTables;
+    html += `<div class="dept" style="border-color:#2e7d32;">`;
+    html += `<strong style="color:#1b5e20">🍽️🍰 ครัว + เบเกอรี่ (รวม)</strong>`;
+    html += `ผู้ใหญ่ (รวมผู้ต้องขัง): <strong>${combinedAdults}</strong> คน &nbsp;&nbsp;`;
+    html += `เด็ก 5-8 ปี: <strong>${total5_8}</strong> คน &nbsp;&nbsp;`;
+    html += `ต่ำกว่า 5 ปี: <strong>${totalUnder5}</strong> คน`;
+    html += `</div>`;
+
+    html += `</div>`;
+  });
+
+  html += `</body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 300);
+}
+
+// ===== Helper: Get filtered rows for the Reports page (independent filters) =====
+function getReportsFilteredRows() {
+  const searchEl = document.getElementById('reportsSearchBox');
+  const statusEl = document.getElementById('reportsFilterStatus');
+  const dateEl   = document.getElementById('reportsFilterDate');
+
+  const q = searchEl ? searchEl.value.toLowerCase().trim() : '';
+  const fs = statusEl ? statusEl.value : '';
+  const fd = dateEl ? dateEl.value : '';
+
+  return allRows.filter(r => {
+    if (fs && r.status !== fs) return false;
+    if (fd && (r.visitDate !== fd && r.visitDateISO !== fd)) return false;
+
+    if (q) {
+      const text = [
+        r.ref, r.visitorName, r.visitorPhone, r.visitorId,
+        r.prisonerName, r.prisonerId, r.wing, r.extraVisitorNames
+      ].join(' ').toLowerCase();
+      if (!text.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+// ===== Populate date options for Reports page =====
+function populateReportsDateFilter() {
+  const select = document.getElementById('reportsFilterDate');
+  if (!select || !allRows.length) return;
+
+  const dates = [...new Set(allRows.map(r => r.visitDate || r.visitDateISO).filter(Boolean))].sort();
+
+  // Keep current selection if possible
+  const current = select.value;
+  select.innerHTML = '<option value="">ทุกวัน</option>';
+  dates.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    select.appendChild(opt);
+  });
+  if (dates.includes(current)) select.value = current;
+}
+
+// ===== NEW: Dedicated Reports View (each department as its own section/page) =====
+function renderReportsView() {
+  const container = document.getElementById('reportsContent');
+  if (!container) return;
+
+  // Use the reports page's own filters
+  const filtered = getReportsFilteredRows();
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--text2);">ไม่พบข้อมูลตามเงื่อนไขที่กรอง<br>ลองเปลี่ยน Filter ด้านบน</div>`;
+    return;
+  }
+
+  // Group by date
+  const byDate = {};
+  filtered.forEach(r => {
+    const key = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(r);
+  });
+
+  let html = '';
+
+  Object.keys(byDate).sort().forEach(date => {
+    const rows = byDate[date];
+
+    // Aggregate data
+    let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
+    const prisonerList = []; // for ส่วนทัณฑ์
+
+    rows.forEach(r => {
+      const d = computeDeptReportData(r);
+      totalAdults += d.adults;
+      total5_8 += d.kids5_8;
+      totalUnder5 += d.kidsUnder5;
+
+      if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
+        prisonerList.push({
+          name: r.prisonerName,
+          id: r.prisonerId,
+          wing: r.wing || '-'
+        });
+      }
+    });
+
+    const totalTables = rows.length;
+    const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
+
+    html += `<div style="margin-bottom:32px; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2);">`;
+    html += `<div style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--blue);">📅 ${date}</div>`;
+
+    // ========== 1. ส่วนทัณฑ์ (Prisoner) - TABLE FORMAT ==========
+    html += `<div style="margin-bottom:20px;">`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`;
+    html += `<strong style="font-size:14px;color:#c62828;">🚨 รายงานส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong>`;
+    html += `<button onclick="printSingleReport('disciplinary', '${date}')" style="font-size:11px;padding:4px 10px;background:#c62828;color:white;border:none;border-radius:4px;cursor:pointer;">🖨️ พิมพ์</button>`;
+    html += `</div>`;
+
+    if (prisonerList.length > 0) {
+      html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">`;
+      html += `<thead><tr style="background:#f8f8f8;">`;
+      html += `<th style="border:1px solid #ddd;padding:6px;text-align:left;">ชื่อ-นามสกุล</th>`;
+      html += `<th style="border:1px solid #ddd;padding:6px;text-align:left;">เลขประจำตัวผู้ต้องขัง</th>`;
+      html += `<th style="border:1px solid #ddd;padding:6px;text-align:left;">แดน</th>`;
+      html += `</tr></thead><tbody>`;
+
+      prisonerList.forEach(p => {
+        html += `<tr>`;
+        html += `<td style="border:1px solid #ddd;padding:6px;"><strong>น.ช. ${p.name}</strong></td>`;
+        html += `<td style="border:1px solid #ddd;padding:6px;">${p.id}</td>`;
+        html += `<td style="border:1px solid #ddd;padding:6px;">${p.wing}</td>`;
+        html += `</tr>`;
+      });
+
+      html += `</tbody></table>`;
+    } else {
+      html += `<div style="color:#888;font-size:12px;">ไม่มีข้อมูลผู้ต้องขัง</div>`;
+    }
+    html += `</div>`;
+
+    // ========== ครัว + เบเกอรี่ (รวมเป็นอันเดียว) ==========
+    const combinedAdults = totalAdults + totalTables; // ผู้ใหญ่ + ผู้ต้องขัง (นับเป็นผู้ใหญ่)
+
+    html += `<div style="margin-bottom:20px;">`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`;
+    html += `<strong style="font-size:14px;color:#1b5e20;">🍽️🍰 ครัว + เบเกอรี่ (เตรียมอาหารและของหวาน)</strong>`;
+    html += `<button onclick="printSingleReport('kitchen-bakery', '${date}')" style="font-size:11px;padding:4px 10px;background:#2e7d32;color:white;border:none;border-radius:4px;cursor:pointer;">🖨️ พิมพ์</button>`;
+    html += `</div>`;
+    html += `<div style="font-size:13px;line-height:1.6;">`;
+    html += `จำนวนโต๊ะ: <strong>${totalTables}</strong> โต๊ะ &nbsp;&nbsp;`;
+    html += `รวมผู้เข้าร่วม: <strong>${totalRelatives + totalTables}</strong> คน (ญาติ ${totalRelatives} + ผู้ต้องขัง ${totalTables})<br>`;
+    html += `ผู้ใหญ่ (รวมผู้ต้องขัง): <strong>${combinedAdults}</strong> คน &nbsp;|&nbsp; `;
+    html += `เด็ก 5-8 ปี: <strong>${total5_8}</strong> คน &nbsp;|&nbsp; `;
+    html += `ต่ำกว่า 5 ปี: <strong>${totalUnder5}</strong> คน`;
+    html += `</div>`;
+    html += `</div>`;
+
+    // ========== 4. การจัดโต๊ะ (รายละเอียดต่อโต๊ะ) ==========
+    html += `<div>`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`;
+    html += `<strong style="font-size:14px;color:#e65100;">🪑 รายงานการจัดโต๊ะ</strong>`;
+    html += `<button onclick="printSingleReport('table', '${date}')" style="font-size:11px;padding:4px 10px;background:#ff9800;color:white;border:none;border-radius:4px;cursor:pointer;">🖨️ พิมพ์</button>`;
+    html += `</div>`;
+
+    // Calculate grand total for the day (reuse variable declared earlier in this date block)
+    const totalPeopleForDay = totalRelatives + rows.length; // +1 prisoner per table
+
+    // Detailed per-table list
+    html += `<div style="font-size:12px; line-height:1.6;">`;
+    rows.forEach((r, i) => {
+      const tableNo = i + 1;
+      const ref = r.ref || '—';
+      const prisoner = r.prisonerName ? `น.ช. ${r.prisonerName}` : '—';
+
+      // Get main visitor + extras
+      let visitors = [r.visitorName || '—'];
+      const extras = parseExtraVisitors(r);
+      extras.forEach(ex => {
+        if (ex.name) visitors.push(ex.name);
+      });
+
+      const totalPeople = (parseInt(r.visitorCount) || 1) + 1; // relatives + prisoner
+
+      html += `
+        <div style="border:1px solid #ddd; border-radius:4px; padding:8px; margin-bottom:6px; background:#fff;">
+          <strong>โต๊ะ ${tableNo} = ${ref}</strong><br>
+          ผู้ต้องขัง: <strong>${prisoner}</strong><br>
+          ผู้เยี่ยม: ${visitors.join(' + ')}<br>
+          <span style="color:#555;">จำนวนทั้งหมด: <strong>${totalPeople} คน</strong> (รวมผู้ต้องขัง)</span>
+        </div>
+      `;
+    });
+
+    // Grand total line at the bottom
+    html += `
+      <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #ccc; font-weight:600; color:#e65100;">
+        รวมทั้งหมด: <strong>${totalPeopleForDay} คน</strong> จาก ${rows.length} โต๊ะ
+      </div>
+    `;
+    html += `</div>`;
+    html += `</div>`;
+
+    html += `</div>`; // close date block
+  });
+
+  container.innerHTML = html;
+}
+
+// Helper to print individual department report for a specific date
+function printSingleReport(type, date) {
+  const filtered = getCurrentFilteredSorted().filter(r => (r.visitDate || r.visitDateISO) === date);
+  if (filtered.length === 0) return;
+
+  let content = '';
+  const now = new Date().toLocaleString('th-TH');
+
+  if (type === 'disciplinary') {
+    const prisoners = [];
+    filtered.forEach(r => {
+      if (r.prisonerName && !prisoners.some(p => p.id === r.prisonerId)) {
+        prisoners.push({ name: r.prisonerName, id: r.prisonerId, wing: r.wing });
+      }
+    });
+
+    content = `<h2>🚨 รายงานส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง) - ${date}</h2>`;
+    content += `<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;font-size:13px;">`;
+    content += `<tr style="background:#f0f0f0;"><th>ชื่อ-นามสกุล</th><th>เลขประจำตัวผู้ต้องขัง</th><th>แดน</th></tr>`;
+    prisoners.forEach(p => {
+      content += `<tr><td><strong>น.ช. ${p.name}</strong></td><td>${p.id}</td><td>${p.wing || '-'}</td></tr>`;
+    });
+    content += `</table>`;
+  } 
+  else if (type === 'kitchen' || type === 'bakery' || type === 'kitchen-bakery') {
+    let visitorAdults = 0, k5 = 0, ku = 0;
+    let tables = filtered.length;
+    let relatives = filtered.reduce((s,r) => s + (parseInt(r.visitorCount)||1), 0);
+
+    filtered.forEach(r => {
+      const d = computeDeptReportData(r);
+      visitorAdults += d.adults; k5 += d.kids5_8; ku += d.kidsUnder5;
+    });
+
+    const combinedAdults = visitorAdults + tables; // รวมผู้ต้องขังเป็นผู้ใหญ่
+
+    content = `<h2>🍽️🍰 ครัว + เบเกอรี่ (เตรียมอาหารและของหวาน) - ${date}</h2>`;
+    content += `<p>จำนวนโต๊ะ: <strong>${tables}</strong> โต๊ะ<br>`;
+    content += `รวมผู้เข้าร่วม: <strong>${relatives + tables}</strong> คน (ญาติ + ผู้ต้องขัง)<br><br>`;
+    content += `ผู้ใหญ่ (รวมผู้ต้องขัง): <strong>${combinedAdults}</strong> คน<br>`;
+    content += `เด็ก 5-8 ปี: <strong>${k5}</strong> คน<br>`;
+    content += `ต่ำกว่า 5 ปี: <strong>${ku}</strong> คน</p>`;
+  }
+
+  else if (type === 'table') {
+    content = `<h2>🪑 รายงานการจัดโต๊ะ - ${date}</h2>`;
+    content += `<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;font-size:13px;">`;
+    content += `<tr style="background:#f0f0f0;"><th>โต๊ะ</th><th>Ref No.</th><th>ผู้ต้องขัง</th><th>ผู้เยี่ยม</th><th>จำนวนคนทั้งหมด</th></tr>`;
+
+    let grandTotal = 0;
+
+    filtered.forEach((r, i) => {
+      const tableNo = i + 1;
+      const ref = r.ref || '—';
+      const prisoner = r.prisonerName ? `น.ช. ${r.prisonerName}` : '—';
+
+      let visitors = [r.visitorName || '—'];
+      const extras = parseExtraVisitors(r);
+      extras.forEach(ex => {
+        if (ex.name) visitors.push(ex.name);
+      });
+
+      const totalPeople = (parseInt(r.visitorCount) || 1) + 1;
+      grandTotal += totalPeople;
+
+      content += `<tr>`;
+      content += `<td><strong>โต๊ะ ${tableNo}</strong></td>`;
+      content += `<td>${ref}</td>`;
+      content += `<td>${prisoner}</td>`;
+      content += `<td>${visitors.join(' + ')}</td>`;
+      content += `<td><strong>${totalPeople} คน</strong></td>`;
+      content += `</tr>`;
+    });
+
+    content += `</table>`;
+
+    // Grand total at the bottom
+    content += `<p style="margin-top:12px; font-weight:600; font-size:14px;">รวมทั้งหมด: <strong>${grandTotal} คน</strong> จาก ${filtered.length} โต๊ะ</p>`;
+  }
+
+  const printWin = window.open('', '_blank');
+  printWin.document.write(`
+    <html><head><meta charset="UTF-8"><title>รายงาน ${date}</title>
+    <style>body{font-family:'Sarabun',sans-serif;padding:20px;font-size:14px;} table{width:100%;} h2{margin-bottom:16px;}</style>
+    </head><body>
+    ${content}
+    <div style="margin-top:30px;font-size:11px;color:#888;">พิมพ์เมื่อ ${now} • ทัณฑสถานบำบัดพิเศษกลาง</div>
+    </body></html>
+  `);
+  printWin.document.close();
+  setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModal(); closeDetailModal(); } });

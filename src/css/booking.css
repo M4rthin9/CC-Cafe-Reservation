@@ -248,11 +248,11 @@
   }
 }
 [data-theme="dark"] {
-  --bg: #121212;
-  --bg2: #1e1e1e;
-  --border: #7F8C8D;
-  --text: #FFFFFF;
-  --text2: #7F8C8D;
+  --bg: #0f0f0f;
+  --bg2: #1a1a1a;
+  --border: #3f3f3f;
+  --text: #f0f0f0;
+  --text2: #a0aec0;
   --blue: #E59866;
   --blue-dark: #c97a4a;
   --blue-light: #2c2520;
@@ -267,7 +267,7 @@
 /* Dark overrides */
 [data-theme="dark"] .header { background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); }
 [data-theme="dark"] .status-pending { background: #2c2520; color: #E59866; border-color: rgba(229,152,102,0.3); }
-[data-theme="dark"] .rules { background: #2c2520; border-color: #E59866; color: #ccc; }
+[data-theme="dark"] .rules { background: #2c2520; border-color: #E59866; color: #ddd; }
 [data-theme="dark"] .consent-row { background: #1e1e1e; border-color: #7F8C8D; }
 [data-theme="dark"] .summary-card { background: #1e1e1e; }
 [data-theme="dark"] .suggestion-item { background: #1e1e1e; border-color: #7F8C8D; }
@@ -319,11 +319,58 @@
 }
 [data-theme="dark"] .theme-toggle {
   background: #1e1e1e;
-  border-color: #7F8C8D;
+  border-color: #3f3f3f;
 }
-@media (prefers-color-scheme: dark) {
-  .theme-toggle {
-    background: #1e1e1e;
-    border-color: #7F8C8D;
-  }
+
+/* ===== Department Reports - Theme aware ===== */
+.dept-report {
+  border: 2px solid var(--blue);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dept-report strong {
+  color: var(--text);
+}
+
+.booking-report  { border-color: #185FA5; }
+.table-report    { border-color: #ff9800; }
+.disciplinary-report { border-color: #c62828; }
+.kitchen-report  { border-color: #2e7d32; }
+.bakery-report   { border-color: #c8922a; }
+
+/* Dark mode for department reports */
+[data-theme="dark"] .dept-report {
+  background: #1a1a1a;
+  border-color: #3f3f3f;
+  color: #f0f0f0;
+}
+
+[data-theme="dark"] .dept-report strong {
+  color: #f0f0f0;
+}
+
+[data-theme="dark"] .booking-report,
+[data-theme="dark"] .table-report {
+  border-color: #E59866;
+}
+
+[data-theme="dark"] .disciplinary-report {
+  border-color: #E24B4A;
+  background: #2a1a1a;
+}
+
+[data-theme="dark"] .kitchen-report {
+  border-color: #82E0AA;
+  background: #1a2a1a;
+}
+
+[data-theme="dark"] .bakery-report {
+  border-color: #E59866;
+  background: #2a251a;
 }

@@ -202,7 +202,80 @@ function calculateTotal() {
   };
 }
 
- // ===== PRISONER MASTER DATA (from Google Sheet via Apps Script) =====
+// ===== COPY DEPARTMENT REPORTS (plain text for Line / Email / Print) =====
+function copyDeptReport(dept) {
+  const n = parseInt(document.getElementById('visitorCount').value);
+  const totalPersons = n + 1;
+  const d = parseLocalDate(selectedDate);
+  const thDate = d.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  const visitor1Name = document.getElementById('visitorName').value.trim();
+  const mainPhone = document.getElementById('visitorPhone').value.trim();
+  const mainRelation = document.getElementById('relation').value;
+  const prisonerName = document.getElementById('prisonerName').value.trim();
+  const prisonerId = document.getElementById('prisonerId').value.trim();
+  const wing = document.getElementById('wing').value;
+
+  const cost = calculateTotal();
+  const c = cost;
+
+  let text = '';
+
+  if (dept === 'booking') {
+    text = `รายงานการจอง\n` +
+           `วันที่: ${thDate}\n` +
+           `ผู้จอง: ${visitor1Name} (${mainPhone})\n` +
+           `ความสัมพันธ์: ${mainRelation}\n` +
+           `ผู้ต้องขัง: ${prisonerName} (#${prisonerId}) - ${wing}\n` +
+           `จำนวน: ญาติ ${n} คน + ผู้ต้องขัง 1 = ${totalPersons} คน\n` +
+           `ค่าบริการ: ${cost.total.toLocaleString()} บาท\n` +
+           (cost.discountNotes.length ? `ส่วนลดบุตร/ธิดา: ${cost.discountNotes.join(', ')}\n` : '');
+  }
+  else if (dept === 'table') {
+    text = `รายงานการจัดโต๊ะ\n` +
+           `วันที่: ${thDate}\n` +
+           `โต๊ะ: 1 โต๊ะ\n` +
+           `จำนวนที่นั่ง: ${totalPersons} คน\n` +
+           `ผู้ติดต่อ: ${visitor1Name} (${mainPhone})\n` +
+           `ผู้ต้องขัง: ${prisonerName} (#${prisonerId})`;
+  }
+  else if (dept === 'disciplinary') {
+    text = `รายงานสำหรับส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)\n` +
+           `วันที่: ${thDate}\n` +
+           `ชื่อผู้ต้องขัง: ${prisonerName}\n` +
+           `เลขผู้ต้องขัง: ${prisonerId}\n` +
+           `แดน: ${wing}`;
+  }
+  else if (dept === 'kitchen') {
+    text = `รายงานสำหรับครัว\n` +
+           `วันที่: ${thDate}\n` +
+           `รวมทั้งหมด: ญาติ ${n} คน + ผู้ต้องขัง 1 คน = ${totalPersons} คน\n` +
+           `ผู้ใหญ่ (ญาติ): ${c.adults} คน\n` +
+           `เด็ก 5-8 ปี (ญาติ): ${c.kids5_8} คน${c.kids5_8Names.length ? ' (' + c.kids5_8Names.join(', ') + ')' : ''}\n` +
+           `เด็กต่ำกว่า 5 ปี (ญาติ): ${c.kidsUnder5} คน${c.kidsUnder5Names.length ? ' (' + c.kidsUnder5Names.join(', ') + ')' : ''}\n` +
+           `หมายเหตุ: รวมผู้ต้องขัง 1 คนด้วย`;
+  }
+  else if (dept === 'bakery') {
+    text = `รายงานสำหรับเบเกอรี่\n` +
+           `วันที่: ${thDate}\n` +
+           `รวมทั้งหมด: ญาติ ${n} คน + ผู้ต้องขัง 1 คน = ${totalPersons} คน\n` +
+           `ผู้ใหญ่ (ญาติ): ${c.adults} คน\n` +
+           `เด็ก 5-8 ปี (ญาติ): ${c.kids5_8} คน${c.kids5_8Names.length ? ' (' + c.kids5_8Names.join(', ') + ')' : ''}\n` +
+           `เด็กต่ำกว่า 5 ปี (ญาติ): ${c.kidsUnder5} คน${c.kidsUnder5Names.length ? ' (' + c.kidsUnder5Names.join(', ') + ')' : ''}\n` +
+           `หมายเหตุ: รวมผู้ต้องขัง 1 คนด้วย`;
+  }
+
+  if (text) {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('✅ คัดลอกแล้ว! สามารถวางส่งต่อแผนกได้เลย');
+    }).catch(() => {
+      prompt('คัดลอกข้อความด้านล่าง (กด Ctrl+C):', text);
+    });
+  }
+}
+
+  // ===== PRISONER MASTER DATA (from Google Sheet via Apps Script) =====
+
 
 let prisonerMaster = [];
 
@@ -402,57 +475,106 @@ function goToConfirm() {
   const mainRelation = document.getElementById('relation').value;
   const mainPhone    = document.getElementById('visitorPhone').value.trim();
 
-  // Build clear lists for ฝ่ายตรวจค้น
-  let checkListHtml = `
-    <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px;margin:6px 0;font-size:13px;line-height:1.5">
-      <strong>👤 คนที่ 1:</strong> ${visitor1Name} <span style="color:var(--text2);font-size:12px">(${visitor1Id})</span><br>
-      <span style="color:var(--text2)">ความสัมพันธ์: ${mainRelation} · โทร: ${mainPhone}</span>
-    </div>`;
-  extras.forEach((v, idx) => {
-    const agePart = (v.relation === 'บุตร / ธิดา' && v.age) ? ` · อายุ ${v.age} ปี` : '';
-    checkListHtml += `
-      <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px;margin:4px 0;font-size:13px;line-height:1.5">
-        <strong>👤 คนที่ ${idx+2}:</strong> ${v.name} <span style="color:var(--text2);font-size:12px">(${v.id})</span><br>
-        <span style="color:var(--text2)">ความสัมพันธ์: ${v.relation}${agePart}</span>
-      </div>`;
-  });
-
   const cost = calculateTotal();
-  const c = cost; // shorthand
+  const c = cost;
 
-  // Kitchen breakdown section (very clear for ครัว/เบเกอรี่)
-  let kitchenHtml = `
-    <div style="background:#e8f5e9;border:2px solid #2e7d32;border-radius:8px;padding:10px;margin:8px 0;font-size:13px">
-      <strong style="color:#1b5e20">🍽️ ครัว + เบเกอรี่ (เตรียมอาหาร/ของหวาน)</strong><br>
-      <div style="margin-top:6px">
-        <strong>ผู้ใหญ่:</strong> <span style="font-size:15px;font-weight:700">${c.adults} คน</span><br>
-        <strong>เด็ก 5-8 ปี:</strong> <span style="font-size:15px;font-weight:700;color:#f57c00">${c.kids5_8} คน</span>${c.kids5_8Names.length ? ' <span style="font-size:12px">(' + c.kids5_8Names.join(', ') + ')</span>' : ''}<br>
-        <strong>เด็กต่ำกว่า 5 ปี:</strong> <span style="font-size:15px;font-weight:700;color:#1976d2">${c.kidsUnder5} คน</span>${c.kidsUnder5Names.length ? ' <span style="font-size:12px">(' + c.kidsUnder5Names.join(', ') + ')</span>' : ''}<br>
+  const prisonerName = document.getElementById('prisonerName').value.trim();
+  const prisonerId = document.getElementById('prisonerId').value.trim();
+  const wing = document.getElementById('wing').value;
+
+  // ========== 4 SEPARATE DEPARTMENT REPORTS ==========
+
+  // 1. BOOKING REPORT (full record)
+  const bookingReportHtml = `
+    <div class="dept-report booking-report">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong>📋 รายงานการจอง (Booking Report)</strong>
+        <button onclick="copyDeptReport('booking')" style="font-size:11px;padding:2px 8px;background:#185fa5;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
       </div>
-      <div style="font-size:11px;color:#555;margin-top:4px">* ไม่รวมผู้ต้องขัง (ผู้ต้องขังมีอาหารภายใน)</div>
+      <div style="font-size:12.5px;line-height:1.55">
+        วันที่เข้าร่วม: <strong>${thDate}</strong><br>
+        ผู้จอง: <strong>${visitor1Name}</strong> (${mainPhone})<br>
+        ความสัมพันธ์: ${mainRelation}<br>
+        ผู้ต้องขัง: <strong>${prisonerName}</strong> (#${prisonerId}) — ${wing}<br>
+        จำนวน: ญาติ ${n} คน + ผู้ต้องขัง 1 = <strong>${totalPersons} คน</strong><br>
+        ค่าบริการ: <strong>${cost.total.toLocaleString()} บาท</strong>
+        ${cost.discountNotes.length ? `<br><span style="color:#2e7d32">ส่วนลดบุตร/ธิดา: ${cost.discountNotes.join(', ')}</span>` : ''}
+      </div>
     </div>`;
 
-  // Disciplinary / เบิกตัว section
-  let discHtml = `
-    <div style="background:#fff3e0;border:1px solid #ff9800;border-radius:6px;padding:8px;margin:6px 0;font-size:13px">
-      <strong style="color:#e65100">📋 ฝ่ายทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong><br>
-      ผู้ต้องขัง: <strong>${document.getElementById('prisonerName').value.trim()}</strong> (#${document.getElementById('prisonerId').value.trim()}) — ${document.getElementById('wing').value}<br>
-      วันที่: <strong>${thDate}</strong> &nbsp; | &nbsp; ญาติที่เข้าร่วม: <strong>${n} คน</strong> (รวมผู้ต้องขัง = ${totalPersons} คน)
+  // 2. TABLE REPORT (for seating / table assignment)
+  const tableReportHtml = `
+    <div class="dept-report table-report">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong>🪑 รายงานการจัดโต๊ะ (Table Assignment)</strong>
+        <button onclick="copyDeptReport('table')" style="font-size:11px;padding:2px 8px;background:#ff9800;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
+      </div>
+      <div style="font-size:13px;line-height:1.5">
+        <strong>วันที่:</strong> ${thDate}<br>
+        <strong>โต๊ะที่จอง:</strong> 1 โต๊ะ<br>
+        <strong>จำนวนที่นั่ง:</strong> ${totalPersons} คน (ญาติ ${n} + ผู้ต้องขัง 1)<br>
+        <strong>ผู้ติดต่อหลัก:</strong> ${visitor1Name} (${mainPhone})<br>
+        <strong>ผู้ต้องขัง:</strong> ${prisonerName} (#${prisonerId})
+      </div>
     </div>`;
 
-  // Charge summary
-  let chargeHtml = `<div style="margin-top:6px;font-size:13px">💰 ค่าบริการรวม: <strong>${cost.total.toLocaleString()} บาท</strong>`;
-  if (cost.discountNotes.length) chargeHtml += ` <span style="color:#2e7d32;font-size:12px">(ส่วนลดบุตร/ธิดา: ${cost.discountNotes.join(', ')})</span>`;
-  chargeHtml += `</div>`;
+  // 3. ส่วนทัณฑ์ (Disciplinary / Escort) — ONLY prisoner info
+  const disciplinaryReportHtml = `
+    <div class="dept-report disciplinary-report">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong>🚨 รายงานสำหรับส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong>
+        <button onclick="copyDeptReport('disciplinary')" style="font-size:11px;padding:2px 8px;background:#c62828;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
+      </div>
+      <div style="font-size:13px;line-height:1.6">
+        <strong>วันที่เข้าร่วม:</strong> ${thDate}<br>
+        <strong>ชื่อผู้ต้องขัง:</strong> ${prisonerName}<br>
+        <strong>เลขผู้ต้องขัง:</strong> ${prisonerId}<br>
+        <strong>แดน:</strong> ${wing}
+      </div>
+    </div>`;
+
+  // 4. KITCHEN REPORT — include prisoner in total
+  const kitchenReportHtml = `
+    <div class="dept-report kitchen-report">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong>🍽️ รายงานสำหรับครัว (Kitchen Report)</strong>
+        <button onclick="copyDeptReport('kitchen')" style="font-size:11px;padding:2px 8px;background:#2e7d32;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
+      </div>
+      <div style="font-size:13px;line-height:1.55">
+        <strong>รวมทั้งหมด:</strong> ญาติ ${n} คน + ผู้ต้องขัง 1 คน = <strong>${totalPersons} คน</strong><br><br>
+        <strong>ผู้ใหญ่ (ญาติ):</strong> ${c.adults} คน<br>
+        <strong>เด็ก 5-8 ปี (ญาติ):</strong> ${c.kids5_8} คน ${c.kids5_8Names.length ? '— ' + c.kids5_8Names.join(', ') : ''}<br>
+        <strong>เด็กต่ำกว่า 5 ปี (ญาติ):</strong> ${c.kidsUnder5} คน ${c.kidsUnder5Names.length ? '— ' + c.kidsUnder5Names.join(', ') : ''}<br>
+        <span style="font-size:11px;color:#555">* เตรียมอาหารตามจำนวนญาติ + ผู้ต้องขัง 1 คน</span>
+      </div>
+    </div>`;
+
+  // 5. BAKERY REPORT — include prisoner in total
+  const bakeryReportHtml = `
+    <div class="dept-report bakery-report">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong>🍰 รายงานสำหรับเบเกอรี่ (Bakery Report)</strong>
+        <button onclick="copyDeptReport('bakery')" style="font-size:11px;padding:2px 8px;background:#c8922a;color:white;border:none;border-radius:4px;cursor:pointer">📋 คัดลอก</button>
+      </div>
+      <div style="font-size:13px;line-height:1.55">
+        <strong>รวมทั้งหมด:</strong> ญาติ ${n} คน + ผู้ต้องขัง 1 คน = <strong>${totalPersons} คน</strong><br><br>
+        <strong>ผู้ใหญ่ (ญาติ):</strong> ${c.adults} คน<br>
+        <strong>เด็ก 5-8 ปี (ญาติ):</strong> ${c.kids5_8} คน ${c.kids5_8Names.length ? '— ' + c.kids5_8Names.join(', ') : ''}<br>
+        <strong>เด็กต่ำกว่า 5 ปี (ญาติ):</strong> ${c.kidsUnder5} คน ${c.kidsUnder5Names.length ? '— ' + c.kidsUnder5Names.join(', ') : ''}<br>
+        <span style="font-size:11px;color:#555">* เตรียมของหวานตามจำนวนญาติ + ผู้ต้องขัง 1 คน</span>
+      </div>
+    </div>`;
 
   document.getElementById('confirmSummary').innerHTML = `
-    <div style="font-size:12px;color:#555;margin-bottom:4px">📤 <strong>รายงานสรุป (ส่งต่อฝ่ายต่าง ๆ ได้เลย)</strong></div>
-    ${discHtml}
-    <div style="margin:8px 0 4px 0"><strong style="color:#185fa5">🔍 ฝ่ายตรวจค้น (เช็คชื่อญาติตอนเข้าเยี่ยม)</strong></div>
-    ${checkListHtml}
-    ${kitchenHtml}
-    <div style="font-size:12px;margin-top:4px;color:var(--text2)">📅 ${thDate} &nbsp;·&nbsp; Ref จะได้รับหลังส่งคำขอ</div>
-    ${chargeHtml}
+    <div style="font-size:12px;color:#555;margin-bottom:6px;text-align:center">
+      📤 <strong>รายงานแยกตามฝ่าย</strong> — คลิกปุ่มคัดลอกเพื่อส่งต่อแต่ละแผนก
+    </div>
+    ${bookingReportHtml}
+    ${tableReportHtml}
+    ${disciplinaryReportHtml}
+    ${kitchenReportHtml}
+    ${bakeryReportHtml}
+    <div style="font-size:11px;color:#888;text-align:center;margin-top:4px">ข้อมูลนี้ใช้สำหรับเตรียมการก่อนส่งคำขอจอง</div>
   `;
   showPage(2);
 }
@@ -560,19 +682,47 @@ async function submitBooking() {
   renderCalendar();
 
   const costFinal = calculateTotal();
-  const kf = costFinal;
+  const cf = costFinal;
 
   document.getElementById('finalSummary').innerHTML = `
-    <div>📋 <strong>Ref No.:</strong> ${ref}</div>
-    <div>👤 <strong>ผู้ร่วมกิจกรรม:</strong> ${data.visitorName}</div>
-    <div>🔒 <strong>ผู้ต้องขัง:</strong> ${data.prisonerName} (#${data.prisonerId}) — ${data.wing}</div>
-    <div>📅 <strong>วันที่:</strong> ${thDate}</div>
-    <div>👥 <strong>จำนวนรวม:</strong> ${totalPersons} คน (ญาติ ${n} + ผู้ต้องขัง)</div>
-    <div style="background:#e8f5e9;padding:6px 8px;border-radius:4px;margin:4px 0;font-size:12px;line-height:1.4">
-      🍽️ <strong>ครัว/เบเกอรี่:</strong> ผู้ใหญ่ ${kf.adults} · เด็ก5-8 ${kf.kids5_8} · ต่ำกว่า5 ${kf.kidsUnder5} คน
+    <div style="text-align:center;margin-bottom:8px">
+      <strong style="color:#185fa5">✅ ส่งคำขอเรียบร้อย — Ref: ${ref}</strong>
     </div>
-    <div>💰 <strong>ค่าบริการ:</strong> ${data.total.toLocaleString()} บาท</div>
-    <div style="color:var(--gold);font-weight:600">⏳ สถานะ: รอตรวจสอบวินัย</div>
+
+    <div class="dept-report booking-report" style="border:1px solid #185fa5;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
+      <strong>📋 Booking:</strong> ${data.visitorName} (${data.visitorPhone}) → ${data.prisonerName} (#${data.prisonerId}) | ${data.visitDate} | ${data.total.toLocaleString()} บาท
+    </div>
+
+    <div class="dept-report table-report" style="border:1px solid #ff9800;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
+      <strong>🪑 Table:</strong> 1 โต๊ะ | ${totalPersons} คน | ติดต่อ ${data.visitorName}
+    </div>
+
+    <div class="dept-report disciplinary-report" style="border:2px solid #c62828;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
+      <strong>🚨 ส่วนทัณฑ์:</strong> ${data.prisonerName} (#${data.prisonerId}) — ${data.wing} | ${data.visitDate}
+    </div>
+
+    <div class="dept-report kitchen-report" style="border:2px solid #2e7d32;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
+      <strong>🍽️ ครัว:</strong> ผู้ใหญ่ ${cf.adults} · เด็ก5-8 ${cf.kids5_8} · ต่ำกว่า5 ${cf.kidsUnder5}
+    </div>
+
+    <div class="dept-report bakery-report" style="border:2px solid #c8922a;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
+      <strong>🍰 เบเกอรี่:</strong> ผู้ใหญ่ ${cf.adults} · เด็ก5-8 ${cf.kids5_8} · ต่ำกว่า5 ${cf.kidsUnder5}
+    </div>
+
+
+    <div class="dept-report" style="border:1px solid #ff9800;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;background:#fff8f0">
+      <strong>🪑 Table:</strong> 1 โต๊ะ | ${totalPersons} คน | ติดต่อ ${data.visitorName}
+    </div>
+
+    <div class="dept-report" style="border:1px solid #2e7d32;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;background:#f0fff0">
+      <strong>🍽️ ครัว:</strong> ผู้ใหญ่ ${cf.adults} | 5-8 ปี ${cf.kids5_8} | &lt;5 ปี ${cf.kidsUnder5}
+    </div>
+
+    <div class="dept-report" style="border:1px solid #c8922a;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;background:#fffdf5">
+      <strong>🍰 เบเกอรี่:</strong> ผู้ใหญ่ ${cf.adults} | 5-8 ปี ${cf.kids5_8} | &lt;5 ปี ${cf.kidsUnder5}
+    </div>
+
+    <div style="font-size:11px;color:#888;text-align:center">ใช้ปุ่ม "ตรวจสอบสถานะ" เพื่อติดตาม หรือคัดลอก Ref ด้านบน</div>
   `;
 
   // Store ref in sessionStorage for status page

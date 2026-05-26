@@ -35,6 +35,7 @@
     <nav class="sb-nav">
       <a class="sb-link active" data-view="home" onclick="switchView('home');return false">🏠 <span class="sb-text">ภาพรวม</span></a>
       <a class="sb-link" data-view="reservations" onclick="switchView('reservations');return false">📋 <span class="sb-text">รายการจอง</span></a>
+      <a class="sb-link" data-view="reports" onclick="switchView('reports');return false">📊 <span class="sb-text">รายงาน</span></a>
     </nav>
     <div class="sb-bottom">
       <button onclick="doLogout()" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">ออกจากระบบ</button>
@@ -112,10 +113,10 @@
             <button onclick="printReport()" style="margin-left:8px;background:#0f766e;color:#fff;border:1px solid #0f766e;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ พิมพ์รายงาน</button>
             <button onclick="printPrisonerVinaiList()" style="margin-left:8px;background:#854d0e;color:#fff;border:1px solid #854d0e;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
  
-         </div>
+          </div>
 
+         <div class="table-wrap">
 
-        <div class="table-wrap">
           <div class="table-header">
             <h2>รายการจองทั้งหมด</h2>
             <span class="table-count" id="tableCount">0 รายการ</span>
@@ -144,6 +145,39 @@
           <div class="last-updated" id="lastUpdated">อัพเดทล่าสุด: —</div>
         </div>
       </div>
+
+      <!-- REPORTS VIEW -->
+      <div id="view-reports" class="view" style="display:none">
+        <div style="margin-bottom:12px">
+          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">📊 รายงาน</h1>
+          <div style="font-size:13px;color:var(--text2)">รายงานประจำวัน — กรองข้อมูลด้านล่างเพื่อดึงข้อมูล</div>
+        </div>
+
+        <!-- Independent Filters for Reports Page -->
+        <div class="controls" style="margin-bottom:16px">
+          <input class="search-box" id="reportsSearchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / Ref / ผู้ต้องขัง" oninput="renderReportsView()">
+          
+          <select class="filter-select" id="reportsFilterStatus" onchange="renderReportsView()">
+            <option value="">ทุกสถานะ</option>
+            <option value="รอตรวจสอบ">รอตรวจสอบ</option>
+            <option value="รอชำระเงิน">รอชำระเงิน</option>
+            <option value="ชำระแล้ว">ชำระแล้ว</option>
+            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+            <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+          </select>
+          
+          <select class="filter-select" id="reportsFilterDate" onchange="renderReportsView()">
+            <option value="">ทุกวัน</option>
+          </select>
+
+          <button class="refresh-btn" onclick="renderReportsView()">🔄 ดึงข้อมูลรายงาน</button>
+        </div>
+
+        <div id="reportsContent">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
