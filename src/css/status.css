@@ -1,29 +1,33 @@
 :root {
-  /* Refined Politico-inspired palette — harmonious & eye-friendly (shared) */
-  --primary: #8C2525;
-  --primary-dark: #6F1C1C;
+  /* Artisanal Hope & Institutional Elegance — Chance & Change Café */
+  --navy: #0B2545;
+  --crimson: #8B0000;
+  --antique-gold: #D4AF37;
 
-  --bg: #ffffff;
-  --bg2: #f8f8f8;
-  --border: #e5e5e5;
-
-  --text: #0d0f16;
-  --text2: #2f343a;
-  --text-muted: #6b7280;
-
-  --blue: #1E4A6E;
-  --blue-dark: #153A57;
-  --blue-light: #E8EEF5;
-
-  --green: #4A7C59;
-  --green-light: #E8F0E9;
-
-  --gold: #8B6B2E;
-  --gold-light: #F5E8C7;
-
-  --red: #8C2525;
-  --red-light: #F8E8E8;
-
+  --primary: #8B0000;
+  --primary-dark: #5C0000;
+ 
+  --bg: #FDFBF7;
+  --bg2: #F7F3EB;
+  --border: #E8E0D1;
+ 
+  --text: #1C2433;
+  --text2: #3F4755;
+  --text-muted: #6B7280;
+ 
+  --blue: #0B2545;
+  --blue-dark: #061A33;
+  --blue-light: #E8ECF4;
+ 
+  --green: #2E5238;
+  --green-light: #EAF0E8;
+ 
+  --gold: #D4AF37;
+  --gold-light: #F5EFD8;
+ 
+  --red: #8B0000;
+  --red-light: #F8E6E6;
+ 
   --radius: 12px;
   --shadow: 0 2px 8px rgba(13,15,22,0.06);
 }
@@ -32,7 +36,7 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
 .app { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
 .header {
   text-align: center; margin-bottom: 1.5rem; padding: 1.5rem;
-  background: linear-gradient(135deg, #0d0f16 0%, #1a1d23 100%);
+  background: linear-gradient(135deg, #0B2545 0%, #061A33 100%);
   border-radius: var(--radius); color: #fff; position: relative; overflow: hidden;
 }
 .header::before {
@@ -46,7 +50,7 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
   color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; z-index: 1;
 }
 .back-link:hover { color: #fff; }
-.badge { display: inline-block; background: rgba(200,146,42,0.3); border: 1px solid rgba(200,146,42,0.5); color: #f5d08a; font-size: 11px; padding: 3px 12px; border-radius: 20px; margin-bottom: 10px; }
+  .badge { display: inline-block; background: rgba(212,175,55,0.22); border: 1px solid rgba(212,175,55,0.5); color: #E8D9A3; font-size: 11px; padding: 3px 12px; border-radius: 20px; margin-bottom: 10px; }
 .search-section {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem;
@@ -114,7 +118,7 @@ input {
 
 /* Status pills */
 .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-.status-pending   { background: #FFF9E6; color: #C8922A; border: 1px solid rgba(200,146,42,0.3); }
+  .status-pending   { background: #F9F2DC; color: #A67C00; border: 1px solid rgba(212,175,55,0.35); }
 .status-approved  { background: var(--green-light); color: var(--green); border: 1px solid rgba(59,109,17,0.25); }
 .status-rejected  { background: var(--red-light); color: var(--red); border: 1px solid rgba(226,75,74,0.25); }
 .status-paid      { background: #e8f0fe; color: #1a56db; border: 1px solid rgba(26,86,219,0.25); }
@@ -182,10 +186,10 @@ input {
   display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;
   font-size: 40px; border: 3px solid rgba(59,109,17,0.3);
 }
-.ref-box-sm {
-  background: linear-gradient(135deg, #0d0f16 0%, #1a1d23 100%);
-  border-radius: var(--radius); padding: 14px 24px; display: inline-block; margin: 1rem 0;
-}
+  .ref-box-sm {
+    background: linear-gradient(135deg, #0B2545 0%, #061A33 100%);
+    border-radius: var(--radius); padding: 14px 24px; display: inline-block; margin: 1rem 0;
+  }
 .ref-box-sm .ref-label { font-size: 11px; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
 .ref-box-sm span { font-size: 24px; font-weight: 700; letter-spacing: 3px; color: #fff; display: block; }
 

@@ -1,28 +1,32 @@
 :root {
-  /* Refined Politico-inspired palette — harmonious & eye-friendly (admin) */
-  --primary: #8C2525;
-  --primary-dark: #6F1C1C;
+  /* Artisanal Hope & Institutional Elegance — Chance & Change Café (Admin) */
+  --navy: #0B2545;
+  --crimson: #8B0000;
+  --antique-gold: #D4AF37;
 
-  --bg: #f8f9fa;
-  --bg2: #ffffff;
-  --border: #e5e5e5;
+  --primary: #8B0000;
+  --primary-dark: #5C0000;
 
-  --text: #0d0f16;
-  --text2: #2f343a;
-  --text-muted: #6b7280;
+  --bg: #FDFBF7;
+  --bg2: #F7F3EB;
+  --border: #E8E0D1;
 
-  --blue: #1E4A6E;
-  --blue-dark: #153A57;
-  --blue-light: #E8EEF5;
+  --text: #1C2433;
+  --text2: #3F4755;
+  --text-muted: #6B7280;
 
-  --green: #4A7C59;
-  --green-light: #E8F0E9;
+  --blue: #0B2545;
+  --blue-dark: #061A33;
+  --blue-light: #E8ECF4;
 
-  --gold: #8B6B2E;
-  --gold-light: #F5E8C7;
+  --green: #2E5238;
+  --green-light: #EAF0E8;
 
-  --red: #8C2525;
-  --red-light: #F8E8E8;
+  --gold: #D4AF37;
+  --gold-light: #F5EFD8;
+
+  --red: #8B0000;
+  --red-light: #F8E6E6;
 
   --radius: 10px;
   --radius-sm: 6px;
@@ -60,7 +64,7 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
 .stat-val { font-size: 26px; font-weight: 700; }
 .stat-card.blue .stat-val { color: var(--blue); }
 .stat-card.green .stat-val { color: var(--green); }
-.stat-card.yellow .stat-val { color: var(--yellow); }
+  .stat-card.yellow .stat-val { color: var(--gold); }
 .stat-card.red .stat-val { color: var(--red); }
 
 /* Controls */
@@ -82,11 +86,11 @@ td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align:
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #f8f9fa; }
 .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-.badge-wait    { background: var(--yellow-light); color: var(--yellow); }
+  .badge-wait    { background: #F5EFD8; color: #8B6B2E; }
 .badge-ok      { background: var(--green-light); color: var(--green); }
 .badge-reject  { background: var(--red-light); color: var(--red); }
-.badge-pay     { background: #e8f0fe; color: #1a56db; }
-.badge-paid    { background: #e0f2fe; color: #0369a1; }
+  .badge-pay     { background: #E8ECF4; color: #0B2545; }
+  .badge-paid    { background: #DCE5F0; color: #0A203D; }
 .badge-cancel  { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
 .btn-cancel { padding: 5px 12px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
 .btn-cancel:hover { background: #fee2e2; color: #dc2626; border-color: #dc2626; }
