@@ -176,22 +176,30 @@ function calculateTotal() {
   const extras = getExtraVisitors();
   let extraFees = 0;
   const discountNotes = [];
+  let adults = 1; // main visitor always counted as adult
+  let kids5_8 = 0, kidsUnder5 = 0;
+  const kids5_8Names = [], kidsUnder5Names = [];
   extras.forEach((v, idx) => {
     let fee = 1000;
+    let isChild = false;
     if (v.relation === 'บุตร / ธิดา') {
       const a = parseInt(v.age, 10);
       if (!isNaN(a)) {
-        if (a < 5) fee = 0;
-        else if (a <= 8) fee = 500;
+        if (a < 5) { fee = 0; isChild = true; kidsUnder5++; kidsUnder5Names.push(v.name); }
+        else if (a <= 8) { fee = 500; isChild = true; kids5_8++; kids5_8Names.push(v.name); }
       }
     }
     extraFees += fee;
+    if (!isChild) adults++;
     if (v.relation === 'บุตร / ธิดา' && fee < 1000) {
       discountNotes.push(`คนที่ ${idx + 2}: ${fee === 0 ? 'ฟรี' : fee + ' บาท'}`);
     }
   });
-  const total = 1000 + 1000 + extraFees; // main + prisoner + extras (variable)
-  return { total, extraFees, discountNotes, numVisitors: n, numExtras: extras.length };
+  const total = 1000 + 1000 + extraFees;
+  return {
+    total, extraFees, discountNotes, numVisitors: n, numExtras: extras.length,
+    adults, kids5_8, kidsUnder5, kids5_8Names, kidsUnder5Names
+  };
 }
 
  // ===== PRISONER MASTER DATA (from Google Sheet via Apps Script) =====
@@ -391,27 +399,60 @@ function goToConfirm() {
   const extras = getExtraVisitors();
   const visitor1Name = document.getElementById('visitorName').value.trim();
   const visitor1Id   = document.getElementById('visitorId').value.trim();
-  let visitorRowsHtml = `<div class="summary-row"><span class="lbl">👤 ผู้ร่วมกิจกรรมคนที่ 1</span><span class="val">${visitor1Name}<br><span style="font-size:12px;color:var(--text2)">${visitor1Id}</span></span></div>`;
+  const mainRelation = document.getElementById('relation').value;
+  const mainPhone    = document.getElementById('visitorPhone').value.trim();
+
+  // Build clear lists for ฝ่ายตรวจค้น
+  let checkListHtml = `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px;margin:6px 0;font-size:13px;line-height:1.5">
+      <strong>👤 คนที่ 1:</strong> ${visitor1Name} <span style="color:var(--text2);font-size:12px">(${visitor1Id})</span><br>
+      <span style="color:var(--text2)">ความสัมพันธ์: ${mainRelation} · โทร: ${mainPhone}</span>
+    </div>`;
   extras.forEach((v, idx) => {
-    const agePart = (v.relation === 'บุตร / ธิดา' && v.age) ? ' · อายุ ' + v.age + ' ปี' : '';
-    visitorRowsHtml += `<div class="summary-row"><span class="lbl">👤 ผู้ร่วมกิจกรรมคนที่ ${idx+2}</span><span class="val">${v.name}<br><span style="font-size:12px;color:var(--text2)">${v.id} · ${v.relation}${agePart}</span></span></div>`;
+    const agePart = (v.relation === 'บุตร / ธิดา' && v.age) ? ` · อายุ ${v.age} ปี` : '';
+    checkListHtml += `
+      <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px;margin:4px 0;font-size:13px;line-height:1.5">
+        <strong>👤 คนที่ ${idx+2}:</strong> ${v.name} <span style="color:var(--text2);font-size:12px">(${v.id})</span><br>
+        <span style="color:var(--text2)">ความสัมพันธ์: ${v.relation}${agePart}</span>
+      </div>`;
   });
 
   const cost = calculateTotal();
-  let costHtml = `<div class="summary-row"><span class="lbl">💰 ค่าบริการอาหาร (ประมาณ)</span><span class="val">${cost.total.toLocaleString()} บาท (ชำระหลังอนุมัติ)</span></div>`;
-  if (cost.discountNotes.length) {
-    costHtml += `<div style="font-size:12px;color:#2e7d32;margin:4px 0 0 0;padding-left:4px;">✨ ส่วนลดบุตร/ธิดา: ${cost.discountNotes.join(' · ')}</div>`;
-  }
+  const c = cost; // shorthand
+
+  // Kitchen breakdown section (very clear for ครัว/เบเกอรี่)
+  let kitchenHtml = `
+    <div style="background:#e8f5e9;border:2px solid #2e7d32;border-radius:8px;padding:10px;margin:8px 0;font-size:13px">
+      <strong style="color:#1b5e20">🍽️ ครัว + เบเกอรี่ (เตรียมอาหาร/ของหวาน)</strong><br>
+      <div style="margin-top:6px">
+        <strong>ผู้ใหญ่:</strong> <span style="font-size:15px;font-weight:700">${c.adults} คน</span><br>
+        <strong>เด็ก 5-8 ปี:</strong> <span style="font-size:15px;font-weight:700;color:#f57c00">${c.kids5_8} คน</span>${c.kids5_8Names.length ? ' <span style="font-size:12px">(' + c.kids5_8Names.join(', ') + ')</span>' : ''}<br>
+        <strong>เด็กต่ำกว่า 5 ปี:</strong> <span style="font-size:15px;font-weight:700;color:#1976d2">${c.kidsUnder5} คน</span>${c.kidsUnder5Names.length ? ' <span style="font-size:12px">(' + c.kidsUnder5Names.join(', ') + ')</span>' : ''}<br>
+      </div>
+      <div style="font-size:11px;color:#555;margin-top:4px">* ไม่รวมผู้ต้องขัง (ผู้ต้องขังมีอาหารภายใน)</div>
+    </div>`;
+
+  // Disciplinary / เบิกตัว section
+  let discHtml = `
+    <div style="background:#fff3e0;border:1px solid #ff9800;border-radius:6px;padding:8px;margin:6px 0;font-size:13px">
+      <strong style="color:#e65100">📋 ฝ่ายทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong><br>
+      ผู้ต้องขัง: <strong>${document.getElementById('prisonerName').value.trim()}</strong> (#${document.getElementById('prisonerId').value.trim()}) — ${document.getElementById('wing').value}<br>
+      วันที่: <strong>${thDate}</strong> &nbsp; | &nbsp; ญาติที่เข้าร่วม: <strong>${n} คน</strong> (รวมผู้ต้องขัง = ${totalPersons} คน)
+    </div>`;
+
+  // Charge summary
+  let chargeHtml = `<div style="margin-top:6px;font-size:13px">💰 ค่าบริการรวม: <strong>${cost.total.toLocaleString()} บาท</strong>`;
+  if (cost.discountNotes.length) chargeHtml += ` <span style="color:#2e7d32;font-size:12px">(ส่วนลดบุตร/ธิดา: ${cost.discountNotes.join(', ')})</span>`;
+  chargeHtml += `</div>`;
 
   document.getElementById('confirmSummary').innerHTML = `
-    ${visitorRowsHtml}
-    <div class="summary-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${document.getElementById('visitorPhone').value.trim()}</span></div>
-    <div class="summary-row"><span class="lbl">🔗 ความสัมพันธ์</span><span class="val">${document.getElementById('relation').value}</span></div>
-    <div class="summary-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${document.getElementById('prisonerName').value.trim()} (#${document.getElementById('prisonerId').value.trim()})</span></div>
-    <div class="summary-row"><span class="lbl">🏢 แดน</span><span class="val">${document.getElementById('wing').value}</span></div>
-    <div class="summary-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${thDate}</span></div>
-    <div class="summary-row"><span class="lbl">👥 จำนวนรวม</span><span class="val">ผู้เข้าร่วมกิจกรรม ${n} คน + ผู้ต้องขัง 1 = <strong>${totalPersons} คน</strong></span></div>
-    ${costHtml}
+    <div style="font-size:12px;color:#555;margin-bottom:4px">📤 <strong>รายงานสรุป (ส่งต่อฝ่ายต่าง ๆ ได้เลย)</strong></div>
+    ${discHtml}
+    <div style="margin:8px 0 4px 0"><strong style="color:#185fa5">🔍 ฝ่ายตรวจค้น (เช็คชื่อญาติตอนเข้าเยี่ยม)</strong></div>
+    ${checkListHtml}
+    ${kitchenHtml}
+    <div style="font-size:12px;margin-top:4px;color:var(--text2)">📅 ${thDate} &nbsp;·&nbsp; Ref จะได้รับหลังส่งคำขอ</div>
+    ${chargeHtml}
   `;
   showPage(2);
 }
@@ -472,6 +513,9 @@ async function submitBooking() {
     visitorCount: n,
     totalPersons,
     total: cost.total,
+    adultCount: cost.adults,
+    child5to8Count: cost.kids5_8,
+    childUnder5Count: cost.kidsUnder5,
     status: 'รอตรวจสอบ',
     slipImage: ''
   };
@@ -515,13 +559,18 @@ async function submitBooking() {
   bookings[selectedDate] = (bookings[selectedDate] || 0) + 1;
   renderCalendar();
 
+  const costFinal = calculateTotal();
+  const kf = costFinal;
+
   document.getElementById('finalSummary').innerHTML = `
     <div>📋 <strong>Ref No.:</strong> ${ref}</div>
     <div>👤 <strong>ผู้ร่วมกิจกรรม:</strong> ${data.visitorName}</div>
-    <div>🔒 <strong>ผู้ต้องขัง:</strong> ${data.prisonerName} (#${data.prisonerId})</div>
-    <div>🏢 <strong>แดน</strong> ${data.wing}</div>
+    <div>🔒 <strong>ผู้ต้องขัง:</strong> ${data.prisonerName} (#${data.prisonerId}) — ${data.wing}</div>
     <div>📅 <strong>วันที่:</strong> ${thDate}</div>
-    <div>👥 <strong>จำนวนรวม:</strong> ${totalPersons} คน</div>
+    <div>👥 <strong>จำนวนรวม:</strong> ${totalPersons} คน (ญาติ ${n} + ผู้ต้องขัง)</div>
+    <div style="background:#e8f5e9;padding:6px 8px;border-radius:4px;margin:4px 0;font-size:12px;line-height:1.4">
+      🍽️ <strong>ครัว/เบเกอรี่:</strong> ผู้ใหญ่ ${kf.adults} · เด็ก5-8 ${kf.kids5_8} · ต่ำกว่า5 ${kf.kidsUnder5} คน
+    </div>
     <div>💰 <strong>ค่าบริการ:</strong> ${data.total.toLocaleString()} บาท</div>
     <div style="color:var(--gold);font-weight:600">⏳ สถานะ: รอตรวจสอบวินัย</div>
   `;

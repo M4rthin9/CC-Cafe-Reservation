@@ -226,6 +226,10 @@ function doPost(e) {
               `วันที่เยี่ยม: ${body.visitDate}\n` +
               `จำนวน      : ญาติ ${body.visitorCount} คน + ผู้ต้องขัง 1 = ${body.totalPersons} คน\n` +
               `ค่าบริการ  : ${body.total} บาท\n\n` +
+              `🍽️ ครัว/เบเกอรี่ (เตรียมอาหาร):\n` +
+              `  - ผู้ใหญ่: ${body.adultCount || 1} คน\n` +
+              `  - เด็ก 5-8 ปี: ${body.child5to8Count || 0} คน\n` +
+              `  - เด็กต่ำกว่า 5 ปี: ${body.childUnder5Count || 0} คน\n\n` +
               `กรุณาเข้าระบบเพื่อตรวจสอบและอนุมัติ/ไม่อนุมัติ`
       });
     }
@@ -251,7 +255,7 @@ function ensureHeaders(sheet) {
     'ref','timestamp','visitorName','visitorId','visitorPhone','relation',
     'extraVisitorNames','visitorApproved','extraVisitorApproved',
     'prisonerName','prisonerId','wing','visitDate','visitDateISO',
-    'visitorCount','totalPersons','total','status','slipImage'
+    'visitorCount','totalPersons','total','adultCount','child5to8Count','childUnder5Count','status','slipImage'
   ];
   sheet.appendRow(headers);
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
