@@ -679,8 +679,8 @@ function parseExtraVisitors(row) {
   }
 }
 
-// ===== PRINT REPORT: Sorted by Ref No. (respects current filters) =====
-function printReport() {
+// ===== HELPER: Get current filtered & sorted rows (respects UI filters) =====
+function getCurrentFilteredSorted() {
   const q = document.getElementById('searchBox').value.toLowerCase();
   const fs = document.getElementById('filterStatus').value;
   const fd = document.getElementById('filterDate').value;
@@ -693,13 +693,17 @@ function printReport() {
     return true;
   });
 
+  if (!filtered.length) return [];
+  return [...filtered].sort((a, b) => String(a.ref || '').localeCompare(String(b.ref || '')));
+}
+
+// ===== PRINT REPORT: Sorted by Ref No. (respects current filters) =====
+function printReport() {
+  const filtered = getCurrentFilteredSorted();
   if (!filtered.length) {
     alert('ไม่มีข้อมูลตาม filter ที่เลือก');
     return;
   }
-
-  // Arrange / sort by Ref No.
-  filtered = [...filtered].sort((a, b) => String(a.ref || '').localeCompare(String(b.ref || '')));
 
   const now = new Date().toLocaleString('th-TH');
 
@@ -886,21 +890,21 @@ function printReport() {
     html += `<div style="font-size:10.5px; text-align:right; color:#333;">วันที่นัด: <b>${r.visitDate || '-'}</b></div>`;
     html += `</div>`;
 
-    // Main visitor (ผู้จองหลัก)
+    // Prisoner (first, renamed per request)
+    html += `<div class="section prisoner">`;
+    html += `<div class="section-title">ชื่อผู้ต้องขัง</div>`;
+    html += `<div class="info-line">ชื่อ: <b>${r.prisonerName || '-'}</b></div>`;
+    html += `<div class="info-line">เลขประจำตัว: ${r.prisonerId || '-'}</div>`;
+    html += `<div class="info-line">แดนที่อยู่: ${r.wing || '-'}</div>`;
+    html += `</div>`;
+
+    // Main visitor (ผู้จองหลัก) - after prisoner
     html += `<div class="section">`;
     html += `<div class="section-title">👤 ผู้จองหลัก (คนที่กรอกข้อมูล)</div>`;
     html += `<div class="info-line">ชื่อ-นามสกุล: <b>${r.visitorName || '-'}</b></div>`;
     html += `<div class="info-line">โทรศัพท์: ${r.visitorPhone || '-'}</div>`;
     html += `<div class="info-line">เลขบัตรประชาชน: ${r.visitorId || '-'}</div>`;
     html += `<div class="info-line">ความสัมพันธ์กับผู้ต้องขัง: ${r.relation || '-'}</div>`;
-    html += `</div>`;
-
-    // Prisoner
-    html += `<div class="section prisoner">`;
-    html += `<div class="section-title">🧍 ผู้ต้องขังที่มาเยี่ยม</div>`;
-    html += `<div class="info-line">ชื่อ: <b>${r.prisonerName || '-'}</b></div>`;
-    html += `<div class="info-line">เลขประจำตัว: ${r.prisonerId || '-'}</div>`;
-    html += `<div class="info-line">แดนที่อยู่: ${r.wing || '-'}</div>`;
     html += `</div>`;
 
     // Extra visitors - very simple for elderly
@@ -956,6 +960,76 @@ function printReport() {
   setTimeout(() => {
     try { w.focus(); w.print(); } catch(e){}
   }, 650);
+}
+
+// ===== PRINT PRISONER LIST FOR วินัย CHECK (only name, ID, Wing) =====
+function printPrisonerVinaiList() {
+  const filtered = getCurrentFilteredSorted();
+  if (!filtered.length) {
+    alert('ไม่มีข้อมูลตาม filter ที่เลือก');
+    return;
+  }
+
+  const now = new Date().toLocaleString('th-TH');
+  const filterDate = document.getElementById('filterDate').value || 'ทุกวัน';
+
+  let html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>รายชื่อผู้ต้องขัง - ตรวจสอบวินัย ${filterDate}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+  body { font-family: 'Sarabun', system-ui, sans-serif; padding: 16px 20px; margin:0; color:#000; background:#fff; font-size:15px; }
+  h1 { font-size:18px; margin:0 0 2px; font-weight:700; text-align:center; line-height:1.3; }
+  .meta { font-size:11px; color:#333; text-align:center; margin-bottom:12px; }
+  table { width:100%; border-collapse:collapse; margin-top:4px; }
+  th, td { border:1.5px solid #000; padding:6px 8px; text-align:left; }
+  th { background:#f1f5f9; font-weight:700; font-size:13px; }
+  td { font-size:14px; }
+  .num { width:42px; text-align:center; }
+  .note { margin-top:12px; font-size:11px; color:#444; text-align:center; font-style:italic; }
+  @media print {
+    @page { size: A4; margin: 8mm; }
+    body { padding: 4mm 6mm; font-size:12px; }
+    h1 { font-size:15px; }
+    th, td { padding:4px 6px; font-size:12px; }
+    .note { display:none; }
+  }
+</style></head><body>`;
+
+  html += `<h1>รายชื่อผู้ต้องขัง - ตรวจสอบวินัย<br><span style="font-size:14px; font-weight:500;">วันที่ ${filterDate}</span></h1>`;
+  html += `<div class="meta">ทัณฑสถานบำบัดพิเศษกลาง • พิมพ์เมื่อ ${now}</div>`;
+
+  html += `<table>`;
+  html += `<thead><tr>`;
+  html += `<th class="num">ลำดับ</th>`;
+  html += `<th>ชื่อผู้ต้องขัง</th>`;
+  html += `<th>เลขประจำตัว</th>`;
+  html += `<th>แดนที่อยู่</th>`;
+  html += `</tr></thead><tbody>`;
+
+  filtered.forEach((r, i) => {
+    html += `<tr>`;
+    html += `<td class="num">${i+1}</td>`;
+    html += `<td><b>${r.prisonerName || '-'}</b></td>`;
+    html += `<td>${r.prisonerId || '-'}</td>`;
+    html += `<td>${r.wing || '-'}</td>`;
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+
+  html += `<div class="note">สำหรับใช้ตรวจสอบวินัย • ข้อมูลจากระบบการจอง CC Cafe</div>`;
+  html += `</body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (!w) {
+    alert('กรุณาอนุญาต Popup เพื่อเปิดหน้าพิมพ์');
+    return;
+  }
+  w.document.write(html);
+  w.document.close();
+
+  setTimeout(() => {
+    try { w.focus(); w.print(); } catch(e){}
+  }, 400);
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModal(); closeDetailModal(); } });
