@@ -7,6 +7,32 @@ function doGet(e) {
   const action = params.action || '';
   const pass   = params.pass  || '';
 
+  // getPrisoners is public (no password required) for booking form
+  if (action === 'getPrisoners') {
+    const sheet = getSheet();
+    const data  = sheet.getDataRange().getValues();
+    if (data.length <= 1) return jsonResp({ status: 'ok', prisoners: [] });
+    const headers = data[0];
+    const prisonerIdIdx = headers.indexOf('prisonerId');
+    const prisonerNameIdx = headers.indexOf('prisonerName');
+    const wingIdx = headers.indexOf('wing');
+    const seen = new Set();
+    const prisoners = [];
+    for (let i = 1; i < data.length; i++) {
+      const pid = data[i][prisonerIdIdx];
+      if (!pid || String(pid).trim() === '') continue;
+      const pkey = String(pid).trim();
+      if (seen.has(pkey)) continue;
+      seen.add(pkey);
+      prisoners.push({
+        prisonerId: pid,
+        prisonerName: data[i][prisonerNameIdx] || '',
+        wing: data[i][wingIdx] || ''
+      });
+    }
+    return jsonResp({ status: 'ok', prisoners: prisoners });
+  }
+
   // ตรวจ password
   if (String(pass) !== String(STAFF_PASS)) {
     return jsonResp({ status: 'error', message: 'Unauthorized' });
