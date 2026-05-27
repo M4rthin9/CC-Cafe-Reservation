@@ -1,6 +1,6 @@
 // ===== CONFIG =====
 const PASSWORD = '10900';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxVj7NhzAuUAHqv_v4OiKtlVD8A1x73PzxLFAZ0TCJCgdTipYNcghaYfuIhn70-JADGg/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRdkFrze_wXlfFmX4orJ2Vl5X-DuXI9isnxC1cKMRFuCeLy0eHbcnFYNLYaBTGjbFdDg/exec';
 
 // ===== STATE =====
 let allRows = [];
@@ -40,14 +40,16 @@ function doLogout() {
 async function loadData() {
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
+    // Use legacy password-only authentication (no username required)
     const resp = await fetch(APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent(PASSWORD), { redirect: 'follow' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const data = JSON.parse(text);
-    if (data.status !== 'ok') throw new Error(data.message);
+    if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
     allRows = data.rows || [];
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
   } catch(e) {
+    console.error('Load data error:', e);
     // Demo mode: use sample data if no Apps Script
     if (APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
       allRows = getDemoData();

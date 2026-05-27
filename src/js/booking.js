@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxVj7NhzAuUAHqv_v4OiKtlVD8A1x73PzxLFAZ0TCJCgdTipYNcghaYfuIhn70-JADGg/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRdkFrze_wXlfFmX4orJ2Vl5X-DuXI9isnxC1cKMRFuCeLy0eHbcnFYNLYaBTGjbFdDg/exec';
 const QUOTA = 20;
 
 // ===== CALENDAR =====
@@ -11,10 +11,7 @@ const HOLIDAYS = {
   '2026-08-12':'วันแม่','2026-10-13':'วันสวรรคต ร.9','2026-10-23':'จุฬาลงกรณ์',
   '2026-12-05':'วันพ่อ','2026-12-10':'รัฐธรรมนูญ','2026-12-31':'วันสิ้นปี',
   '2026-05-25':'ปิดจอง',   // ตามคำขอ: ปิดจองวันที่ 25-5-69
-  '2026-06-01':'หยุดชดเชย','2026-05-26':'(18/20) ปิดจอง',
-  '2026-06-02': '(20/20)', '2026-06-04': '(20/20)','2026-06-05': '(20/20)',
-  '2026-06-08': '(20/20)','2026-06-09': '(20/20)','2026-06-10': '(20/20)',
-  '2026-05-28': '(20/20)','2026-05-29': '(20/20)'
+  '2026-06-01':'หยุดชดเชย',
 };
 
 let calYear, calMonth, selectedDate = null;
@@ -798,7 +795,9 @@ async function loadBookingCounts() {
   // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
   const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
   try {
+    console.log('[Calendar] Loading booking counts from server...');
     const data = await appsScriptGet({ action: 'getAll', pass: '10900' });
+    console.log('[Calendar] Server response:', data);
     if (data.status === 'ok' && data.rows) {
       bookings = {};
       data.rows.forEach(r => {
@@ -822,13 +821,17 @@ async function loadBookingCounts() {
 
         bookings[dateKey] = (bookings[dateKey] || 0) + 1;
       });
+      console.log('[Calendar] Loaded bookings:', bookings);
+    } else {
+      console.warn('[Calendar] No rows in response or status not ok');
     }
   } catch (err) {
-    console.warn('loadBookingCounts failed:', err);
+    console.error('[Calendar] loadBookingCounts failed:', err);
   }
   renderCalendar();
 }
 
+// Initialize calendar immediately, then load data from server
 renderCalendar(); // show immediately (with 0 quotas), load will refresh counts from server
 loadBookingCounts();
 

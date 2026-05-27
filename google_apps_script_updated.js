@@ -3,6 +3,14 @@ const USERS_SHEET = 'Users';
 const EVENTLOG_SHEET = 'EventLog';
 const PRISONER_SHEET = 'ผู้ต้องขัง';  // Database ผู้ต้องขัง (Prisoner Master Data)
 
+// ===== CONNECTION TEST / HEALTH CHECK =====
+// List all sheets in the spreadsheet for debugging
+function listAllSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  return sheets.map(s => ({ name: s.getName(), rows: s.getLastRow(), cols: s.getLastColumn() }));
+}
+
 // Legacy fallback password (for transition / public pages). Remove in production after full migration.
 const LEGACY_STAFF_PASS = '10900';
 
@@ -112,6 +120,78 @@ function doGet(e) {
     prisoners.sort((a, b) => a.prisonerName.localeCompare(b.prisonerName, 'th'));
 
     return jsonResp({ status: 'ok', prisoners: prisoners });
+  }
+
+  // ===== NEW: Connection test / health check endpoint =====
+  if (action === 'testConnection') {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const allSheets = listAllSheets();
+      const mainSheet = getMainSheet();
+      const mainSheetInfo = {
+        name: mainSheet.getName(),
+        rows: mainSheet.getLastRow(),
+        cols: mainSheet.getLastColumn(),
+        headers: mainSheet.getLastRow() > 0 ? mainSheet.getRange(1, 1, 1, mainSheet.getLastColumn()).getValues()[0] : []
+      };
+      return jsonResp({
+        status: 'ok',
+        message: 'Connection successful',
+        spreadsheetName: ss.getName(),
+        spreadsheetId: ss.getId(),
+        allSheets: allSheets,
+        mainSheet: mainSheetInfo,
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {
+      return jsonResp({
+        status: 'error',
+        message: 'Connection failed: ' + e.toString(),
+        error: e.toString()
+      });
+    }
+  }
+
+  // ===== NEW: Get sheet structure info for debugging =====
+  if (action === 'getSheetInfo') {
+    if (!isAuthorized(username, pass)) {
+      return jsonResp({ status: 'error', message: 'Unauthorized' });
+    }
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const allSheets = listAllSheets();
+      const mainSheet = getMainSheet();
+      
+      // Get detailed header info
+      let headers = [];
+      let sampleData = [];
+      if (mainSheet.getLastRow() > 0) {
+        headers = mainSheet.getRange(1, 1, 1, mainSheet.getLastColumn()).getValues()[0];
+        if (mainSheet.getLastRow() > 1) {
+          // Get first data row as sample
+          sampleData = mainSheet.getRange(2, 1, 1, mainSheet.getLastColumn()).getValues()[0];
+        }
+      }
+      
+      return jsonResp({
+        status: 'ok',
+        spreadsheetName: ss.getName(),
+        spreadsheetId: ss.getId(),
+        allSheets: allSheets,
+        mainSheet: {
+          name: mainSheet.getName(),
+          totalRows: mainSheet.getLastRow(),
+          totalCols: mainSheet.getLastColumn(),
+          headers: headers,
+          sampleRow: sampleData
+        }
+      });
+    } catch (e) {
+      return jsonResp({
+        status: 'error',
+        message: 'Failed to get sheet info: ' + e.toString()
+      });
+    }
   }
 
   return jsonResp({ status: 'error', message: 'Unknown action' });
