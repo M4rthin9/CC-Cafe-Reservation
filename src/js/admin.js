@@ -263,52 +263,298 @@ function switchView(v) {
   }
 }
 
+function computeFinanceStats(rows) {
+  let totalBooked = 0;
+  let paid = 0;
+  let unpaid = 0;
+  let pendingReview = 0;
+  let bookingCount = 0;
+
+  (rows || []).forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
+
+    const amt = parseInt(r.total, 10) || 0;
+    bookingCount++;
+    totalBooked += amt;
+
+    if (s === 'ชำระแล้ว' || s === 'เสร็จสิ้น') paid += amt;
+    else if (s === 'รอชำระเงิน') unpaid += amt;
+    else if (s === 'รอตรวจสอบ') pendingReview += amt;
+  });
+
+  return { totalBooked, paid, unpaid, pendingReview, bookingCount };
+}
+
+function getRowVisitDateKey(r) {
+  let key = r.visitDateISO;
+  if (!key && r.visitDate) {
+    const ts = r.timestamp ? new Date(r.timestamp.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1')) : null;
+    if (ts && !isNaN(ts)) key = ts.toISOString().slice(0, 10);
+  }
+  if (key && !/^\d{4}-\d{2}-\d{2}$/.test(String(key).trim())) {
+    const parsed = new Date(key);
+    if (!isNaN(parsed)) {
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, '0');
+      const d = String(parsed.getDate()).padStart(2, '0');
+      key = `${y}-${m}-${d}`;
+    }
+  }
+  return key ? String(key).trim() : '';
+}
+
+function computeFinanceTimeSeries(rows) {
+  const today = new Date();
+  const days = [];
+  const byDay = {};
+
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push(key);
+    byDay[key] = { booked: 0, paid: 0, unpaid: 0 };
+  }
+
+  (rows || []).forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
+
+    const key = getRowVisitDateKey(r);
+    if (!key || !byDay[key]) return;
+
+    const amt = parseInt(r.total, 10) || 0;
+    byDay[key].booked += amt;
+    if (s === 'ชำระแล้ว' || s === 'เสร็จสิ้น') byDay[key].paid += amt;
+    else if (s === 'รอชำระเงิน') byDay[key].unpaid += amt;
+  });
+
+  return {
+    days,
+    series: [
+      { id: 'booked', label: 'ยอดจอง', color: '#0B2545', fillTop: 'rgba(11,37,69,0.22)', fillBottom: 'rgba(11,37,69,0.02)', values: days.map(d => byDay[d].booked) },
+      { id: 'paid', label: 'ชำระแล้ว', color: '#2E5238', fillTop: 'rgba(46,82,56,0.2)', fillBottom: 'rgba(46,82,56,0.02)', values: days.map(d => byDay[d].paid) },
+      { id: 'unpaid', label: 'ยังไม่ชำระ', color: '#C8922A', fillTop: 'rgba(200,146,42,0.25)', fillBottom: 'rgba(200,146,42,0.02)', values: days.map(d => byDay[d].unpaid) }
+    ]
+  };
+}
+
+let financeChartCache = [];
+
+function formatBaht(n) {
+  return (n || 0).toLocaleString('th-TH') + ' บาท';
+}
+
+function renderFinanceOverview() {
+  const summaryEl = document.getElementById('financeSummary');
+  const canvas = document.getElementById('financeChart');
+  if (!summaryEl || !canvas) return;
+
+  const stats = computeFinanceStats(allRows);
+  const { totalBooked, paid, unpaid, pendingReview, bookingCount } = stats;
+
+  summaryEl.innerHTML = `
+    <div class="finance-kpi">
+      <div class="finance-kpi-item total">
+        <div class="finance-kpi-label">ยอดจองทั้งหมด</div>
+        <div class="finance-kpi-val">${formatBaht(totalBooked)}</div>
+        <div class="finance-kpi-sub">${bookingCount} รายการ</div>
+      </div>
+      <div class="finance-kpi-item paid">
+        <div class="finance-kpi-label">ชำระแล้ว</div>
+        <div class="finance-kpi-val">${formatBaht(paid)}</div>
+        <div class="finance-kpi-sub">${totalBooked ? Math.round((paid / totalBooked) * 100) : 0}% ของยอดจอง</div>
+      </div>
+      <div class="finance-kpi-item unpaid">
+        <div class="finance-kpi-label">ยังไม่ชำระ</div>
+        <div class="finance-kpi-val">${formatBaht(unpaid)}</div>
+        <div class="finance-kpi-sub">${totalBooked ? Math.round((unpaid / totalBooked) * 100) : 0}% ของยอดจอง</div>
+      </div>
+    </div>
+    ${pendingReview > 0 ? `<div class="finance-pending-note">⏳ รอตรวจสอบ (ยังไม่ถึงขั้นชำระ): <strong>${formatBaht(pendingReview)}</strong></div>` : ''}
+  `;
+
+  const timeSeries = computeFinanceTimeSeries(allRows);
+  drawFinanceLineChart(canvas, timeSeries);
+
+  const legendEl = document.getElementById('financeLegend');
+  if (legendEl) {
+    legendEl.innerHTML = timeSeries.series.map(s => `
+      <span class="finance-legend-item">
+        <span class="finance-legend-line" style="background:${s.color}"></span>
+        ${s.label}
+      </span>
+    `).join('');
+  }
+}
+
+function formatChartBahtShort(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
+function buildSmoothPoints(values, xAt, yAt, baselineY) {
+  const pts = values.map((v, i) => ({ x: xAt(i), y: yAt(v), value: v }));
+  if (pts.length < 2) return pts;
+  return pts;
+}
+
+function traceSmoothLine(ctx, points) {
+  if (!points.length) return;
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const mx = (p0.x + p1.x) / 2;
+    ctx.bezierCurveTo(mx, p0.y, mx, p1.y, p1.x, p1.y);
+  }
+}
+
+function drawFinanceLineChart(canvas, timeSeries) {
+  if (!canvas || !timeSeries) return;
+  const ctx = canvas.getContext('2d', { alpha: true });
+  const w = canvas.width = canvas.offsetWidth || 520;
+  const h = canvas.height = 240;
+  ctx.clearRect(0, 0, w, h);
+  financeChartCache = [];
+
+  const { days, series } = timeSeries;
+  const allVals = series.flatMap(s => s.values);
+  const maxVal = Math.max(1, ...allVals);
+  const hasData = allVals.some(v => v > 0);
+
+  const pad = { top: 24, right: 20, bottom: 32, left: 52 };
+  const chartW = w - pad.left - pad.right;
+  const chartH = h - pad.top - pad.bottom;
+  const baseY = pad.top + chartH;
+
+  if (!hasData) {
+    ctx.fillStyle = '#6B7280';
+    ctx.font = '13px Sarabun, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('ยังไม่มียอดจองในช่วง 14 วันนี้', w / 2, h / 2);
+    return;
+  }
+
+  const xAt = i => pad.left + (days.length <= 1 ? chartW / 2 : (i / (days.length - 1)) * chartW);
+  const yAt = v => baseY - (v / maxVal) * chartH;
+
+  // grid + y-axis labels
+  ctx.strokeStyle = 'rgba(11,37,69,0.07)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (chartH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+    const val = Math.round(maxVal * (1 - i / 4));
+    ctx.fillStyle = '#6B7280';
+    ctx.font = '9px Sarabun, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(formatChartBahtShort(val), pad.left - 8, y + 3);
+  }
+
+  // x-axis labels (every other day on narrow screens)
+  const step = days.length > 10 ? 2 : 1;
+  days.forEach((day, i) => {
+    if (i % step !== 0 && i !== days.length - 1) return;
+    const x = xAt(i);
+    const label = new Date(day + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+    ctx.fillStyle = '#3F4755';
+    ctx.font = '9px Sarabun, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, h - 10);
+  });
+
+  // draw areas then lines (booked behind, unpaid in front)
+  [...series].reverse().forEach(s => {
+    const points = buildSmoothPoints(s.values, xAt, yAt, baseY);
+    if (!points.length) return;
+
+    const grad = ctx.createLinearGradient(0, pad.top, 0, baseY);
+    grad.addColorStop(0, s.fillTop);
+    grad.addColorStop(1, s.fillBottom);
+
+    ctx.beginPath();
+    traceSmoothLine(ctx, points);
+    ctx.lineTo(points[points.length - 1].x, baseY);
+    ctx.lineTo(points[0].x, baseY);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    traceSmoothLine(ctx, points);
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    points.forEach((p, i) => {
+      financeChartCache.push({
+        x: p.x - 8, y: p.y - 8, width: 16, height: 16,
+        date: days[i],
+        series: s.label,
+        value: p.value,
+        label: new Date(days[i] + 'T12:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })
+      });
+      if (p.value > 0) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    });
+  });
+}
+
+// Hover tooltip for finance line chart
+const financeCanvasEl = document.getElementById('financeChart');
+if (financeCanvasEl) {
+  financeCanvasEl.addEventListener('mousemove', (e) => {
+    if (!financeChartCache.length) return;
+    const rect = financeCanvasEl.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    let found = null;
+    let best = Infinity;
+    for (const item of financeChartCache) {
+      const cx = item.x + item.width / 2;
+      const cy = item.y + item.height / 2;
+      const d = Math.hypot(mouseX - cx, mouseY - cy);
+      if (d < 14 && d < best) { best = d; found = item; }
+    }
+    if (found) {
+      financeCanvasEl.style.cursor = 'pointer';
+      financeCanvasEl.title = `${found.label} · ${found.series}: ${found.value.toLocaleString('th-TH')} บาท`;
+    } else {
+      financeCanvasEl.style.cursor = 'default';
+      financeCanvasEl.title = '';
+    }
+  });
+  financeCanvasEl.addEventListener('mouseleave', () => {
+    financeCanvasEl.style.cursor = 'default';
+    financeCanvasEl.title = '';
+  });
+}
+
 function renderDashboardHome() {
 
-  const container = document.getElementById('statusBars');
   const recentEl = document.getElementById('recentBookings');
-  if (!container || !recentEl) return;
+  if (!recentEl) return;
+
+  renderFinanceOverview();
 
   const total = allRows.length;
-  const counts = {};
-  allRows.forEach(r => {
-    const s = normalizeStatus(r.status);
-    counts[s] = (counts[s] || 0) + 1;
-  });
-
-  // === New: Horizontal Stacked Bar (cleaner overview) ===
-  const order = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
-  const cols = ['#D4AF37', '#0B2545', '#0A203D', '#2E5238', '#8B0000', '#6B7280'];
-
-  let stackedHTML = `<div class="status-stacked">`;
-  let legendHTML = `<div class="status-legend">`;
-
-  order.forEach((s, i) => {
-    const c = counts[s] || 0;
-    const pct = total ? Math.round((c / total) * 100) : 0;
-
-    if (c > 0) {
-      stackedHTML += `<div class="status-segment" style="width:${pct}%; background:${cols[i]}" title="${s}: ${c} (${pct}%)"></div>`;
-    }
-
-    legendHTML += `
-      <div class="legend-item">
-        <span class="legend-dot" style="background:${cols[i]}"></span>
-        <span>${s}</span>
-        <strong>${c}</strong>
-      </div>`;
-  });
-
-  stackedHTML += `</div>`;
-  legendHTML += `</div>`;
-
-  container.innerHTML = `
-    ${stackedHTML}
-    ${legendHTML}
-    <div style="font-size:11px;color:var(--text2);margin-top:6px;text-align:right;">
-      รวม ${total} รายการ
-    </div>
-  `;
 
   // recent 5
   if (!total) {
@@ -537,8 +783,10 @@ window.addEventListener('resize', () => {
     // debounce lightly
     clearTimeout(window._trendResizeTimer);
     window._trendResizeTimer = setTimeout(() => {
-      if (typeof drawReservationTrendChart === 'function') {
-        drawReservationTrendChart();
+      if (typeof drawReservationTrendChart === 'function') drawReservationTrendChart();
+      const financeCanvas = document.getElementById('financeChart');
+      if (financeCanvas && typeof drawFinanceLineChart === 'function') {
+        drawFinanceLineChart(financeCanvas, computeFinanceTimeSeries(allRows));
       }
     }, 120);
   }

@@ -110,9 +110,14 @@
         <div class="dash-grid">
           <div class="dash-card">
             <div class="dash-card-h">
-              <span>📊</span> การกระจายสถานะ
+              <span>💰</span> ภาพรวมการเงิน
             </div>
-            <div id="statusBars" style="margin-top:12px"></div>
+            <div id="financeOverview" style="margin-top:12px">
+              <div id="financeSummary" class="finance-summary"></div>
+              <canvas id="financeChart" style="width:100%;max-width:100%;height:240px;display:block;margin-top:10px" aria-label="กราฟแนวโน้มยอดเงิน"></canvas>
+              <div id="financeLegend" class="finance-chart-legend"></div>
+              <div class="chart-caption">แนวโน้มยอดเงิน (บาท) ตามวันที่เข้าร่วมกิจกรรม — 14 วันล่าสุด</div>
+            </div>
           </div>
           <div class="dash-card">
             <div class="dash-card-h">
