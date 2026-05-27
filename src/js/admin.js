@@ -1700,7 +1700,23 @@ function renderReportsView() {
 
 // Helper to print individual department report for a specific date
 function printSingleReport(type, date) {
-  const filtered = getCurrentFilteredSorted().filter(r => (r.visitDate || r.visitDateISO) === date);
+  // Prefer Reports page filters (reports search/status/date) when available,
+  // otherwise fall back to the main Reservations page filters.
+  let baseRows = [];
+  try {
+    const hasReportsFilters =
+      document.getElementById('reportsSearchBox') ||
+      document.getElementById('reportsFilterStatus') ||
+      document.getElementById('reportsFilterDate');
+    baseRows = hasReportsFilters ? getReportsFilteredRows() : getCurrentFilteredSorted();
+  } catch (e) {
+    baseRows = getCurrentFilteredSorted();
+  }
+
+  // Keep a stable order for printing (Ref No. ascending)
+  const filtered = (baseRows || [])
+    .filter(r => (r.visitDate || r.visitDateISO) === date)
+    .sort((a, b) => String(a.ref || '').localeCompare(String(b.ref || '')));
   if (filtered.length === 0) return;
 
   let content = '';
@@ -1769,7 +1785,7 @@ function printSingleReport(type, date) {
   else if (type === 'table') {
     content = `<h2>🪑 รายงานการจัดโต๊ะ - ${date}</h2>`;
     content += `<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;font-size:13px;">`;
-    content += `<tr style="background:#f0f0f0;"><th>โต๊ะ</th><th>Ref No.</th><th>ผู้ต้องขัง</th><th>ผู้เยี่ยม</th><th>จำนวนคนทั้งหมด</th></tr>`;
+    content += `<tr style="background:#f0f0f0;"><th>โต๊ะ</th><th>Ref No.</th><th>ผู้ต้องขัง</th><th>ผู้เยี่ยม</th><th>จำนวนคนทั้งหมด</th><th>สถานะการจอง</th></tr>`;
 
     let grandTotal = 0;
 
@@ -1793,6 +1809,7 @@ function printSingleReport(type, date) {
       content += `<td>${prisoner}</td>`;
       content += `<td>${visitors.join(' + ')}</td>`;
       content += `<td><strong>${totalPeople} คน</strong></td>`;
+      content += `<td>${normalizeStatus(r.status)}</td>`;
       content += `</tr>`;
     });
 
