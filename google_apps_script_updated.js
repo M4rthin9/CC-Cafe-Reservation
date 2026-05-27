@@ -451,6 +451,7 @@ function ensureHeaders(sheet) {
   if (sheet.getLastRow() > 0) return;
   const headers = [
     'ref','timestamp','visitorName','visitorId','visitorPhone','relation',
+    'religion','allergy','extraVisitorReligions','extraVisitorAllergies',
     'extraVisitorNames','visitorApproved','extraVisitorApproved',
     'prisonerName','prisonerId','wing','visitDate','visitDateISO',
     'visitorCount','totalPersons','total','adultCount','child5to8Count','childUnder5Count','status','slipImage'

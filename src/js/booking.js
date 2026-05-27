@@ -115,11 +115,12 @@ function updateExtraVisitors() {
   list.innerHTML = '';
   if (n <= 1) { container.style.display = 'none'; return; }
   container.style.display = 'block';
+  const religionOpts = '<option value="">-- เลือก --</option><option>พุทธ</option><option>อิสลาม</option><option>คริสต์</option><option>อื่น ๆ</option>';
   for (let i = 2; i <= n; i++) {
     const div = document.createElement('div');
     div.className = 'form-group full';
     div.style.cssText = 'border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;';
-    const relOpts = '<option value="">-- เลือก --</option><option>บิดา / มารดา</option><option>แฟน/ภรรยา</option><option>บุตร / ธิดา</option><option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>';
+    const relOpts = '<option value="">-- เลือก --</option><option>บิดa / มารดา</option><option>แฟน/ภรรยา</option><option>บุตร / ธิดา</option><option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>';
     div.innerHTML =
       '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">ผู้เข้าร่วมกิจกรรม ' + i + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
@@ -128,11 +129,17 @@ function updateExtraVisitors() {
         '<div class="form-group"><label>เลขบัตรประชาชน <span style=\"color:var(--red)\">*</span></label>' +
         '<input type="text" id="extraVisitorId' + i + '" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17"></div>' +
       '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
+        '<div class="form-group"><label>ศาสนา <span style=\"color:var(--red)\">*</span></label>' +
+        '<select id="extraVisitorReligion' + i + '">' + religionOpts + '</select></div>' +
+        '<div class="form-group"><label>การแพ้อาหาร <span style=\"color:var(--red)\">*</span></label>' +
+        '<input type="text" id="extraVisitorAllergy' + i + '" placeholder="ระบุอาการแพ้ หรือ \'ไม่มี\'"></div>' +
+      '</div>' +
       '<div class="form-group"><label>ความสัมพันธ์ <span style=\"color:var(--red)\">*</span></label>' +
       '<select id="extraVisitorRelation' + i + '">' + relOpts + '</select></div>' +
       '<div class="form-group" id="ageGroup' + i + '" style="display:none;margin-top:6px;">' +
       '<label>อายุ (ปี) <span style=\"color:var(--red)\">*</span></label>' +
-      '<input type="number" id="extraVisitorAge' + i + '" min="0" max="120" placeholder="อายุ (ปี) · &lt;5 ฟรี, 5-8=500, &gt;8=1000">' +
+      '<input type="number" id="extraVisitorAge' + i + '" min="0" max="120" placeholder="อายุ (ปี) · <5 ฟรี, 5-8=500, >8=1000">' +
       '</div>';
     list.appendChild(div);
     // attach conditional age field for บุตร/ธิดา
@@ -161,11 +168,15 @@ function getExtraVisitors() {
     const idEl   = document.getElementById('extraVisitorId' + i);
     const relEl  = document.getElementById('extraVisitorRelation' + i);
     const ageEl  = document.getElementById('extraVisitorAge' + i);
+    const religionEl = document.getElementById('extraVisitorReligion' + i);
+    const allergyEl  = document.getElementById('extraVisitorAllergy' + i);
     if (nameEl) extras.push({
       name: nameEl.value.trim(),
       id: idEl ? idEl.value.trim() : '',
       relation: relEl ? relEl.value : '',
-      age: ageEl ? ageEl.value.trim() : ''
+      age: ageEl ? ageEl.value.trim() : '',
+      religion: religionEl ? religionEl.value : '',
+      allergy: allergyEl ? allergyEl.value.trim() : ''
     });
   }
   return extras;
@@ -247,12 +258,49 @@ function copyDeptReport(dept) {
            `แดน: ${wing}`;
   }
   else if (dept === 'kitchen') {
+    // Get main visitor religion and allergy
+    const mainReligion = document.getElementById('visitorReligion').value.trim();
+    const mainAllergy = document.getElementById('visitorAllergy').value.trim();
+    const extras = getExtraVisitors();
+    
+    // Count religions
+    const religionCounts = {};
+    religionCounts[mainReligion] = (religionCounts[mainReligion] || 0) + 1;
+    extras.forEach(v => {
+      if (v.religion) religionCounts[v.religion] = (religionCounts[v.religion] || 0) + 1;
+    });
+    
+    // Count allergies
+    const allergyCounts = {};
+    const mainAllergyLabel = mainAllergy || 'ไม่มี';
+    allergyCounts[mainAllergyLabel] = (allergyCounts[mainAllergyLabel] || 0) + 1;
+    extras.forEach(v => {
+      const allergyLabel = v.allergy || 'ไม่มี';
+      allergyCounts[allergyLabel] = (allergyCounts[allergyLabel] || 0) + 1;
+    });
+    
+    // Build religion text
+    let religionText = '';
+    Object.entries(religionCounts).forEach(([religion, count]) => {
+      const note = religion === 'อิสลาม' ? ' (อาหารฮาลาล)' : '';
+      religionText += `• ${religion}: ${count} คน${note}\n`;
+    });
+    
+    // Build allergy text
+    let allergyText = '';
+    Object.entries(allergyCounts).forEach(([allergy, count]) => {
+      const label = allergy === 'ไม่มี' ? '✅ ไม่มี' : `⚠️ ${allergy}`;
+      allergyText += `• ${label}: ${count} คน\n`;
+    });
+    
     text = `รายงานสำหรับครัว\n` +
            `วันที่: ${thDate}\n` +
            `รวมทั้งหมด: ญาติ ${n} คน + ผู้ต้องขัง 1 คน = ${totalPersons} คน\n` +
            `ผู้ใหญ่ (ญาติ): ${c.adults} คน\n` +
            `เด็ก 5-8 ปี (ญาติ): ${c.kids5_8} คน${c.kids5_8Names.length ? ' (' + c.kids5_8Names.join(', ') + ')' : ''}\n` +
-           `เด็กต่ำกว่า 5 ปี (ญาติ): ${c.kidsUnder5} คน${c.kidsUnder5Names.length ? ' (' + c.kidsUnder5Names.join(', ') + ')' : ''}\n` +
+           `เด็กต่ำกว่า 5 ปี (ญาติ): ${c.kidsUnder5} คน${c.kidsUnder5Names.length ? ' (' + c.kidsUnder5Names.join(', ') + ')' : ''}\n\n` +
+           `📊 ข้อมูลศาสนา:\n${religionText}\n` +
+           `⚠️ การแพ้อาหาร:\n${allergyText}\n` +
            `หมายเหตุ: รวมผู้ต้องขัง 1 คนด้วย`;
   }
   else if (dept === 'bakery') {
@@ -417,13 +465,31 @@ function validate() {
     const el = document.getElementById(f.id);
     if (!el.value.trim()) { alert(`กรุณากรอก ${f.label}`); el.focus(); return false; }
   }
-  // Validate extra visitors (name + id)
+  
+  // Validate main visitor religion (required)
+  const mainReligion = document.getElementById('visitorReligion');
+  if (!mainReligion.value.trim()) { alert('กรุณาเลือกศาสนา'); mainReligion.focus(); return false; }
+  
+  // Validate main visitor allergy (required)
+  const mainAllergy = document.getElementById('visitorAllergy');
+  if (!mainAllergy.value.trim()) { alert('กรุณาระบุการแพ้อาหาร (ถ้าไม่มีให้กรอก \"ไม่มี\")'); mainAllergy.focus(); return false; }
+  
+  // Validate extra visitors (name + id + religion + allergy)
   const n = parseInt(document.getElementById('visitorCount').value);
   for (let i = 2; i <= n; i++) {
     const nameEl = document.getElementById('extraVisitorName' + i);
     const idEl   = document.getElementById('extraVisitorId' + i);
     if (nameEl && !nameEl.value.trim()) { alert('กรุณากรอกชื่อผู้เข้าร่วมกิจกรรมคนที่ ' + i); nameEl.focus(); return false; }
     if (idEl && !idEl.value.trim()) { alert('กรุณากรอกเลขบัตรประชาชนผู้เข้าร่วมกิจกรรมคนที่ ' + i); idEl.focus(); return false; }
+    
+    // Validate religion for extra visitors
+    const religionEl = document.getElementById('extraVisitorReligion' + i);
+    if (religionEl && !religionEl.value.trim()) { alert('กรุณาเลือกศาสนาสำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i); religionEl.focus(); return false; }
+    
+    // Validate allergy for extra visitors
+    const allergyEl = document.getElementById('extraVisitorAllergy' + i);
+    if (allergyEl && !allergyEl.value.trim()) { alert('กรุณาระบุการแพ้อาหารสำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i + ' (ถ้าไม่มีให้กรอก \"ไม่มี\")'); allergyEl.focus(); return false; }
+    
     const relEl = document.getElementById('extraVisitorRelation' + i);
     if (relEl && !relEl.value) { alert('กรุณาเลือกความสัมพันธ์ผู้ร่วมกิจกรรมคนที่ ' + i); relEl.focus(); return false; }
     if (relEl && relEl.value === 'บุตร / ธิดา') {
@@ -590,6 +656,8 @@ async function submitBooking() {
 
   const extras = getExtraVisitors();
   const extraNamesStr = extras.map(v => v.name + '|' + v.id + '|' + v.relation + '|' + (v.age || '')).join(';;');
+  const extraReligionsStr = extras.map(v => v.religion || '').join(';;');
+  const extraAllergiesStr = extras.map(v => v.allergy || '').join(';;');
 
   const prisonerId = document.getElementById('prisonerId').value.trim();
 
@@ -625,6 +693,10 @@ async function submitBooking() {
     visitorId: document.getElementById('visitorId').value.trim(),
     visitorPhone: document.getElementById('visitorPhone').value.trim(),
     relation: document.getElementById('relation').value,
+    religion: document.getElementById('visitorReligion').value.trim(),
+    allergy: document.getElementById('visitorAllergy').value.trim(),
+    extraVisitorReligions: extraReligionsStr,
+    extraVisitorAllergies: extraAllergiesStr,
     prisonerName: document.getElementById('prisonerName').value.trim(),
     prisonerId: document.getElementById('prisonerId').value.trim(),
     wing: document.getElementById('wing').value,
