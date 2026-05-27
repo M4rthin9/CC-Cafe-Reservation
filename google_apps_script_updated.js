@@ -1,5 +1,4 @@
 const SHEET_NAME = 'การจอง';
-const USERS_SHEET = 'Users';
 const EVENTLOG_SHEET = 'EventLog';
 const PRISONER_SHEET = 'ผู้ต้องขัง';  // Database ผู้ต้องขัง (Prisoner Master Data)
 
@@ -13,15 +12,6 @@ function listAllSheets() {
 
 // Legacy fallback password (for transition / public pages). Remove in production after full migration.
 const LEGACY_STAFF_PASS = '10900';
-
-// ===== Default seed users (created on first run if Users sheet empty) =====
-const DEFAULT_USERS = [
-  { username: 'superadmin', password: 'super123', department: 'ผู้บริหาร', role: 'superadmin', permissions: JSON.stringify(['view_all','approve_reject','update_visitor','mark_paid','cancel_booking','view_reports','export_data','view_eventlog','manage_users']), active: true },
-  { username: 'manager01', password: 'mgr123', department: 'ทะเบียน', role: 'manager', permissions: JSON.stringify(['view_all','approve_reject','update_visitor','cancel_booking','view_reports','view_eventlog']), active: true },
-  { username: 'finance01', password: 'fin123', department: 'การเงิน', role: 'finance', permissions: JSON.stringify(['view_all','mark_paid','view_reports','view_eventlog']), active: true },
-  { username: 'security01', password: 'sec123', department: 'รักษาความปลอดภัย', role: 'security', permissions: JSON.stringify(['view_all','approve_reject','update_visitor','view_eventlog']), active: true },
-  { username: 'viewer01', password: 'view123', department: 'ทั่วไป', role: 'viewer', permissions: JSON.stringify(['view_all','view_reports','view_eventlog']), active: true }
-];
 
 // ===== GET =====
 function doGet(e) {
@@ -72,15 +62,6 @@ function doGet(e) {
     }
     const logs = getEventLogs(params);
     return jsonResp({ status: 'ok', logs: logs });
-  }
-
-  // Get users (for user management UI)
-  if (action === 'getUsers') {
-    if (!isAuthorized(username, pass)) {
-      return jsonResp({ status: 'error', message: 'Unauthorized' });
-    }
-    const users = getAllUsersSafe();
-    return jsonResp({ status: 'ok', users: users });
   }
 
   // ===== Prisoner master data for booking autocomplete (public) =====
@@ -206,21 +187,6 @@ function doPost(e) {
   const action = body.action || 'saveReservation';
   const username = body.username || body.user || 'public';
   const pass = body.pass || '';
-
-  // ===== LOGIN (new multi-user) =====
-  if (action === 'login') {
-    const user = authenticateUser(body.username, body.password);
-    if (!user) {
-      logEvent(body.username || 'unknown', 'login_failed', '', { reason: 'invalid credentials' }, 'denied');
-      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
-    }
-    if (!user.active) {
-      logEvent(body.username, 'login_failed', '', { reason: 'user inactive' }, 'denied');
-      return jsonResp({ status: 'error', message: 'บัญชีผู้ใช้นี้ถูกปิดใช้งาน' });
-    }
-    logEvent(user.username, 'login_success', '', { department: user.department, role: user.role }, 'success');
-    return jsonResp({ status: 'ok', user: user });
-  }
 
   // ===== Client-side event log (optional) =====
   if (action === 'logClientEvent') {
@@ -397,101 +363,13 @@ function doPost(e) {
     return jsonResp({ status: 'error', message: 'Ref not found' });
   }
 
-  // ===== USER MANAGEMENT (superadmin only) =====
-  if (action === 'saveUser') {
-    const currentUser = getUserByUsername(username);
-    if (!currentUser || !userHasPermission(currentUser, 'manage_users')) {
-      logEvent(username, 'manage_users_denied', '', {}, 'denied');
-      return jsonResp({ status: 'error', message: 'Permission denied: manage_users' });
-    }
-    saveOrUpdateUser(body.userData);
-    logEvent(username, 'user_saved', body.userData.username, {}, 'success');
-    return jsonResp({ status: 'ok' });
-  }
-
-  if (action === 'getUsers') {
-    const currentUser = getUserByUsername(username);
-    if (!currentUser || !userHasPermission(currentUser, 'manage_users')) {
-      return jsonResp({ status: 'error', message: 'Permission denied' });
-    }
-    return jsonResp({ status: 'ok', users: getAllUsersSafe() });
-  }
-
   return jsonResp({ status: 'error', message: 'Unknown action' });
 }
 
 // ===== AUTH HELPERS =====
 function isAuthorized(username, pass) {
-  if (username && getUserByUsername(username)) {
-    return true; // username-based login is sufficient after successful login
-  }
-  // Legacy fallback
+  // Legacy password-only auth
   return String(pass) === String(LEGACY_STAFF_PASS);
-}
-
-function authenticateUser(username, password) {
-  const sheet = getUsersSheet();
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return null;
-
-  const headers = data[0];
-  const uIdx = headers.indexOf('username');
-  const pIdx = headers.indexOf('password');
-  const deptIdx = headers.indexOf('department');
-  const roleIdx = headers.indexOf('role');
-  const permIdx = headers.indexOf('permissions');
-  const activeIdx = headers.indexOf('active');
-
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][uIdx]).trim() === String(username).trim()) {
-      if (String(data[i][pIdx]) === String(password)) {
-        return {
-          username: String(data[i][uIdx]),
-          department: String(data[i][deptIdx] || ''),
-          role: String(data[i][roleIdx] || ''),
-          permissions: data[i][permIdx] ? JSON.parse(data[i][permIdx]) : [],
-          active: data[i][activeIdx] !== false && data[i][activeIdx] !== 'FALSE'
-        };
-      }
-    }
-  }
-  return null;
-}
-
-function getUserByUsername(username) {
-  if (!username) return null;
-  const sheet = getUsersSheet();
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return null;
-  const headers = data[0];
-  const uIdx = headers.indexOf('username');
-  const deptIdx = headers.indexOf('department');
-  const roleIdx = headers.indexOf('role');
-  const permIdx = headers.indexOf('permissions');
-  const activeIdx = headers.indexOf('active');
-
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][uIdx]).trim() === String(username).trim()) {
-      return {
-        username: String(data[i][uIdx]),
-        department: String(data[i][deptIdx] || ''),
-        role: String(data[i][roleIdx] || ''),
-        permissions: tryParseJSON(data[i][permIdx]),
-        active: data[i][activeIdx] !== false && String(data[i][activeIdx]).toUpperCase() !== 'FALSE'
-      };
-    }
-  }
-  return null;
-}
-
-function userHasPermission(user, perm) {
-  if (!user || !user.permissions) return false;
-  if (user.role === 'superadmin') return true;
-  return user.permissions.includes(perm);
-}
-
-function tryParseJSON(str) {
-  try { return JSON.parse(str); } catch { return []; }
 }
 
 // ===== EVENT LOG =====
@@ -534,91 +412,6 @@ function getEventLogs(params) {
     filtered = filtered.filter(r => JSON.stringify(r).toLowerCase().includes(s));
   }
   return filtered.slice(0, 500); // safety limit
-}
-
-// ===== USERS SHEET MANAGEMENT =====
-function getUsersSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(USERS_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(USERS_SHEET);
-    ensureUsersHeaders(sheet);
-    seedDefaultUsers(sheet);
-  }
-  return sheet;
-}
-
-function ensureUsersHeaders(sheet) {
-  if (sheet.getLastRow() > 0) return;
-  const headers = ['username', 'password', 'department', 'role', 'permissions', 'active', 'createdAt'];
-  sheet.appendRow(headers);
-  const range = sheet.getRange(1, 1, 1, headers.length);
-  range.setFontWeight('bold');
-  range.setBackground('#185FA5');
-  range.setFontColor('#ffffff');
-  sheet.setFrozenRows(1);
-}
-
-function seedDefaultUsers(sheet) {
-  const now = new Date();
-  DEFAULT_USERS.forEach(u => {
-    sheet.appendRow([
-      u.username,
-      u.password,
-      u.department,
-      u.role,
-      u.permissions,
-      u.active,
-      Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm')
-    ]);
-  });
-}
-
-function getAllUsersSafe() {
-  const sheet = getUsersSheet();
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return [];
-  const headers = data[0];
-  return data.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => {
-      if (h === 'password') obj[h] = '********'; // never expose
-      else obj[h] = row[i];
-    });
-    return obj;
-  });
-}
-
-function saveOrUpdateUser(userData) {
-  const sheet = getUsersSheet();
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const uIdx = headers.indexOf('username');
-
-  // Find existing
-  let foundRow = -1;
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][uIdx]).trim() === String(userData.username).trim()) {
-      foundRow = i + 1;
-      break;
-    }
-  }
-
-  const rowData = [
-    userData.username,
-    userData.password || (foundRow > 0 ? data[foundRow-1][headers.indexOf('password')] : 'changeme'),
-    userData.department || '',
-    userData.role || 'viewer',
-    (typeof userData.permissions === 'string') ? userData.permissions : JSON.stringify(userData.permissions || []),
-    userData.active !== false,
-    foundRow > 0 ? data[foundRow-1][headers.indexOf('createdAt')] : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm')
-  ];
-
-  if (foundRow > 0) {
-    sheet.getRange(foundRow, 1, 1, rowData.length).setValues([rowData]);
-  } else {
-    sheet.appendRow(rowData);
-  }
 }
 
 // ===== EVENT LOG SHEET =====

@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2rv02fEdfV8GR10ImXs_Gb3MU8U-jLWxuW9F-nq7fzxX7e4QnfpDhWTaF8nVnJzz_Eg/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxG-5FV4YqoxTKYDOT5oFmsMmkB6ereIdg5TztHuJWLoaCEzq0NWXsrv17cfLUwfpN4Ug/exec';
 const QUOTA = 20;
 
 // ===== CALENDAR =====
@@ -597,10 +597,10 @@ async function submitBooking() {
   document.getElementById('overlay').classList.add('show');
   document.getElementById('submitBtn').disabled = true;
   try {
-    const checkData = await appsScriptGet({ action: 'getAll', pass: '10900' });
-    if (checkData.status === 'ok' && checkData.rows) {
+    const rows = await fetchAllReservations();
+    if (rows) {
       const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
-      const duplicate = checkData.rows.find(r =>
+      const duplicate = rows.find(r =>
         String(r.prisonerId || '').trim() === prisonerId &&
         (r.visitDateISO || '') === selectedDate &&
         activeStatuses.includes(r.status)
@@ -790,17 +790,38 @@ async function appsScriptGet(params) {
   catch { throw new Error('Invalid JSON: ' + text.slice(0, 100)); }
 }
 
+async function fetchAllReservations() {
+  const attempts = [
+    { action: 'getAll', pass: '10900' },
+    { action: 'getAll' },
+    { action: 'getAll', username: 'public' }
+  ];
+
+  let lastErr = null;
+  for (const params of attempts) {
+    try {
+      const data = await appsScriptGet(params);
+      if (data && data.status === 'ok' && Array.isArray(data.rows)) return data.rows;
+      if (data && data.status === 'error') throw new Error(data.message || 'Unknown server error');
+      throw new Error('Invalid getAll response');
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('Cannot load reservations');
+}
+
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
   // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
   const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
   try {
     console.log('[Calendar] Loading booking counts from server...');
-    const data = await appsScriptGet({ action: 'getAll', pass: '10900' });
-    console.log('[Calendar] Server response:', data);
-    if (data.status === 'ok' && data.rows) {
+    const rows = await fetchAllReservations();
+    console.log('[Calendar] Loaded rows:', rows.length);
+    if (rows) {
       bookings = {};
-      data.rows.forEach(r => {
+      rows.forEach(r => {
         if (!r.visitDateISO) return;
         if (!activeStatuses.includes(r.status)) return;
 
@@ -823,7 +844,7 @@ async function loadBookingCounts() {
       });
       console.log('[Calendar] Loaded bookings:', bookings);
     } else {
-      console.warn('[Calendar] No rows in response or status not ok');
+      console.warn('[Calendar] No rows in response');
     }
   } catch (err) {
     console.error('[Calendar] loadBookingCounts failed:', err);
