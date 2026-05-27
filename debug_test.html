@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Test</title>
+</head>
+<body>
+    <h1>Debug Test</h1>
+    <div id="output"></div>
+    <script>
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxVj7NhzAuUAHqv_v4OiKtlVD8A1x73PzxLFAZ0TCJCgdTipYNcghaYfuIhn70-JADGg/exec';
+        
+        async function testGetAll() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Testing getAll...</p>';
+            
+            try {
+                const response = await fetch(APPS_SCRIPT_URL + '?action=getAll&pass=10900');
+                const data = await response.json();
+                output.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                output.innerHTML += '<p style="color:red;">Error: ' + error.message + '</p>';
+            }
+        }
+        
+        async function testGetPrisoners() {
+            const output = document.getElementById('output');
+            output.innerHTML += '<p>Testing getPrisoners...</p>';
+            
+            try {
+                const response = await fetch(APPS_SCRIPT_URL + '?action=getPrisoners');
+                const data = await response.json();
+                output.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                output.innerHTML += '<p style="color:red;">Error: ' + error.message + '</p>';
+            }
+        }
+        
+        window.onload = function() {
+            testGetAll();
+            testGetPrisoners();
+        };
+    </script>
+</body>
+</html>

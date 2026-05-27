@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRdkFrze_wXlfFmX4orJ2Vl5X-DuXI9isnxC1cKMRFuCeLy0eHbcnFYNLYaBTGjbFdDg/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2rv02fEdfV8GR10ImXs_Gb3MU8U-jLWxuW9F-nq7fzxX7e4QnfpDhWTaF8nVnJzz_Eg/exec';
 const QUOTA = 20;
 
 // ===== CALENDAR =====
