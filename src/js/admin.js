@@ -1262,239 +1262,432 @@ function printReport() {
   let totalPrice = 0;
   filtered.forEach(r => {
     const cnt = parseInt(r.visitorCount) || 1;
-    const prc = parseInt(r.total) || (cnt * 1000);
     totalVisitors += cnt;
-    totalPrice += prc;
+    totalPrice += parseInt(r.total) || 0;
   });
   const totalPrisoners = filtered.length;
+  const totalPeople = totalVisitors + totalPrisoners;
 
-  let html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>รายงานการจอง CC Cafe</title>
+  let html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>รายงานการจัดโต๊ะ - CC Cafe</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
-  body { font-family: 'Sarabun', system-ui, sans-serif; padding: 20px 24px; margin:0; color:#000; background:#fff; line-height:1.45; font-size:14px; }
-  h1 { font-size:20px; margin:0 0 4px; font-weight:700; text-align:center; }
-  .meta { font-size:12px; color:#333; text-align:center; margin-bottom:16px; }
-  .ref-block { 
-    margin-bottom:18px; 
+  body { font-family: 'Sarabun', system-ui, sans-serif; padding: 20px 24px; margin:0; color:#000; background:#fff; line-height:1.5; font-size:14px; }
+  h1 { font-size:22px; margin:0 0 4px; font-weight:700; text-align:center; color: #0B2545; }
+  h2 { font-size:16px; margin:0 0 2px; font-weight:700; color: #1C2433; }
+  .meta { font-size:12px; color:#555; text-align:center; margin-bottom:20px; }
+  
+  /* Table/Ref Block */
+  .table-block { 
+    margin-bottom:20px; 
     page-break-inside: avoid; 
-    border: 2px solid #000; 
-    padding: 10px 12px; 
-    border-radius: 6px; 
-    background:#fff; 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 2px solid #0B2545; 
+    border-radius: 8px; 
+    overflow: hidden;
+    background:#fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
   }
-  .ref-num { 
-    display: inline-block; 
-    background: #0f766e; 
-    color: #fff; 
-    padding: 3px 10px; 
-    border-radius: 4px; 
-    font-size: 13px; 
-    font-weight: 700; 
-    margin-right: 8px;
+  .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #0B2545;
+    color: #fff;
   }
-  .section { 
-    margin-top: 8px; 
-    border: 1px solid #555; 
-    padding: 7px 9px; 
-    border-radius: 4px; 
+  .table-num {
+    font-size: 15px;
+    font-weight: 700;
+    background: #D4AF37;
+    color: #1C2433;
+    padding: 4px 14px;
+    border-radius: 4px;
+  }
+  .table-ref {
+    font-size: 14px;
+    font-weight: 600;
+    margin-left: 10px;
+  }
+  .table-date {
+    font-size: 12px;
+    opacity: 0.9;
+  }
+  
+  /* Content sections */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+  .info-section {
+    border: 1.5px solid #ddd;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #fafafa;
+  }
+  .info-section.prisoner {
+    background: #f0f7f0;
+    border-color: #166534;
+  }
+  .info-section.visitor {
+    background: #f0f4ff;
+    border-color: #0B2545;
+  }
+  .section-title {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #0B2545;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .info-section.prisoner .section-title {
+    color: #166534;
+  }
+  .info-line {
+    margin: 3px 0;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .info-line b {
+    font-weight: 600;
+    color: #1C2433;
+  }
+  
+  /* Extra visitors */
+  .extra-section {
+    grid-column: 1 / -1;
+    background: #fff8e7;
+    border: 1.5px solid #f5c542;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .extra-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: #92400e;
+    margin-bottom: 6px;
+  }
+  .extra-item {
+    font-size: 13px;
+    padding: 2px 0;
+    padding-left: 12px;
+    position: relative;
+  }
+  .extra-item::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #D4AF37;
+    font-weight: bold;
+  }
+  
+  /* Footer info */
+  .table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
     background: #f8f9fa;
+    border-top: 1.5px solid #ddd;
   }
-  .section.prisoner { background: #f0f7f0; border-color: #166534; }
-  .section-title { 
-    font-weight: 700; 
-    font-size: 13px; 
-    margin-bottom: 4px; 
-    color: #0f766e; 
+  .visit-date-info {
+    font-size: 13px;
+    color: #555;
   }
-  .section.prisoner .section-title { color: #166534; }
-  .info-line { margin: 2px 0; font-size: 13px; }
-  .info-line b { font-size: 14px; }
-  .extra-box { 
-    margin-top: 7px; 
-    background: #fff8e7; 
-    border: 1px solid #b45309; 
-    padding: 6px 8px; 
-    border-radius: 4px; 
+  .visit-date-info b {
+    color: #0B2545;
+    font-size: 15px;
   }
-  .extra-title { 
-    font-weight: 700; 
-    font-size: 12px; 
-    color: #92400e; 
-    margin-bottom: 3px; 
+  .people-count {
+    background: #D4AF37;
+    color: #1C2433;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 16px;
+    text-align: center;
+    min-width: 120px;
   }
-  .extra-line { 
-    font-size: 12.5px; 
-    padding-left: 8px; 
-    margin: 2px 0; 
+  .people-count .label {
+    font-size: 11px;
+    font-weight: 500;
+    display: block;
   }
-  .price-box { 
-    margin-top: 10px; 
-    text-align: right; 
-    background: #fefce8; 
-    border: 3px solid #854d0e; 
-    padding: 8px 12px; 
-    border-radius: 5px; 
+  .people-count .number {
+    font-size: 18px;
+    font-weight: 800;
   }
-  .price-box .small { font-size: 12px; color: #713f12; }
-  .price-box .big { 
-    font-size: 16px; 
-    font-weight: 800; 
-    color: #713f12; 
-    margin-top: 2px; 
-  }
+  
+  /* Grand Summary */
   .grand-summary { 
-    margin-top: 30px; 
-    page-break-before: always; 
-    text-align: center; 
+    margin-top: 36px; 
+    page-break-before: always;
+    padding: 24px;
   }
-  .grand-box { 
-    display: inline-block; 
-    border: 5px solid #000; 
-    padding: 18px 28px; 
-    font-size: 16px; 
-    line-height: 1.8; 
-    background: #fff; 
-    text-align: left; 
-    min-width: 380px;
+  .grand-box {
+    border: 3px solid #0B2545;
+    border-radius: 10px;
+    padding: 24px 32px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    max-width: 500px;
+    margin: 0 auto;
   }
-  .grand-box .label { font-size: 15px; }
-  .grand-box .number { font-size: 22px; font-weight: 800; }
-  .grand-box .total-line { 
-    margin-top: 10px; 
-    padding-top: 10px; 
-    border-top: 3px solid #000; 
-    font-size: 18px; 
-    font-weight: 800; 
+  .grand-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0B2545;
+    text-align: center;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #0B2545;
   }
-  .note { 
-    text-align: center; 
-    font-size: 11px; 
-    color: #444; 
-    margin: 12px 0; 
-    font-style: italic; 
+  .grand-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px 0;
+    font-size: 15px;
   }
+  .grand-item .g-label {
+    color: #555;
+    font-weight: 500;
+  }
+  .grand-item .g-number {
+    font-weight: 800;
+    font-size: 20px;
+    color: #0B2545;
+  }
+  .grand-total {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 3px solid #D4AF37;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grand-total .g-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1C2433;
+  }
+  .grand-total .g-number {
+    font-size: 26px;
+    font-weight: 900;
+    color: #D4AF37;
+  }
+  
+  .footer-note {
+    text-align: center;
+    font-size: 11px;
+    color: #888;
+    margin-top: 20px;
+  }
+  
   @media print {
     @page { size: A4; margin: 10mm 8mm; }
-    body { padding: 4mm 6mm; font-size: 10.5px; line-height: 1.28; }
-    h1 { font-size: 14px; margin-bottom: 1px; }
-    .meta { font-size: 9.5px; margin-bottom: 6px; }
-    .note { display: none; } /* hide note in print to save space */
-    .ref-block { 
-      padding: 5px 7px; 
-      margin-bottom: 4mm; 
+    body { padding: 4mm 6mm; font-size: 11px; line-height: 1.4; }
+    h1 { font-size: 16px; margin-bottom: 2px; }
+    h2 { font-size: 13px; }
+    .meta { font-size: 10px; margin-bottom: 8px; }
+    .table-block { 
+      padding: 0;
+      margin-bottom: 3mm;
       border-width: 1.5px;
     }
-    .ref-num { 
-      padding: 2px 6px; 
-      font-size: 10px; 
-      margin-right: 5px;
+    .table-header {
+      padding: 6px 10px;
     }
-    .section { 
-      margin-top: 3px; 
-      padding: 3px 5px; 
-      border-width: 0.8px;
+    .table-num {
+      padding: 3px 10px;
+      font-size: 12px;
     }
-    .section-title { font-size: 10.5px; margin-bottom: 1px; }
-    .info-line { margin: 1px 0; font-size: 10.5px; }
-    .info-line b { font-size: 11px; }
-    .extra-box { margin-top: 3px; padding: 3px 5px; }
-    .extra-title { font-size: 10px; margin-bottom: 1px; }
-    .extra-line { font-size: 10px; padding-left: 4px; margin: 1px 0; }
-    .price-box { 
-      margin-top: 4px; 
-      padding: 4px 6px; 
-      border-width: 2px;
+    .table-ref {
+      font-size: 12px;
     }
-    .price-box .small { font-size: 9.5px; }
-    .price-box .big { font-size: 12px; }
-    .grand-summary { margin-top: 6mm; }
-    .grand-box { 
-      padding: 8px 12px; 
-      font-size: 11.5px; 
-      line-height: 1.5;
-      min-width: 320px;
-      border-width: 3px;
+    .table-date {
+      font-size: 10px;
     }
-    .grand-box .label { font-size: 11px; }
-    .grand-box .number { font-size: 15px; }
-    .grand-box .total-line { font-size: 13px; margin-top: 4px; padding-top: 4px; }
-    .grand-box > div:first-child { font-size: 12px !important; margin-bottom: 4px !important; }
+    .content-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 8px 10px;
+    }
+    .info-section {
+      padding: 6px 8px;
+    }
+    .section-title {
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+    .info-line {
+      margin: 2px 0;
+      font-size: 11px;
+    }
+    .info-line b {
+      font-size: 11px;
+    }
+    .extra-section {
+      padding: 6px 8px;
+    }
+    .extra-title {
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+    .extra-item {
+      font-size: 11px;
+      padding: 1px 0;
+      padding-left: 10px;
+    }
+    .table-footer {
+      padding: 6px 10px;
+    }
+    .visit-date-info {
+      font-size: 11px;
+    }
+    .visit-date-info b {
+      font-size: 13px;
+    }
+    .people-count {
+      padding: 4px 12px;
+      font-size: 13px;
+    }
+    .people-count .label {
+      font-size: 9px;
+    }
+    .people-count .number {
+      font-size: 15px;
+    }
+    .grand-summary {
+      margin-top: 6mm;
+      padding: 12px;
+    }
+    .grand-box {
+      padding: 16px 20px;
+    }
+    .grand-title {
+      font-size: 14px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+    }
+    .grand-item {
+      margin: 6px 0;
+      font-size: 12px;
+    }
+    .grand-item .g-number {
+      font-size: 16px;
+    }
+    .grand-total {
+      margin-top: 10px;
+      padding-top: 10px;
+    }
+    .grand-total .g-label {
+      font-size: 13px;
+    }
+    .grand-total .g-number {
+      font-size: 20px;
+    }
   }
 </style></head><body>`;
 
-  html += `<h1>รายงานการจองกิจกรรม<br>ร้าน Chance & Change Cafe</h1>`;
-  html += `<div class="meta">ทัณฑสถานบำบัดพิเศษกลาง • พิมพ์เมื่อ ${now} • เรียงตามเลขที่อ้างอิง</div>`;
-  html += `<div class="note">รายงานนี้แสดงข้อมูลการจองแต่ละเลขที่ กรุณาตรวจสอบให้ถูกต้องก่อนนำไปใช้</div>`;
+  html += `<h1>🪑 รายงานการจัดโต๊ะ</h1>`;
+  html += `<h2>ร้าน Chance & Change Cafe · ทัณฑสถานบำบัดพิเศษกลาง</h2>`;
+  html += `<div class="meta">พิมพ์เมื่อ ${now} · เรียงตามเลขที่อ้างอิง · จำนวน ${filtered.length} โต๊ะ</div>`;
 
   filtered.forEach((r, i) => {
     const extras = parseExtraVisitors(r);
-    const people = parseInt(r.visitorCount) || 1;
-    const price = parseInt(r.total) || (people * 1000);
+    const visitorCount = parseInt(r.visitorCount) || 1;
+    const totalPeopleThisTable = visitorCount + 1; // visitors + prisoner
 
-    html += `<div class="ref-block">`;
-
-    // Header with number and ref
-    html += `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">`;
-    html += `<div><span class="ref-num">รายการที่ ${i+1}</span> <span style="font-size:13px; font-weight:800;">เลขที่ ${r.ref}</span></div>`;
-    html += `<div style="font-size:10.5px; text-align:right; color:#333;">วันที่นัด: <b>${r.visitDate || '-'}</b></div>`;
+    html += `<div class="table-block">`;
+    
+    // Header
+    html += `<div class="table-header">`;
+    html += `<div style="display:flex;align-items:center;">`;
+    html += `<span class="table-num">โต๊ะ ${i+1}</span>`;
+    html += `<span class="table-ref">${r.ref || '—'}</span>`;
+    html += `</div>`;
+    html += `<span class="table-date">📅 ${r.visitDate || '—'}</span>`;
     html += `</div>`;
 
-    // Prisoner (first, renamed per request)
-    html += `<div class="section prisoner">`;
-    html += `<div class="section-title">ชื่อผู้ต้องขัง</div>`;
-    html += `<div class="info-line">ชื่อ: <b>${r.prisonerName || '-'}</b></div>`;
-    html += `<div class="info-line">เลขประจำตัว: ${r.prisonerId || '-'}</div>`;
-    html += `<div class="info-line">แดนที่อยู่: ${r.wing || '-'}</div>`;
+    // Content Grid
+    html += `<div class="content-grid">`;
+    
+    // Left: Prisoner Info
+    html += `<div class="info-section prisoner">`;
+    html += `<div class="section-title">🔒 ผู้ต้องขัง</div>`;
+    html += `<div class="info-line">ชื่อ: <b>น.ช. ${r.prisonerName || '—'}</b></div>`;
+    html += `<div class="info-line">เลขประจำตัว: <b>${r.prisonerId || '—'}</b></div>`;
+    html += `<div class="info-line">แดน: <b>${r.wing || '—'}</b></div>`;
     html += `</div>`;
 
-    // Main visitor (ผู้จองหลัก) - after prisoner
-    html += `<div class="section">`;
-    html += `<div class="section-title">👤 ผู้จองหลัก (คนที่กรอกข้อมูล)</div>`;
-    html += `<div class="info-line">ชื่อ-นามสกุล: <b>${r.visitorName || '-'}</b></div>`;
-    html += `<div class="info-line">โทรศัพท์: ${r.visitorPhone || '-'}</div>`;
-    html += `<div class="info-line">เลขบัตรประชาชน: ${r.visitorId || '-'}</div>`;
-    html += `<div class="info-line">ความสัมพันธ์กับผู้ต้องขัง: ${r.relation || '-'}</div>`;
+    // Right: Main Visitor Info
+    html += `<div class="info-section visitor">`;
+    html += `<div class="section-title">👤 ผู้เยี่ยมหลัก</div>`;
+    html += `<div class="info-line"><b>${r.visitorName || '—'}</b></div>`;
+    html += `<div class="info-line">โทร: ${r.visitorPhone || '—'}</div>`;
+    html += `<div class="info-line">ความสัมพันธ์: ${r.relation || '—'}</div>`;
+    html += `<div class="info-line">ศาสนา: ${r.religion || '—'}</div>`;
+    html += `<div class="info-line">แพ้อาหาร: ${r.allergy || 'ไม่มี'}</div>`;
     html += `</div>`;
 
-    // Extra visitors - very simple for elderly
+    // Extra visitors (full width)
     if (extras.length > 0) {
-      html += `<div class="extra-box">`;
-      html += `<div class="extra-title">👥 ผู้เข้าร่วมเพิ่มเติม (${extras.length} คน)</div>`;
-      extras.forEach((e, ei) => {
-        html += `<div class="extra-line">• ${e.name || '-'} &nbsp;&nbsp;บัตร: ${e.id || '-'} &nbsp;&nbsp;ความสัมพันธ์: ${e.relation || '-'}</div>`;
+      html += `<div class="extra-section">`;
+      html += `<div class="extra-title">👥 ผู้เยี่ยมเพิ่มเติม (${extras.length} คน)</div>`;
+      extras.forEach((e) => {
+        html += `<div class="extra-item">${e.name || '—'} · ${e.relation || '—'}${e.id ? ' · บัตร ' + e.id : ''}</div>`;
       });
       html += `</div>`;
     }
 
-    // Total people for this booking + PRICE on right bottom (big and clear)
-    html += `<div class="price-box">`;
-    html += `<div class="small">รวมผู้เข้าร่วมในรายการนี้ <b>${people} คน</b></div>`;
-    html += `<div class="big" style="font-size:14px;">ค่าบริการรายการนี้: ${price.toLocaleString('th-TH')} บาท</div>`;
+    html += `</div>`; // End content-grid
+
+    // Footer with date and people count
+    html += `<div class="table-footer">`;
+    html += `<div class="visit-date-info">วันที่เยี่ยม: <b>${r.visitDate || '—'}</b></div>`;
+    html += `<div class="people-count">`;
+    html += `<span class="label">จำนวนคน</span>`;
+    html += `<span class="number">${totalPeopleThisTable} คน</span>`;
+    html += `</div>`;
     html += `</div>`;
 
-    html += `</div>`; // end ref-block
+    html += `</div>`; // End table-block
   });
 
-  // ========== GRAND TOTAL SUMMARY (last page, very clear for elderly) ==========
+  // ========== GRAND TOTAL SUMMARY ==========
   html += `<div class="grand-summary">`;
   html += `<div class="grand-box">`;
-  html += `<div style="font-size:15px; font-weight:800; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:4px; text-align:center;">📋 สรุปยอดรวมทั้งหมด</div>`;
-
-  html += `<div class="label">จำนวนผู้เข้าร่วมกิจกรรมทั้งหมด</div>`;
-  html += `<div class="number">${totalVisitors} คน</div>`;
-
-  html += `<div class="label" style="margin-top:8px;">จำนวนผู้ต้องขังที่เยี่ยมทั้งหมด</div>`;
-  html += `<div class="number">${totalPrisoners} คน</div>`;
-
-  html += `<div class="total-line">`;
-  html += `ยอดรวมค่าบริการทั้งหมด<br>`;
-  html += `<span style="font-size:26px; font-weight:900;">${totalPrice.toLocaleString('th-TH')} บาท</span>`;
+  html += `<div class="grand-title">📋 สรุปยอดรวมทั้งหมด</div>`;
+  
+  html += `<div class="grand-item">`;
+  html += `<span class="g-label">จำนวนโต๊ะ</span>`;
+  html += `<span class="g-number">${filtered.length} โต๊ะ</span>`;
   html += `</div>`;
+  
+  html += `<div class="grand-item">`;
+  html += `<span class="g-label">จำนวนผู้เยี่ยม</span>`;
+  html += `<span class="g-number">${totalVisitors} คน</span>`;
+  html += `</div>`;
+  
+  html += `<div class="grand-item">`;
+  html += `<span class="g-label">จำนวนผู้ต้องขัง</span>`;
+  html += `<span class="g-number">${totalPrisoners} คน</span>`;
+  html += `</div>`;
+  
+  html += `<div class="grand-item">`;
+  html += `<span class="g-label">ยอดเงินรวม</span>`;
+  html += `<span class="g-number">${totalPrice.toLocaleString('th-TH')} บาท</span>`;
   html += `</div>`;
 
-  html += `<div style="margin-top:14px; font-size:11px; color:#444;">(ค่าบริการ 1,000 บาท ต่อ 1 คน รวมผู้ต้องขัง)</div>`;
-  html += `<div style="margin-top:20px; font-size:10px; color:#555;">พิมพ์จากระบบเจ้าหน้าที่ • ทัณฑสถานบำบัดพิเศษกลาง • ${now}</div>`;
+  html += `<div class="grand-total">`;
+  html += `<span class="g-label">รวมคนทั้งหมด</span>`;
+  html += `<span class="g-number">${totalPeople} คน</span>`;
+  html += `</div>`;
+  
+  html += `</div>`;
+  html += `<div class="footer-note">พิมพ์จากระบบ CC Cafe Reservation · ทัณฑสถานบำบัดพิเศษกลาง · ${now}</div>`;
   html += `</div>`;
 
   html += `</body></html>`;
