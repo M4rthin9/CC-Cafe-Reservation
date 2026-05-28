@@ -1,11 +1,21 @@
 // ===== CONFIG =====
 const PERMISSIONS = {
   Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog', 'approve_discipline', 'approve_participant'],
-  Admin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog', 'approve_discipline', 'approve_participant'],
+  Admin: ['approve', 'reject', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
   Vinai: ['approve_discipline', 'view_slip', 'view_detail'],
   Tadtel: ['approve_participant', 'view_slip', 'view_detail'],
   User: ['print']
+};
+
+// Sidebar menu visibility by role
+const SIDEBAR_MENU = {
+  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'addUser'],
+  Admin: ['home', 'reservations', 'reports', 'eventlog'],
+  Finance: ['reservations', 'reports'],
+  Vinai: ['reservations', 'reports'],
+  Tadtel: ['reservations', 'reports'],
+  User: ['home']
 };
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ7QxwrJHFBvDdnjtJA4NVw5ESW65sKCwuEUXNHoiWI19Xl-HN1jLBikEpeierrqn7zw/exec';
@@ -59,19 +69,21 @@ async function doLogin() {
     // Show user info in sidebar
     document.getElementById('userRole').textContent = currentUser.role;
     document.getElementById('userName').textContent = currentUser.username;
-     document.getElementById('userInfo').style.display = 'block';
-     // Show/hide add user link based on permission
-     const addUserLink = document.querySelector('.sb-link[data-view="addUser"]');
-     if (addUserLink) {
-       if (hasPermission('manage_users')) {
-         addUserLink.style.display = '';
-       } else {
-         addUserLink.style.display = 'none';
-       }
-     }
-    
-    switchView('home');
-    renderDashboardHome();
+document.getElementById('userInfo').style.display = 'block';
+      
+      // Show/hide sidebar menu items based on role
+      const visibleMenu = SIDEBAR_MENU[currentUser.role] || [];
+      document.querySelectorAll('.sb-link').forEach(link => {
+        const view = link.getAttribute('data-view');
+        if (view && !visibleMenu.includes(view)) {
+          link.style.display = 'none';
+        } else {
+          link.style.display = '';
+        }
+      });
+
+     switchView(visibleMenu.includes('home') ? 'home' : visibleMenu[0] || 'reservations');
+     renderDashboardHome();
     loadData();
     
   } catch(e) {
@@ -107,6 +119,10 @@ function doLogout() {
   document.getElementById('passInput').value = '';
   document.getElementById('userInput').value = '';
   document.getElementById('userInfo').style.display = 'none';
+  // Reset sidebar menu visibility
+  document.querySelectorAll('.sb-link').forEach(link => {
+    link.style.display = '';
+  });
   allRows = [];
 }
 
@@ -214,15 +230,21 @@ function renderTable() {
     else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-rejected';
     else if (s === 'ยกเลิก') badgeClass = 'badge-cancelled';
 
-    const isWait = s === 'รอตรวจสอบ';
-    const isPaid = s === 'ชำระแล้ว';
-    const isCancelled = s === 'ยกเลิก';
-    const rowIdx = allRows.indexOf(r);
-    
-    // Status checkmarks - 3 steps of verification
-    const vinaiApproved = r.visitorApproved === 'yes' || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
-    const tadtelApproved = r.extraVisitorApproved && String(r.extraVisitorApproved).split(';;').some(a => a === 'yes') || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
-    const financeDone = r.status === 'เสร็จสิ้น';
+const isWait = s === 'รอตรวจสอบ';
+     const isDiscipline = s === 'รอตรวจสอบวินัย';
+     const isParticipant = s === 'รอตรวจสอบผู้เข้าร่วม';
+     const isPaymentPending = s === 'รอชำระเงิน';
+     const isPaid = s === 'ชำระแล้ว';
+     const isCompleted = s === 'เสร็จสิ้น';
+     const isCancelled = s === 'ยกเลิก';
+     const rowIdx = allRows.indexOf(r);
+     
+     // Status checkmarks - 4 steps of verification (new workflow)
+     const adminApproved = r.status === 'รอตรวจสอบวินัย' || r.status === 'รอตรวจสอบผู้เข้าร่วม' || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+     const disciplineApproved = r.status === 'รอตรวจสอบผู้เข้าร่วม' || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+     const participantApproved = r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+     const financeConfirmed = r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+     const completed = r.status === 'เสร็จสิ้น';
 
     const canApprove = hasPermission('approve');
     const canVisitorApproval = hasPermission('visitor_approval');
@@ -249,22 +271,26 @@ function renderTable() {
       </td>
       <td><span class="badge ${badgeClass}">${r.status}</span></td>
       <td>
-        <div style="display:flex;gap:8px;align-items:center;justify-content:center">
-          <span class="status-check ${vinaiApproved ? 'done' : 'pending'}" title="อนุมัติการตรวจสอบวินัย">✓</span>
-          <span class="status-check ${tadtelApproved ? 'done' : 'pending'}" title="ฝ่ายทัณฑ์ เข้าร่วม/ปฏิเสธ">✓</span>
-          <span class="status-check ${financeDone ? 'done' : 'pending'}" title="ยืนยันการชำระเงินแล้ว">✓</span>
-        </div>
+<div style="display:flex;gap:8px;align-items:center;justify-content:center">
+           <span class="status-check ${adminApproved ? 'done' : 'pending'}" title="อนุมัติโดย Admin">✓</span>
+           <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย ฝ่ายวินัย">✓</span>
+           <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย ฝ่ายทัณฑ์">✓</span>
+           <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย ฝ่ายการเงิน">✓</span>
+         </div>
       </td>
       <td>
-        <div class="action-btns">
-          ${canApprove && isWait ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติ</button>` : ''}
-          ${canApprove && isWait ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-          ${canConfirmPayment && isPaid ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">💳 ยืนยันชำระเงิน</button>` : ''}
-          ${canRejectPayment && isPaid ? `<button class="btn-reject-pay" onclick="rejectPayment(${rowIdx})">✗ ปฏิเสธ</button>` : ''}
-          ${canCancel && !isCancelled ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-          ${hasPermission('view_slip') ? `<button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>` : ''}
-          ${hasPermission('view_detail') ? `<button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>` : ''}
-        </div>
+<div class="action-btns">
+           ${canApprove && isWait ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบวินัย')">✓ อนุมัติ</button>` : ''}
+           ${canApprove && isWait ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+           ${hasPermission('approve_discipline') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
+           ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
+           ${canConfirmPayment && s === 'รอชำระเงิน' ? `<button class="btn-confirm-pay" onclick="updateStatus(${rowIdx},'ชำระแล้ว')">💳 ยืนยันชำระเงิน</button>` : ''}
+           ${canConfirmPayment && s === 'ชำระแล้ว' ? `<button class="btn-confirm-pay" onclick="updateStatus(${rowIdx},'เสร็จสิ้น')">✅ เสร็จสิ้น</button>` : ''}
+           ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
+           ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+           ${hasPermission('view_slip') ? `<button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>` : ''}
+           ${hasPermission('view_detail') ? `<button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>` : ''}
+         </div>
       </td>
     </tr>`;
   }).join('');
@@ -358,7 +384,8 @@ function switchView(v) {
      renderAddUser();
    }
 
-   if (v === 'home') {
+   // Dashboard home view - only for Admin/Superadmin who have access
+   if (v === 'home' && SIDEBAR_MENU[currentUser?.role]?.includes('home')) {
      renderDashboardHome();
    }
 }
@@ -1068,11 +1095,15 @@ function getApprLabel(v){ return v==='yes' ? '✅ เข้าได้' : v==='
 // Normalize legacy statuses for consistent display across pages
 function normalizeStatus(s) {
   const v = (s || '').toString().trim().toLowerCase();
-  if (['อนุมัติ', 'approved', 'รอชำระเงิน'].includes(v)) return 'รอชำระเงิน';
-  if (['rejected', 'ไม่อนุมัติ'].includes(v)) return 'ไม่อนุมัติ';
-  if (['paid', 'ชำระแล้ว'].includes(v)) return 'ชำระแล้ว';
-  if (['done', 'เสร็จสิ้น'].includes(v)) return 'เสร็จสิ้น';
-  if (v === 'ยกเลิก') return 'ยกเลิก';
+  // New workflow statuses (priority - return as-is)
+  if (['รอตรวจสอบ', 'รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ยกเลิก', 'ไม่อนุมัติ'].includes(v)) {
+    return s;
+  }
+  // Legacy status mappings
+  if (['อนุมัติ', 'approved'].includes(v)) return 'รอตรวจสอบวินัย'; // Old approved -> step 2
+  if (['rejected'].includes(v)) return 'ไม่อนุมัติ';
+  if (['paid'].includes(v)) return 'ชำระแล้ว';
+  if (['done'].includes(v)) return 'เสร็จสิ้น';
   return s || 'รอตรวจสอบ';
 }
 
@@ -2040,7 +2071,12 @@ function renderDailyDeptReports() {
 }
 
 function renderAddUser() {
-  switchView('addUser');
+  if (!hasPermission('manage_users')) {
+    alert('คุณไม่มีสิทธิ์ในการเข้าถึงหน้านี้');
+    switchView('reservations');
+    return;
+  }
+  document.getElementById('view-addUser').style.display = '';
   fetchRolesList();
   loadAddUserTable();
 }

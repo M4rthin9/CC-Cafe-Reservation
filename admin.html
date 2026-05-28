@@ -75,23 +75,23 @@
           <div class="overview-meta" id="overviewLastUpdated">—</div>
         </div>
 
-        <!-- Approval Pipeline Visualization -->
-        <div class="pipeline-bar" id="approvalPipeline" style="display:none">
-          <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px">ไหลการอนุมัติ</div>
-          <div class="pipeline-steps">
-            <div class="pipeline-step" data-status="รอตรวจสอบ"><span class="pipeline-icon">⏳</span><span class="pipeline-label">รอตรวจสอบ</span><div class="pipeline-role">Admin/Super</div></div>
-            <div class="pipeline-arrow">→</div>
-            <div class="pipeline-step" data-status="รอตรวจสอบวินัย"><span class="pipeline-icon">🔍</span><span class="pipeline-label">รอตรวจสอบวินัย</span><div class="pipeline-role">Vinai ONLY</div></div>
-            <div class="pipeline-arrow">→</div>
-            <div class="pipeline-step" data-status="รอตรวจสอบผู้เข้าร่วม"><span class="pipeline-icon">👥</span><span class="pipeline-label">รอตรวจสอบผู้เข้าร่วม</span><div class="pipeline-role">Tadtel ONLY</div></div>
-            <div class="pipeline-arrow">→</div>
-            <div class="pipeline-step" data-status="รอชำระเงิน"><span class="pipeline-icon">💰</span><span class="pipeline-label">รอชำระเงิน</span><div class="pipeline-role">Finance ONLY</div></div>
-            <div class="pipeline-arrow">→</div>
-            <div class="pipeline-step" data-status="ชำระแล้ว"><span class="pipeline-icon">✅</span><span class="pipeline-label">ชำระแล้ว</div></div>
-            <div class="pipeline-arrow">→</div>
-            <div class="pipeline-step" data-status="เสร็จสิ้น"><span class="pipeline-icon">🏁</span><span class="pipeline-label">เสร็จสิ้น</span></div>
-          </div>
-        </div>
+<!-- Approval Pipeline Visualization -->
+         <div class="pipeline-bar" id="approvalPipeline" style="display:none">
+           <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px">ไหลการอนุมัติ (ขั้นตอนใหม่)</div>
+           <div class="pipeline-steps">
+             <div class="pipeline-step" data-status="รอตรวจสอบ"><span class="pipeline-icon">1️⃣</span><span class="pipeline-label">รอตรวจสอบ</span><div class="pipeline-role">Admin/Super</div></div>
+             <div class="pipeline-arrow">→</div>
+             <div class="pipeline-step" data-status="รอตรวจสอบวินัย"><span class="pipeline-icon">2️⃣</span><span class="pipeline-label">รอตรวจสอบวินัย</span><div class="pipeline-role">Vinai</div></div>
+             <div class="pipeline-arrow">→</div>
+             <div class="pipeline-step" data-status="รอตรวจสอบผู้เข้าร่วม"><span class="pipeline-icon">3️⃣</span><span class="pipeline-label">รอตรวจสอบผู้เข้าร่วม</span><div class="pipeline-role">Tadtel</div></div>
+             <div class="pipeline-arrow">→</div>
+             <div class="pipeline-step" data-status="รอชำระเงิน"><span class="pipeline-icon">4️⃣</span><span class="pipeline-label">รอชำระเงิน</span><div class="pipeline-role">Finance</div></div>
+             <div class="pipeline-arrow">→</div>
+             <div class="pipeline-step" data-status="ชำระแล้ว"><span class="pipeline-icon">5️⃣</span><span class="pipeline-label">ชำระแล้ว</div></div>
+             <div class="pipeline-arrow">→</div>
+             <div class="pipeline-step" data-status="เสร็จสิ้น"><span class="pipeline-icon">🏁</span><span class="pipeline-label">เสร็จสิ้น</span></div>
+           </div>
+         </div>
 
         <!-- Primary Metrics (Core KPIs) -->
         <div class="metrics-row primary">
@@ -171,6 +171,8 @@
           <select class="filter-select" id="filterStatus" aria-label="กรองตามสถานะ" onchange="resetToFirstPage();renderTable()">
             <option value="">ทุกสถานะ</option>
             <option value="รอตรวจสอบ">รอตรวจสอบ</option>
+            <option value="รอตรวจสอบวินัย">รอตรวจสอบวินัย</option>
+            <option value="รอตรวจสอบผู้เข้าร่วม">รอตรวจสอบผู้เข้าร่วม</option>
             <option value="รอชำระเงิน">รอชำระเงิน</option>
             <option value="ชำระแล้ว">ชำระแล้ว</option>
             <option value="เสร็จสิ้น">เสร็จสิ้น</option>
@@ -190,12 +192,11 @@
             <h2>รายการจองทั้งหมด</h2>
             <span class="table-count" id="tableCount" aria-live="polite">0 รายการ</span>
           </div>
-          <div style="padding:8px 1rem;font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap" role="status">
-            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done" aria-hidden="true">✓</span> วินัยอนุมัติ</span>
-            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done" aria-hidden="true">✓</span> ฝ่ายทัณฑ์ เข้าร่วม</span>
-            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done" aria-hidden="true">✓</span> ชำระเงินแล้ว</span>
-            <span style="display:flex;align-items:center;gap:4px"><span class="status-check pending" aria-hidden="true">✓</span> ยังไม่ตรวจสอบ</span>
-          </div>
+<div style="padding:8px 1rem;font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap" role="status">
+             <span style="display:flex;align-items:center;gap:4px"><span class="status-check done" aria-hidden="true">✓</span> อนุมัติแล้ว</span>
+             <span style="display:flex;align-items:center;gap:4px"><span class="status-check pending" aria-hidden="true">○</span> รออนุมัติ</span>
+             <span style="display:flex;align-items:center;gap:4px"><span style="color:var(--blue);font-weight:600">1️⃣</span> Admin → <span style="color:#3B82F6;font-weight:600">2️⃣</span> Vinai → <span style="color:#F97316;font-weight:600">3️⃣</span> Tadtel → <span style="color:#EAB308;font-weight:600">4️⃣</span> ชำระเงิน</span>
+           </div>
           <div style="overflow-x:auto" role="table" aria-label="ตารางรายการจอง">
             <table>
               <thead>
@@ -231,14 +232,16 @@
 
         <div class="controls" style="margin-bottom:16px">
           <input class="search-box" id="reportsSearchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / Ref / ผู้ต้องขัง" oninput="renderReportsView()">
-          <select class="filter-select" id="reportsFilterStatus" onchange="renderReportsView()">
-            <option value="">ทุกสถานะ</option>
-            <option value="รอตรวจสอบ">รอตรวจสอบ</option>
-            <option value="รอชำระเงิน">รอชำระเงิน</option>
-            <option value="ชำระแล้ว">ชำระแล้ว</option>
-            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
-            <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
-          </select>
+<select class="filter-select" id="reportsFilterStatus" onchange="renderReportsView()">
+             <option value="">ทุกสถานะ</option>
+             <option value="รอตรวจสอบ">รอตรวจสอบ</option>
+             <option value="รอตรวจสอบวินัย">รอตรวจสอบวินัย</option>
+             <option value="รอตรวจสอบผู้เข้าร่วม">รอตรวจสอบผู้เข้าร่วม</option>
+             <option value="รอชำระเงิน">รอชำระเงิน</option>
+             <option value="ชำระแล้ว">ชำระแล้ว</option>
+             <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+             <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+           </select>
           <select class="filter-select" id="reportsFilterDate" onchange="renderReportsView()">
             <option value="">ทุกวัน</option>
           </select>
