@@ -3,7 +3,7 @@ const PERMISSIONS = {
   Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
   Admin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
-  Vinai: ['approve_discipline', 'view_slip', 'view_detail'],
+  Vinai: ['approve_discipline', 'reject_discipline', 'view_slip', 'view_detail'],
   Tadtel: ['approve_participant', 'visitor_approval', 'view_slip', 'view_detail'],
   User: ['print']
 };
@@ -290,47 +290,55 @@ document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
     const financeConfirmed = r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
 
 const role = currentUser ? currentUser.role : 'User';
-    const isAdminOrSuper = role === 'Superadmin' || role === 'Admin';
-    
-    return `<tr>
-       <td><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
-       <td style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
-       <td class="hide-mobile" style="white-space:nowrap">${r.visitDate||'—'}</td>
-       <td>
-         <div style="font-weight:600">${r.visitorName}</div>
-         <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
-       </td>
-       <td class="hide-mobile">
-         <div style="font-weight:600">${r.prisonerName}</div>
-         <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
-       </td>
-       <td class="hide-mobile">${r.wing||'—'}</td>
-       <td class="hide-mobile">
-         <div>${r.visitorCount} คน</div>
-         <div style="font-weight:700;color:var(--blue)">${(r.total||0).toLocaleString()} บ.</div>
-       </td>
-       <td><span class="badge ${badgeClass}">${r.status}</span></td>
-       <td>
-         <div style="display:flex;gap:8px;align-items:center;justify-content:center">
-           <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
-           <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
-           <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
-         </div>
-       </td>
-       <td>
-          <div class="action-btns">
-            ${s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
-            ${s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-            ${s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
-            ${s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-            ${(s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
-            ${(s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
-            ${!isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-            <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
-            <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+     const isAdminOrSuper = role === 'Superadmin' || role === 'Admin';
+     
+     // Permission helper for button visibility
+     const canApproveDiscipline = isAdminOrSuper || hasPermission('approve_discipline');
+     const canRejectDiscipline = isAdminOrSuper || hasPermission('reject_discipline');
+     const canApproveParticipant = isAdminOrSuper || hasPermission('approve_participant');
+     const canConfirmPayment = isAdminOrSuper || hasPermission('confirm_payment');
+     const canRejectPayment = isAdminOrSuper || hasPermission('reject_payment');
+     const canCancel = isAdminOrSuper || hasPermission('cancel');
+     
+     return `<tr>
+        <td><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
+        <td style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
+        <td class="hide-mobile" style="white-space:nowrap">${r.visitDate||'—'}</td>
+        <td>
+          <div style="font-weight:600">${r.visitorName}</div>
+          <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
+        </td>
+        <td class="hide-mobile">
+          <div style="font-weight:600">${r.prisonerName}</div>
+          <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
+        </td>
+        <td class="hide-mobile">${r.wing||'—'}</td>
+        <td class="hide-mobile">
+          <div>${r.visitorCount} คน</div>
+          <div style="font-weight:700;color:var(--blue)">${(r.total||0).toLocaleString()} บ.</div>
+        </td>
+        <td><span class="badge ${badgeClass}">${r.status}</span></td>
+        <td>
+          <div style="display:flex;gap:8px;align-items:center;justify-content:center">
+            <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
+            <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
+            <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
           </div>
-       </td>
-     </tr>`;
+        </td>
+        <td>
+           <div class="action-btns">
+             ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
+             ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+             ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
+             ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+             ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
+             ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
+             ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+             <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
+             <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+           </div>
+        </td>
+      </tr>`;
   }).join('');
   renderPagination(totalPages, totalFiltered);
 }
@@ -1005,8 +1013,27 @@ window.addEventListener('resize', () => {
 
 // ===== UPDATE STATUS =====
 async function updateStatus(idx, newStatus) {
-  const row = allRows[idx];
-  if (!confirm(`ยืนยัน: ${newStatus} การจองของ "${row.visitorName}" ?`)) return;
+   const row = allRows[idx];
+   const currentStatus = normalizeStatus(row.status);
+   const role = currentUser ? currentUser.role : null;
+
+   // Permission check based on source status
+   if (role !== 'Superadmin' && role !== 'Admin') {
+     if (currentStatus === 'รอตรวจสอบวินัย' && (newStatus === 'รอตรวจสอบผู้เข้าร่วม' || newStatus === 'ไม่อนุมัติ') && !hasPermission('approve_discipline')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+     if (currentStatus === 'รอตรวจสอบผู้เข้าร่วม' && (newStatus === 'รอชำระเงิน' || newStatus === 'ไม่อนุมัติ') && !hasPermission('approve_participant')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+     if ((currentStatus === 'รอชำระเงิน' || currentStatus === 'ชำระแล้ว' || currentStatus === 'เสร็จสิ้น') && newStatus === 'รอชำระเงิน' && !hasPermission('reject_payment')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+   }
+
+   if (!confirm(`ยืนยัน: ${newStatus} การจองของ "${row.visitorName}" ?`)) return;
   
   // Optimistic update
   const oldStatus = row.status;
@@ -1042,11 +1069,19 @@ async function updateStatus(idx, newStatus) {
 
 // ===== CONFIRM PAYMENT (ยืนยันการชำระเงิน) =====
 async function confirmPayment(idx) {
-    const row = allRows[idx];
-    const s = normalizeStatus(row.status);
-    const targetStatus = s === 'รอชำระเงิน' ? 'ชำระแล้ว' : 'เสร็จสิ้น';
-    
-    if (!confirm(`ยืนยันการชำระเงินสำหรับ "${row.visitorName}" (${row.ref}) ?\nสถานะจะเปลี่ยนเป็น "${targetStatus}"`)) return;
+     const row = allRows[idx];
+     const s = normalizeStatus(row.status);
+     const role = currentUser ? currentUser.role : null;
+
+     // Permission check
+     if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('confirm_payment')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+
+     const targetStatus = s === 'รอชำระเงิน' ? 'ชำระแล้ว' : 'เสร็จสิ้น';
+     
+     if (!confirm(`ยืนยันการชำระเงินสำหรับ "${row.visitorName}" (${row.ref}) ?\nสถานะจะเปลี่ยนเป็น "${targetStatus}"`)) return;
     
     const oldStatus = row.status;
     row.status = targetStatus;
@@ -1075,9 +1110,18 @@ async function confirmPayment(idx) {
 
 // ===== REJECT PAYMENT (ปฏิเสธการชำระเงิน) =====
 async function rejectPayment(idx) {
-    const row = allRows[idx];
-    const reason = prompt(`ปฏิเสธการชำระเงินของ "${row.visitorName}" (${row.ref})\n\nเหตุผล (ถ้ามี):`, '');
-    if (reason === null) return;
+     const row = allRows[idx];
+     const s = normalizeStatus(row.status);
+     const role = currentUser ? currentUser.role : null;
+
+     // Permission check
+     if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('reject_payment')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+
+     const reason = prompt(`ปฏิเสธการชำระเงินของ "${row.visitorName}" (${row.ref})\n\nเหตุผล (ถ้ามี):`, '');
+     if (reason === null) return;
     
     const oldStatus = row.status;
     row.status = 'รอชำระเงิน';
@@ -1107,8 +1151,16 @@ async function rejectPayment(idx) {
 
 // ===== CANCEL BOOKING =====
 async function cancelBooking(idx) {
-    const row = allRows[idx];
-    if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
+     const row = allRows[idx];
+     const role = currentUser ? currentUser.role : null;
+
+     // Permission check
+     if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('cancel')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+
+     if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
     
     const oldStatus = row.status;
     row.status = 'ยกเลิก';
@@ -1138,9 +1190,17 @@ async function cancelBooking(idx) {
 
 /* ===== Per-visitor approval (update + recalc price + overwrite row) ===== */
 async function updateVisitorApproval(idx, pidx, val) {
-    const row = allRows[idx];
-    if (!row) return;
-    if (pidx === 0) {
+     const row = allRows[idx];
+     if (!row) return;
+     const role = currentUser ? currentUser.role : null;
+
+     // Permission check
+     if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('visitor_approval')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+
+     if (pidx === 0) {
         row.visitorApproved = val;
     } else {
         let arr = String(row.extraVisitorApproved || '').split(';;');
@@ -1300,20 +1360,25 @@ function viewDetail(idx) {
   else if (s === 'รอตรวจสอบวินัย') badgeClass = 'badge-discipline-check';
   else if (s === 'รอตรวจสอบผู้เข้าร่วม') badgeClass = 'badge-participant-check';
 
-  const va = r.visitorApproved || '';
-  const visitor1Html = `
-    <div class="visitor-card">
-      <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ 1 (ผู้จอง)</div>
-      <div class="vc-name">${r.visitorName || '—'}</div>
-      <div class="vc-info">บัตร: ${r.visitorId || '—'} · โทร: ${r.visitorPhone || '—'} · ความสัมพันธ์: ${r.relation || '—'}</div>
-      <div class="vc-info">ศาสนา: ${r.religion || '—'} · แพ้อาหาร: ${r.allergy || '—'}</div>
-       <div class="visitor-approval">
-         <span class="lbl">สถานะ:</span>
-         <span class="approval-badge ${va==='yes'?'yes':va==='no'?'no':'pending'}">${getApprLabel(va)}</span>
-         <button class="approval-btn yes" onclick="updateVisitorApproval(${idx},0,'yes')">✓</button>
-         <button class="approval-btn no" onclick="updateVisitorApproval(${idx},0,'no')">✗</button>
-       </div>
-    </div>`;
+const va = r.visitorApproved || '';
+   const role = currentUser ? currentUser.role : null;
+   const isAdminOrSuper = role === 'Superadmin' || role === 'Admin';
+   const canVisitorApproval = isAdminOrSuper || hasPermission('visitor_approval');
+   const canApproveParticipant = isAdminOrSuper || hasPermission('approve_participant');
+
+   const visitor1Html = `
+     <div class="visitor-card">
+       <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ 1 (ผู้จอง)</div>
+       <div class="vc-name">${r.visitorName || '—'}</div>
+       <div class="vc-info">บัตร: ${r.visitorId || '—'} · โทร: ${r.visitorPhone || '—'} · ความสัมพันธ์: ${r.relation || '—'}</div>
+       <div class="vc-info">ศาสนา: ${r.religion || '—'} · แพ้อาหาร: ${r.allergy || '—'}</div>
+        <div class="visitor-approval">
+          <span class="lbl">สถานะ:</span>
+          <span class="approval-badge ${va==='yes'?'yes':va==='no'?'no':'pending'}">${getApprLabel(va)}</span>
+          ${canVisitorApproval ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},0,'yes')">✓</button>
+          <button class="approval-btn no" onclick="updateVisitorApproval(${idx},0,'no')">✗</button>` : ''}
+        </div>
+     </div>`;
 
   let extraHtml = '';
   if (r.extraVisitorNames && r.extraVisitorNames.trim()) {
@@ -1336,24 +1401,24 @@ function viewDetail(idx) {
         return { name: e.trim(), id: '', relation: '', age: '' };
       }).filter(e => e.name);
     }
-    extras.forEach((v, i) => {
-      const infoParts = [];
-      if (v.id) infoParts.push('บัตร: ' + v.id);
-      if (v.relation) infoParts.push('ความสัมพันธ์: ' + v.relation);
-      const ea = String(r.extraVisitorApproved || '').split(';;')[i] || '';
-      extraHtml += `
-        <div class="visitor-card">
-          <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ ${i + 2}</div>
-          <div class="vc-name">${v.name}</div>
-          ${infoParts.length ? '<div class="vc-info">' + infoParts.join(' · ') + '</div>' : ''}
-           <div class="visitor-approval">
-             <span class="lbl">สถานะ:</span>
-             <span class="approval-badge ${ea==='yes'?'yes':ea==='no'?'no':'pending'}">${getApprLabel(ea)}</span>
-             <button class="approval-btn yes" onclick="updateVisitorApproval(${idx},${i+1},'yes')">✓</button>
-             <button class="approval-btn no" onclick="updateVisitorApproval(${idx},${i+1},'no')">✗</button>
-           </div>
-        </div>`;
-    });
+extras.forEach((v, i) => {
+       const infoParts = [];
+       if (v.id) infoParts.push('บัตร: ' + v.id);
+       if (v.relation) infoParts.push('ความสัมพันธ์: ' + v.relation);
+       const ea = String(r.extraVisitorApproved || '').split(';;')[i] || '';
+       extraHtml += `
+         <div class="visitor-card">
+           <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ ${i + 2}</div>
+           <div class="vc-name">${v.name}</div>
+           ${infoParts.length ? '<div class="vc-info">' + infoParts.join(' · ') + '</div>' : ''}
+            <div class="visitor-approval">
+              <span class="lbl">สถานะ:</span>
+              <span class="approval-badge ${ea==='yes'?'yes':ea==='no'?'no':'pending'}">${getApprLabel(ea)}</span>
+              ${canVisitorApproval ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},${i+1},'yes')">✓</button>
+              <button class="approval-btn no" onclick="updateVisitorApproval(${idx},${i+1},'no')">✗</button>` : ''}
+            </div>
+         </div>`;
+     });
   }
 
   const totalPersons = (parseInt(r.visitorCount) || 1) + 1;
@@ -1394,16 +1459,16 @@ function viewDetail(idx) {
         <span class="dval" style="color:var(--blue);font-size:15px;">${total.toLocaleString()} บาท</span>
       </div>
 <div class="detail-row">
-        <span class="dlbl">🕐 จองเมื่อ</span>
-        <span class="dval">${r.timestamp || '—'}</span>
-      </div>
-       ${s === 'รอตรวจสอบผู้เข้าร่วม' ? `
-       <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
-         <button class="btn-approve" onclick="approveParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✓ อนุมัติผู้เข้าร่วม</button>
-         <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
-       </div>` : ''}
-    </div>
-  `;
+         <span class="dlbl">🕐 จองเมื่อ</span>
+         <span class="dval">${r.timestamp || '—'}</span>
+       </div>
+        ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn-approve" onclick="approveParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✓ อนุมัติผู้เข้าร่วม</button>
+          <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
+        </div>` : ''}
+     </div>
+   `;
   document.getElementById('detailModalBg').classList.add('show');
 }
 
@@ -1414,8 +1479,16 @@ function closeDetailModal(e) {
 }
 
 async function approveParticipantInDetail(idx) {
-    const row = allRows[idx];
-    if (!confirm(`อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ใช่หรือไม่?`)) return;
+     const row = allRows[idx];
+     const role = currentUser ? currentUser.role : null;
+
+     // Permission check
+     if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('approve_participant')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+
+     if (!confirm(`อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ใช่หรือไม่?`)) return;
     
     const oldStatus = row.status;
     row.status = 'รอชำระเงิน';
@@ -1448,73 +1521,47 @@ async function approveParticipantInDetail(idx) {
 }
 
 async function rejectParticipantInDetail(idx) {
-    const row = allRows[idx];
-    if (!confirm(`ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ให้หรือไม่?`)) return;
-    
-    const oldStatus = row.status;
-    row.status = 'ไม่อนุมัติ';
-    
-    try {
-        const resp = await fetch(APPS_SCRIPT_URL, {
-            method: 'POST',
-            redirect: 'follow',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอชำระเงิน' })
-        });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const data = await resp.json();
-        if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
-        
-        // Success
-        logEvent('approve_participant', `อนุมัติผู้เข้าร่วม ${row.ref}`);
-        updateStats();
-        renderTable();
-        renderDashboardHome();
-        closeDetailModal();
-    } catch(e) {
-        // Error - revert optimistic update
-        console.error('Approve participant error:', e);
-        row.status = oldStatus;
-        alert(`ไม่สามารถอนุมัติผู้เข้าร่วมได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
-        updateStats();
-        renderTable();
-        renderDashboardHome();
-        closeDetailModal();
-    }
-}
+     const row = allRows[idx];
+     const role = currentUser ? currentUser.role : null;
 
-async function rejectParticipantInDetail(idx) {
-    const row = allRows[idx];
-    if (!confirm(`ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ให้หรือไม่?`)) return;
-    
-    const oldStatus = row.status;
-    row.status = 'ไม่อนุมัติ';
-    
-    try {
-        const resp = await fetch(APPS_SCRIPT_URL, {
-            method: 'POST',
-            redirect: 'follow',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'ไม่อนุมัติ' })
-        });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const data = await resp.json();
-        if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
-        
-        logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
-        updateStats();
-        renderTable();
-        renderDashboardHome();
-        closeDetailModal();
-    } catch(e) {
-        console.error('Reject participant error:', e);
-        row.status = oldStatus;
-        alert(`ไม่สามารถปฏิเสธผู้เข้าร่วมได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
-        updateStats();
-        renderTable();
-        renderDashboardHome();
-        closeDetailModal();
-    }
+     // Permission check
+     if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('approve_participant')) {
+       alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+       return;
+     }
+
+     if (!confirm(`ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ให้หรือไม่?`)) return;
+     
+     const oldStatus = row.status;
+     row.status = 'ไม่อนุมัติ';
+     
+     try {
+         const resp = await fetch(APPS_SCRIPT_URL, {
+             method: 'POST',
+             redirect: 'follow',
+             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+             body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'ไม่อนุมัติ' })
+         });
+         if (!resp.ok) throw new Error('HTTP ' + resp.status);
+         const data = await resp.json();
+         if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
+         
+         // Success
+         logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
+         updateStats();
+         renderTable();
+         renderDashboardHome();
+         closeDetailModal();
+     } catch(e) {
+         // Error - revert optimistic update
+         console.error('Reject participant error:', e);
+         row.status = oldStatus;
+         alert(`ไม่สามารถปฏิเสธผู้เข้าร่วมได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+         updateStats();
+         renderTable();
+         renderDashboardHome();
+         closeDetailModal();
+     }
 }
 
 // ===== EXPORT FILTERED DATA AS CSV =====
