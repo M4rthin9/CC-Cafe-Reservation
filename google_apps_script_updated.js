@@ -434,38 +434,38 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     return jsonResp({ status: 'error', message: 'Unauthorized' });
   }
 
-  // ── CANCEL BOOKING ──
-  if (action === 'cancelBooking') {
-    const sheet = getMainSheet();
-    const data  = sheet.getDataRange().getValues();
-    const refIdx    = data[0].indexOf('ref');
-    const statusIdx = data[0].indexOf('status');
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][refIdx] === body.ref) {
-        sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
-        logEvent(username, 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
-        return jsonResp({ status: 'ok' });
-      }
-    }
-    return jsonResp({ status: 'error', message: 'Ref not found' });
-  }
+   // ── CANCEL BOOKING ──
+   if (action === 'cancelBooking') {
+     const sheet = getMainSheet();
+     const data  = sheet.getDataRange().getValues();
+     const refIdx    = data[0].indexOf('ref');
+     const statusIdx = data[0].indexOf('status');
+     for (let i = 1; i < data.length; i++) {
+       if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+         sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
+         logEvent(username, 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
+         return jsonResp({ status: 'ok' });
+       }
+     }
+     return jsonResp({ status: 'error', message: 'Ref not found' });
+   }
 
-  // ── UPDATE STATUS (approve / reject / mark paid etc.) ──
-  if (action === 'updateStatus') {
-    const sheet = getMainSheet();
-    const data  = sheet.getDataRange().getValues();
-    const refIdx    = data[0].indexOf('ref');
-    const statusIdx = data[0].indexOf('status');
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][refIdx] === body.ref) {
-        const oldStatus = data[i][statusIdx];
-        sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
-        logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
-        return jsonResp({ status: 'ok' });
-      }
-    }
-    return jsonResp({ status: 'error', message: 'Ref not found' });
-  }
+   // ── UPDATE STATUS (approve / reject / mark paid etc.) ──
+   if (action === 'updateStatus') {
+     const sheet = getMainSheet();
+     const data  = sheet.getDataRange().getValues();
+     const refIdx    = data[0].indexOf('ref');
+     const statusIdx = data[0].indexOf('status');
+     for (let i = 1; i < data.length; i++) {
+       if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+         const oldStatus = data[i][statusIdx];
+         sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
+         logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
+         return jsonResp({ status: 'ok' });
+       }
+     }
+     return jsonResp({ status: 'error', message: 'Ref not found' });
+   }
 
   // ── UPDATE VISITOR APPROVAL (per person) ──
   if (action === 'updateVisitorApproval') {
