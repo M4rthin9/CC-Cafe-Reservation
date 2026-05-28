@@ -182,11 +182,11 @@ function renderResult(row) {
   let paymentBlock = '';
   const sLower = normalizeStatus(status).toLowerCase();
 
-  if (sLower === 'รอชำระเงิน' || sLower === 'อนุมัติ' || sLower === 'approved') {
+  if (sLower === 'รอชำระเงิน') {
     paymentBlock = `
       <div class="pay-section">
-        <h3>✅ การจองได้รับการอนุมัติ — กรุณาชำระเงิน</h3>
-        <p>เจ้าหน้าที่ตรวจสอบประวัติวินัยเรียบร้อยแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเข้าร่วมกิจกรรม</p>
+        <h3>✅ อนุมัติผู้เข้าร่วมแล้ว — กรุณาชำระเงิน</h3>
+        <p>ฝ่ายวินัยอนุมัติผู้เข้าร่วมแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเข้าร่วมกิจกรรม</p>
         <div style="text-align:center;margin-bottom:1rem">
           <div style="font-size:13px;color:var(--text2)">ยอดที่ต้องชำระ</div>
           <div style="font-size:28px;font-weight:700;color:var(--blue);margin:8px 0">${total.toLocaleString()} บาท</div>

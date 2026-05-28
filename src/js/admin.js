@@ -2,9 +2,9 @@
 const PERMISSIONS = {
   Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
   Admin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
-  Finance: ['approve','confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
-  Vinai: ['approve_discipline', 'view_detail'],
-  Tadtel: ['approve_participant', 'visitor_approval', 'view_detail'],
+  Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
+  Vinai: ['approve_discipline', 'view_slip', 'view_detail'],
+  Tadtel: ['approve_participant', 'visitor_approval', 'view_slip', 'view_detail'],
   User: ['print']
 };
 
