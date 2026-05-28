@@ -661,18 +661,18 @@ async function submitBooking() {
 
   const prisonerId = document.getElementById('prisonerId').value.trim();
 
-  // ── ตรวจสอบเลขผู้ต้องขังซ้ำในวันเดียวกัน ──
-  document.getElementById('overlay').classList.add('show');
-  document.getElementById('submitBtn').disabled = true;
-  try {
-    const rows = await fetchAllReservations();
-    if (rows) {
-      const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
-      const duplicate = rows.find(r =>
-        String(r.prisonerId || '').trim() === prisonerId &&
-        (r.visitDateISO || '') === selectedDate &&
-        activeStatuses.includes(r.status)
-      );
+// ── ตรวจสอบเลขผู้ต้องขังซ้ำในวันเดียวกัน ──
+   document.getElementById('overlay').classList.add('show');
+   document.getElementById('submitBtn').disabled = true;
+   try {
+     const rows = await fetchAllReservations();
+     if (rows) {
+       const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+       const duplicate = rows.find(r =>
+         String(r.prisonerId || '').trim() === prisonerId &&
+         (r.visitDateISO || '') === selectedDate &&
+         activeStatuses.includes(r.status)
+       );
       if (duplicate) {
         document.getElementById('overlay').classList.remove('show');
         document.getElementById('submitBtn').disabled = false;
@@ -708,7 +708,7 @@ async function submitBooking() {
     adultCount: cost.adults,
     child5to8Count: cost.kids5_8,
     childUnder5Count: cost.kidsUnder5,
-    status: 'รอตรวจสอบ',
+    status: 'รอตรวจสอบวินัย',
     slipImage: ''
   };
 
@@ -886,7 +886,7 @@ async function fetchAllReservations() {
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
   // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
-  const activeStatuses = ['รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+  const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
   try {
     console.log('[Calendar] Loading booking counts from server...');
     const rows = await fetchAllReservations();
