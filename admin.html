@@ -39,13 +39,12 @@
       <div id="userRole" style="font-weight:600;margin-bottom:2px;"></div>
       <div id="userName" style="opacity:0.8;"></div>
     </div>
-    <nav class="sb-nav">
-      <a class="sb-link active" data-view="home" onclick="switchView('home');return false">🏠 <span class="sb-text">ภาพรวม</span></a>
-      <a class="sb-link" data-view="reservations" onclick="switchView('reservations');return false">📋 <span class="sb-text">รายการจอง</span></a>
-      <a class="sb-link" data-view="reports" onclick="switchView('reports');return false">📊 <span class="sb-text">รายงาน</span></a>
-      <a class="sb-link" data-view="eventlog" onclick="switchView('eventlog');return false">📝 <span class="sb-text">บันทึกการทำงาน</span></a>
-      <a class="sb-link" data-view="addUser" onclick="switchView('addUser');return false">👤 <span class="sb-text">เพิ่มผู้ใช้</span></a>
-    </nav>
+<nav class="sb-nav">
+       <a class="sb-link active" data-view="home" onclick="switchView('home');return false">🏠 <span class="sb-text">ภาพรวม</span></a>
+       <a class="sb-link" data-view="reservations" onclick="switchView('reservations');return false">📋 <span class="sb-text">รายการจอง</span></a>
+       <a class="sb-link" data-view="reports" onclick="switchView('reports');return false">📊 <span class="sb-text">รายงาน</span></a>
+       <a class="sb-link" data-view="eventlog" onclick="switchView('eventlog');return false">📝 <span class="sb-text">บันทึกการทำงาน</span></a>
+     </nav>
     <div class="sb-bottom">
       <button onclick="doLogout()" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">ออกจากระบบ</button>
     </div>
@@ -166,12 +165,7 @@
             <h2>รายการจองทั้งหมด</h2>
             <span class="table-count" id="tableCount" aria-live="polite">0 รายการ</span>
           </div>
-<div style="padding:8px 1rem;font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap" role="status">
-             <span style="display:flex;align-items:center;gap:4px"><span class="status-check done" aria-hidden="true">✓</span> อนุมัติแล้ว</span>
-             <span style="display:flex;align-items:center;gap:4px"><span class="status-check pending" aria-hidden="true">○</span> รออนุมัติ</span>
-             <span style="display:flex;align-items:center;gap:4px"><span style="color:var(--blue);font-weight:600">1️⃣</span> Admin → <span style="color:#3B82F6;font-weight:600">2️⃣</span> Vinai → <span style="color:#F97316;font-weight:600">3️⃣</span> Tadtel → <span style="color:#EAB308;font-weight:600">4️⃣</span> ชำระเงิน</span>
-           </div>
-          <div style="overflow-x:auto" role="table" aria-label="ตารางรายการจอง">
+<div style="overflow-x:auto" role="table" aria-label="ตารางรายการจอง">
             <table>
               <thead>
                 <tr>
@@ -240,17 +234,18 @@
           </div>
           <div style="overflow-x:auto">
             <table>
-              <thead>
-                <tr>
-                  <th>เวลา</th>
-                  <th>ผู้ใช้</th>
-                  <th>ประเภท</th>
-                  <th>รายละเอียด</th>
-                </tr>
-              </thead>
-              <tbody id="eventlogBody">
-                 <tr><td colspan="4" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
-               </tbody>
+<thead>
+               <tr>
+                 <th>เวลา</th>
+                 <th>ผู้ใช้</th>
+                 <th>ชื่อเต็ม</th>
+                 <th>ประเภท</th>
+                 <th>รายละเอียด</th>
+               </tr>
+             </thead>
+<tbody id="eventlogBody">
+                  <tr><td colspan="5" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
+                </tbody>
              </table>
            </div>
          </div>

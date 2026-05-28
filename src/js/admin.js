@@ -10,7 +10,7 @@ const PERMISSIONS = {
 
 // Sidebar menu visibility by role
 const SIDEBAR_MENU = {
-  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'addUser'],
+  Superadmin: ['home', 'reservations', 'reports', 'eventlog'],
   Admin: ['home', 'reservations', 'reports', 'eventlog'],
   Finance: ['reservations', 'reports'],
   Vinai: ['reservations', 'reports'],
@@ -52,11 +52,12 @@ async function doLogin() {
       throw new Error(data.message || 'การเข้าสู่ระบบล้มเหลว');
     }
     
-    currentUser = {
-      username: data.user.username,
-      role: data.user.role,
-      password: pass
-    };
+currentUser = {
+       username: data.user.username,
+       role: data.user.role,
+       password: pass,
+       displayName: data.user.displayName || data.user.username
+     };
     
     // Clear error display
     document.getElementById('loginErr').style.display = 'none';
@@ -103,6 +104,7 @@ function logEvent(action, details) {
   const event = {
     timestamp: new Date().toLocaleString('th-TH'),
     user: currentUser ? currentUser.username : 'unknown',
+    displayName: currentUser ? currentUser.displayName : null,
     role: currentUser ? currentUser.role : 'unknown',
     action: action,
     details: details
@@ -392,7 +394,7 @@ function renderEventlog() {
   document.getElementById('eventlogCount').textContent = allEvents.length + ' รายการ';
   
   if (allEvents.length === 0) {
-    container.innerHTML = '<tr><td colspan="4" class="empty-state">ยังไม่มีบันทึกการทำงาน</td></tr>';
+    container.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีบันทึกการทำงาน</td></tr>';
     return;
   }
   
@@ -400,6 +402,7 @@ function renderEventlog() {
     <tr>
       <td style="white-space:nowrap;font-size:12px;">${e.timestamp}</td>
       <td style="font-size:12px;">${e.user} <span style="color:var(--text2);">(${e.role})</span></td>
+      <td style="font-size:12px;color:var(--text2);">${e.displayName || '-'}</td>
       <td style="font-size:12px;">${e.action}</td>
       <td style="font-size:12px;">${e.details}</td>
     </tr>
