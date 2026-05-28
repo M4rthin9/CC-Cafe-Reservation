@@ -172,7 +172,7 @@ function getDemoData() {
 // ===== STATS =====
 function updateStats() {
   document.getElementById('statTotal').textContent = allRows.length;
-  document.getElementById('statWait').textContent = allRows.filter(r=>r.status==='รอตรวจสอบ').length;
+  document.getElementById('statWait').textContent = allRows.filter(r=>r.status==='รอตรวจสอบวินัย').length;
   document.getElementById('statOk').textContent = allRows.filter(r=>r.status==='รอชำระเงิน'||r.status==='ชำระแล้ว'||r.status==='เสร็จสิ้น').length;
   document.getElementById('statReject').textContent = allRows.filter(r=>r.status==='ไม่อนุมัติ').length;
 }
@@ -230,29 +230,25 @@ function renderTable() {
     else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-rejected';
     else if (s === 'ยกเลิก') badgeClass = 'badge-cancelled';
 
-const isWait = s === 'รอตรวจสอบ';
-     const isDiscipline = s === 'รอตรวจสอบวินัย';
-     const isParticipant = s === 'รอตรวจสอบผู้เข้าร่วม';
+const isWait = s === 'รอตรวจสอบวินัย';
+     const isDiscipline = s === 'รอตรวจสอบผู้เข้าร่วม';
      const isPaymentPending = s === 'รอชำระเงิน';
      const isPaid = s === 'ชำระแล้ว';
      const isCompleted = s === 'เสร็จสิ้น';
      const isCancelled = s === 'ยกเลิก';
      const rowIdx = allRows.indexOf(r);
-     
+
      // Status checkmarks - 4 steps of verification (new workflow)
-     const adminApproved = r.status === 'รอตรวจสอบวินัย' || r.status === 'รอตรวจสอบผู้เข้าร่วม' || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
      const disciplineApproved = r.status === 'รอตรวจสอบผู้เข้าร่วม' || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
      const participantApproved = r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
      const financeConfirmed = r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
-     const completed = r.status === 'เสร็จสิ้น';
 
-    const canApprove = hasPermission('approve');
-    const canVisitorApproval = hasPermission('visitor_approval');
-    const canConfirmPayment = hasPermission('confirm_payment');
-    const canRejectPayment = hasPermission('reject_payment');
-    const canCancel = hasPermission('cancel');
+     const canApprove = hasPermission('approve');
+     const canConfirmPayment = hasPermission('confirm_payment');
+     const canRejectPayment = hasPermission('reject_payment');
+     const canCancel = hasPermission('cancel');
 
-    return `<tr>
+     return `<tr>
       <td><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
       <td style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
       <td class="hide-mobile" style="white-space:nowrap">${r.visitDate||'—'}</td>
@@ -271,26 +267,25 @@ const isWait = s === 'รอตรวจสอบ';
       </td>
       <td><span class="badge ${badgeClass}">${r.status}</span></td>
       <td>
-<div style="display:flex;gap:8px;align-items:center;justify-content:center">
-           <span class="status-check ${adminApproved ? 'done' : 'pending'}" title="อนุมัติโดย Admin">✓</span>
-           <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย ฝ่ายวินัย">✓</span>
-           <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย ฝ่ายทัณฑ์">✓</span>
-           <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย ฝ่ายการเงิน">✓</span>
-         </div>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center">
+          <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
+          <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
+          <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
+        </div>
       </td>
       <td>
-<div class="action-btns">
-           ${canApprove && isWait ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบวินัย')">✓ อนุมัติ</button>` : ''}
-           ${canApprove && isWait ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-           ${hasPermission('approve_discipline') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
-           ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
-           ${canConfirmPayment && s === 'รอชำระเงิน' ? `<button class="btn-confirm-pay" onclick="updateStatus(${rowIdx},'ชำระแล้ว')">💳 ยืนยันชำระเงิน</button>` : ''}
-           ${canConfirmPayment && s === 'ชำระแล้ว' ? `<button class="btn-confirm-pay" onclick="updateStatus(${rowIdx},'เสร็จสิ้น')">✅ เสร็จสิ้น</button>` : ''}
-           ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
-           ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-           ${hasPermission('view_slip') ? `<button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>` : ''}
-           ${hasPermission('view_detail') ? `<button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>` : ''}
-         </div>
+        <div class="action-btns">
+          ${hasPermission('approve_discipline') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
+          ${hasPermission('approve_discipline') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+          ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
+          ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+          ${canConfirmPayment && s === 'รอชำระเงิน' ? `<button class="btn-confirm-pay" onclick="updateStatus(${rowIdx},'ชำระแล้ว')">💳 ยืนยันชำระเงิน</button>` : ''}
+          ${canConfirmPayment && s === 'ชำระแล้ว' ? `<button class="btn-confirm-pay" onclick="updateStatus(${rowIdx},'เสร็จสิ้น')">✅ เสร็จสิ้น</button>` : ''}
+          ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
+          ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+          ${hasPermission('view_slip') ? `<button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>` : ''}
+          ${hasPermission('view_detail') ? `<button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>` : ''}
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -1805,7 +1800,7 @@ function printReport() {
 
   html += `<h1>🪑 รายงานการจัดโต๊ะ</h1>`;
   html += `<h2>ร้าน Chance & Change Cafe · ทัณฑสถานบำบัดพิเศษกลาง</h2>`;
-  html += `<div class="meta">พิมพ์เมื่อ ${now} · เรียงตามเลขที่อ้างอิง · จำนวน ${filtered.length} โต๊ะ</div>`;
+  html += '<div class="meta">พิมพ์เมื่อ ' + now + ' · ผู้ปริ้น: ' + (currentUser?.displayName || currentUser?.username || 'ไม่ระบุ') + ' · เรียงตามเลขที่อ้างอิง · จำนวน ' + filtered.length + ' โต๊ะ</div>';
 
   filtered.forEach((r, i) => {
     const extras = parseExtraVisitors(r);

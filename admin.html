@@ -75,32 +75,13 @@
           <div class="overview-meta" id="overviewLastUpdated">—</div>
         </div>
 
-<!-- Approval Pipeline Visualization -->
-         <div class="pipeline-bar" id="approvalPipeline" style="display:none">
-           <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px">ไหลการอนุมัติ (ขั้นตอนใหม่)</div>
-           <div class="pipeline-steps">
-             <div class="pipeline-step" data-status="รอตรวจสอบ"><span class="pipeline-icon">1️⃣</span><span class="pipeline-label">รอตรวจสอบ</span><div class="pipeline-role">Admin/Super</div></div>
-             <div class="pipeline-arrow">→</div>
-             <div class="pipeline-step" data-status="รอตรวจสอบวินัย"><span class="pipeline-icon">2️⃣</span><span class="pipeline-label">รอตรวจสอบวินัย</span><div class="pipeline-role">Vinai</div></div>
-             <div class="pipeline-arrow">→</div>
-             <div class="pipeline-step" data-status="รอตรวจสอบผู้เข้าร่วม"><span class="pipeline-icon">3️⃣</span><span class="pipeline-label">รอตรวจสอบผู้เข้าร่วม</span><div class="pipeline-role">Tadtel</div></div>
-             <div class="pipeline-arrow">→</div>
-             <div class="pipeline-step" data-status="รอชำระเงิน"><span class="pipeline-icon">4️⃣</span><span class="pipeline-label">รอชำระเงิน</span><div class="pipeline-role">Finance</div></div>
-             <div class="pipeline-arrow">→</div>
-             <div class="pipeline-step" data-status="ชำระแล้ว"><span class="pipeline-icon">5️⃣</span><span class="pipeline-label">ชำระแล้ว</div></div>
-             <div class="pipeline-arrow">→</div>
-             <div class="pipeline-step" data-status="เสร็จสิ้น"><span class="pipeline-icon">🏁</span><span class="pipeline-label">เสร็จสิ้น</span></div>
-           </div>
-         </div>
-
-        <!-- Primary Metrics (Core KPIs) -->
-        <div class="metrics-row primary">
+<div class="metrics-row primary">
           <div class="stat-card blue">
             <div class="stat-label">📋 การจองทั้งหมด</div>
             <div class="stat-val" id="statTotal">0</div>
           </div>
           <div class="stat-card yellow">
-            <div class="stat-label">⏳ รอตรวจสอบ</div>
+            <div class="stat-label">⏳ รอตรวจสอบวินัย</div>
             <div class="stat-val" id="statWait">0</div>
           </div>
           <div class="stat-card green">
@@ -154,14 +135,7 @@
           </div>
         </div>
 
-        <!-- Reservation Trends -->
-        <div class="dash-card trend-section">
-          <div class="dash-card-h">
-            <span>📈</span> แนวโน้มการจอง (14 วันล่าสุด)
-          </div>
-          <canvas id="trendChart" style="width:100%;max-width:100%;height:220px;display:block;margin-top:8px"></canvas>
-          <div class="chart-caption">จำนวนการจองต่อวันตามวันที่เข้าร่วมกิจกรรม</div>
-        </div>
+        
       </div>
 
       <!-- RESERVATIONS VIEW -->
@@ -281,41 +255,7 @@
            </div>
          </div>
 
-      <!-- ADD USER VIEW -->
-      <div id="view-addUser" class="view" style="display:none">
-        <!-- Add User Form -->
-         <div class="controls">
-           <input class="search-box" id="addUserUsername" type="text" placeholder="🔍 ชื่อผู้ใช้" oninput="resetToFirstPage();renderAddUserTable()">
-           <input class="search-box" id="addUserPassword" type="password" placeholder="🔐 รหัสผ่าน">
-           <input class="search-box" id="addUserConfirmPassword" type="password" placeholder="🔐 ยืนยันรหัสผ่าน">
-           <select class="filter-select" id="addUserRole" onchange="resetToFirstPage();renderAddUserTable()">
-             <!-- Roles will be populated via JS -->
-           </select>
-           <button class="refresh-btn" onclick="resetToFirstPage();createAddUser()">👤 สร้างผู้ใช้</button>
-           <button class="refresh-btn" onclick="switchView('home')">ยกเลิก</button>
-         </div>
-        <div class="table-wrap">
-          <div class="table-header">
-            <h2>รายการผู้ใช้ทั้งหมด</h2>
-          </div>
-          <div style="overflow-x:auto">
-            <table>
-              <thead>
-                <tr>
-                  <th>ชื่อผู้ใช้</th>
-                  <th>บทบาท</th>
-                  <th>สถานะ</th>
-                  <th>จัดการ</th>
-                </tr>
-              </thead>
-              <tbody id="addUserTableBody">
-                <tr><td colspan="4" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div id="addUserPagination" class="pagination"></div>
-</div>
-      </div>
+      
     </div>
   </div>
 </div>
@@ -349,4 +289,5 @@
 </div>
 </body>
 </html>
+
 
