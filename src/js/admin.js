@@ -963,30 +963,6 @@ window.addEventListener('resize', () => {
 // ===== UPDATE STATUS =====
 async function updateStatus(idx, newStatus) {
   const row = allRows[idx];
-  const currentStatus = row.status;
-  
-  // Check permission based on current status
-  const statusPermissionMap = {
-    'รอตรวจสอบวินัย': 'approve_discipline',
-    'รอตรวจสอบผู้เข้าร่วม': 'approve_participant',
-    'รอชำระเงิน': 'confirm_payment',
-    'ชำระแล้ว': 'confirm_payment',
-    'ยกเลิก': 'cancel'
-  };
-  
-  const requiredPerm = statusPermissionMap[currentStatus];
-  
-  // Reject can be done by anyone with approve/approve_discipline/approve_participant
-  if (newStatus === 'ไม่อนุมัติ') {
-    if (!hasPermission('approve') && !hasPermission('approve_discipline') && !hasPermission('approve_participant')) {
-      alert('คุณไม่มีสิทธิ์ในการดำเนินการนี้');
-      return;
-    }
-  } else if (requiredPerm && !hasPermission(requiredPerm)) {
-    alert('คุณไม่มีสิทธิ์ในการดำเนินการนี้');
-    return;
-  }
-  
   if (!confirm(`ยืนยัน: ${newStatus} การจองของ "${row.visitorName}" ?`)) return;
   row.status = newStatus;
   try {
