@@ -10,15 +10,17 @@
 <body>
 
 <!-- LOGIN -->
-<div class="login-wrap" id="loginWrap">
+<div class="login-wrap" id="loginWrap" role="main">
   <div class="login-box">
-    <div class="login-icon">🔐</div>
+    <div class="login-icon" aria-hidden="true">🔐</div>
     <h1>หน้าเจ้าหน้าที่</h1>
     <p>ทัณฑสถานบำบัดพิเศษกลาง</p>
-    <input type="text" class="login-input" id="userInput" placeholder="ชื่อผู้ใช้" autocomplete="username" onkeydown="if(event.key==='Enter') doLogin()">
-    <input type="password" class="login-input" id="passInput" placeholder="รหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()">
-    <button class="login-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
-    <div class="login-err" id="loginErr">รหัสผ่านไม่ถูกต้อง</div>
+    <label for="userInput" class="sr-only">ชื่อผู้ใช้</label>
+    <input type="text" class="login-input" id="userInput" placeholder="ชื่อผู้ใช้" autocomplete="username" aria-label="ชื่อผู้ใช้" onkeydown="if(event.key==='Enter') doLogin()">
+    <label for="passInput" class="sr-only">รหัสผ่าน</label>
+    <input type="password" class="login-input" id="passInput" placeholder="รหัสผ่าน" autocomplete="current-password" aria-label="รหัสผ่าน" onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="login-btn" onclick="doLogin()" aria-label="เข้าสู่ระบบ">เข้าสู่ระบบ</button>
+    <div class="login-err" id="loginErr" role="alert">รหัสผ่านไม่ถูกต้อง</div>
   </div>
 </div>
 
@@ -163,10 +165,10 @@
       </div>
 
       <!-- RESERVATIONS VIEW -->
-      <div id="view-reservations" class="view" style="display:none">
+      <div id="view-reservations" class="view" style="display:none" role="main">
         <div class="controls">
-          <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" oninput="resetToFirstPage();renderTable()">
-          <select class="filter-select" id="filterStatus" onchange="resetToFirstPage();renderTable()">
+          <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
+          <select class="filter-select" id="filterStatus" aria-label="กรองตามสถานะ" onchange="resetToFirstPage();renderTable()">
             <option value="">ทุกสถานะ</option>
             <option value="รอตรวจสอบ">รอตรวจสอบ</option>
             <option value="รอชำระเงิน">รอชำระเงิน</option>
@@ -174,40 +176,40 @@
             <option value="เสร็จสิ้น">เสร็จสิ้น</option>
             <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
           </select>
-          <select class="filter-select" id="filterDate" onchange="resetToFirstPage();renderTable()">
+          <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
             <option value="">ทุกวัน</option>
           </select>
-          <button class="refresh-btn" onclick="resetToFirstPage();loadData()">🔄 โหลดใหม่</button>
-          <button onclick="exportFilteredCSV()" style="margin-left:8px;background:#8B0000;color:#fff;border:1px solid #8B0000;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">📤 Export CSV</button>
-          <button onclick="printReport()" style="margin-left:8px;background:#0B2545;color:#fff;border:1px solid #0B2545;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ พิมพ์รายงาน</button>
-          <button onclick="printPrisonerVinaiList()" style="margin-left:8px;background:#D4AF37;color:#1C2433;border:1px solid #D4AF37;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
+          <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄 โหลดใหม่</button>
+          <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV">📤 Export CSV</button>
+          <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน">🖨️ พิมพ์รายงาน</button>
+          <button class="btn-print-vinai" onclick="printPrisonerVinaiList()" aria-label="พิมพ์รายชื่อผู้ต้องขัง">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
         </div>
 
         <div class="table-wrap">
           <div class="table-header">
             <h2>รายการจองทั้งหมด</h2>
-            <span class="table-count" id="tableCount">0 รายการ</span>
+            <span class="table-count" id="tableCount" aria-live="polite">0 รายการ</span>
           </div>
-          <div style="padding:8px 1rem;font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap">
-            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done">✓</span> วินัยอนุมัติ</span>
-            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done">✓</span> ฝ่ายทัณฑ์ เข้าร่วม</span>
-            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done">✓</span> ชำระเงินแล้ว</span>
-            <span style="display:flex;align-items:center;gap:4px"><span class="status-check pending">✓</span> ยังไม่ตรวจสอบ</span>
+          <div style="padding:8px 1rem;font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap" role="status">
+            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done" aria-hidden="true">✓</span> วินัยอนุมัติ</span>
+            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done" aria-hidden="true">✓</span> ฝ่ายทัณฑ์ เข้าร่วม</span>
+            <span style="display:flex;align-items:center;gap:4px"><span class="status-check done" aria-hidden="true">✓</span> ชำระเงินแล้ว</span>
+            <span style="display:flex;align-items:center;gap:4px"><span class="status-check pending" aria-hidden="true">✓</span> ยังไม่ตรวจสอบ</span>
           </div>
-          <div style="overflow-x:auto">
+          <div style="overflow-x:auto" role="table" aria-label="ตารางรายการจอง">
             <table>
               <thead>
                 <tr>
-                  <th>เลขอ้างอิง</th>
-                  <th>วันที่จอง</th>
-                  <th class="hide-mobile">วันที่ร่วมกิจกรรม</th>
-                  <th>ผู้เข้าร่วมกิจกรรม</th>
-                  <th class="hide-mobile">ผู้ต้องขัง</th>
-                  <th class="hide-mobile">แดน</th>
-                  <th class="hide-mobile">จำนวน/ยอด</th>
-                  <th>สถานะ</th>
-                  <th>ตรวจสอบ</th>
-                  <th>จัดการ</th>
+                  <th scope="col">เลขอ้างอิง</th>
+                  <th scope="col">วันที่จอง</th>
+                  <th scope="col" class="hide-mobile">วันที่ร่วมกิจกรรม</th>
+                  <th scope="col">ผู้เข้าร่วมกิจกรรม</th>
+                  <th scope="col" class="hide-mobile">ผู้ต้องขัง</th>
+                  <th scope="col" class="hide-mobile">แดน</th>
+                  <th scope="col" class="hide-mobile">จำนวน/ยอด</th>
+                  <th scope="col">สถานะ</th>
+                  <th scope="col">ตรวจสอบ</th>
+                  <th scope="col">จัดการ</th>
                 </tr>
               </thead>
               <tbody id="tableBody">

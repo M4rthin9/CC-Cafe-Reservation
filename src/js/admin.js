@@ -204,12 +204,15 @@ function renderTable() {
   }
   document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
     const s = normalizeStatus(r.status);
-    let badgeClass = 'badge-wait';
-    if (s === 'รอชำระเงิน') badgeClass = 'badge-pay';
+    let badgeClass = 'badge-pending-review';
+    if (s === 'รอตรวจสอบ') badgeClass = 'badge-pending-review';
+    else if (s === 'รอตรวจสอบวินัย') badgeClass = 'badge-discipline-check';
+    else if (s === 'รอตรวจสอบผู้เข้าร่วม') badgeClass = 'badge-participant-check';
+    else if (s === 'รอชำระเงิน') badgeClass = 'badge-payment-pending';
     else if (s === 'ชำระแล้ว') badgeClass = 'badge-paid';
-    else if (s === 'เสร็จสิ้น') badgeClass = 'badge-done';
-    else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-reject';
-    else if (s === 'ยกเลิก') badgeClass = 'badge-cancel';
+    else if (s === 'เสร็จสิ้น') badgeClass = 'badge-completed';
+    else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-rejected';
+    else if (s === 'ยกเลิก') badgeClass = 'badge-cancelled';
 
     const isWait = s === 'รอตรวจสอบ';
     const isPaid = s === 'ชำระแล้ว';
@@ -714,12 +717,12 @@ function renderDashboardHome() {
   allRows.slice(0, 5).forEach(r => {
     const idx = allRows.indexOf(r);
     const s = normalizeStatus(r.status);
-    let bcls = 'badge-wait';
-    if (s === 'รอชำระเงิน') bcls = 'badge-pay';
+    let bcls = 'badge-pending-review';
+    if (s === 'รอชำระเงิน') bcls = 'badge-payment-pending';
     else if (s === 'ชำระแล้ว') bcls = 'badge-paid';
-    else if (s === 'เสร็จสิ้น') bcls = 'badge-done';
-    else if (s === 'ไม่อนุมัติ') bcls = 'badge-reject';
-    else if (s === 'ยกเลิก') bcls = 'badge-cancel';
+    else if (s === 'เสร็จสิ้น') bcls = 'badge-completed';
+    else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
+    else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
     rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:5px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;gap:8px;align-items:center;">
       <div style="flex:1;min-width:0"><b style="font-size:12px">${r.ref}</b><div style="font-size:11px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.visitorName || ''}</div></div>
       <div><span class="badge ${bcls}" style="font-size:10px;padding:1px 7px">${s}</span></div>
@@ -1159,11 +1162,15 @@ function closeModal(e) {
 function viewDetail(idx) {
   const r = allRows[idx];
   const s = r.status || '';
-  let badgeClass = 'badge-wait';
-  if (s === 'รอชำระเงิน') badgeClass = 'badge-pay';
+  let badgeClass = 'badge-pending-review';
+  if (s === 'รอชำระเงิน') badgeClass = 'badge-payment-pending';
   else if (s === 'ชำระแล้ว') badgeClass = 'badge-paid';
-  else if (s === 'เสร็จสิ้น') badgeClass = 'badge-done';
-  else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-reject';
+  else if (s === 'เสร็จสิ้น') badgeClass = 'badge-completed';
+  else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-rejected';
+  else if (s === 'ยกเลิก') badgeClass = 'badge-cancelled';
+  else if (s === 'รอตรวจสอบ') badgeClass = 'badge-pending-review';
+  else if (s === 'รอตรวจสอบวินัย') badgeClass = 'badge-discipline-check';
+  else if (s === 'รอตรวจสอบผู้เข้าร่วม') badgeClass = 'badge-participant-check';
 
   const va = r.visitorApproved || '';
   const visitor1Html = `
