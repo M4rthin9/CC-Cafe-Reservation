@@ -1,10 +1,10 @@
 // ===== CONFIG =====
 const PERMISSIONS = {
-  Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog', 'approve_discipline', 'approve_participant'],
-  Admin: ['approve', 'reject', 'confirm_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
+  Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
+  Admin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
-  Vinai: ['approve_discipline', 'view_slip', 'view_detail'],
-  Tadtel: ['approve_participant', 'view_slip', 'view_detail'],
+  Vinai: ['approve_discipline', 'view_detail'],
+  Tadtel: ['approve_participant', 'visitor_approval', 'view_detail'],
   User: ['print']
 };
 
@@ -220,11 +220,10 @@ function renderTable() {
     renderPagination(0, 0);
     return;
   }
-  document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
+document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
     const s = normalizeStatus(r.status);
-    let badgeClass = 'badge-pending-review';
-    if (s === 'รอตรวจสอบ') badgeClass = 'badge-pending-review';
-    else if (s === 'รอตรวจสอบวินัย') badgeClass = 'badge-discipline-check';
+    let badgeClass = 'badge-discipline-check';
+    if (s === 'รอตรวจสอบวินัย') badgeClass = 'badge-discipline-check';
     else if (s === 'รอตรวจสอบผู้เข้าร่วม') badgeClass = 'badge-participant-check';
     else if (s === 'รอชำระเงิน') badgeClass = 'badge-payment-pending';
     else if (s === 'ชำระแล้ว') badgeClass = 'badge-paid';
@@ -232,18 +231,18 @@ function renderTable() {
     else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-rejected';
     else if (s === 'ยกเลิก') badgeClass = 'badge-cancelled';
 
-const isWait = s === 'รอตรวจสอบวินัย';
-     const isDiscipline = s === 'รอตรวจสอบผู้เข้าร่วม';
-     const isPaymentPending = s === 'รอชำระเงิน';
-     const isPaid = s === 'ชำระแล้ว';
-     const isCompleted = s === 'เสร็จสิ้น';
-     const isCancelled = s === 'ยกเลิก';
-     const rowIdx = allRows.indexOf(r);
+    const isDiscipline = s === 'รอตรวจสอบวินัย';
+    const isParticipant = s === 'รอตรวจสอบผู้เข้าร่วม';
+    const isPaymentPending = s === 'รอชำระเงิน';
+    const isPaid = s === 'ชำระแล้ว';
+    const isCompleted = s === 'เสร็จสิ้น';
+    const isCancelled = s === 'ยกเลิก';
+    const rowIdx = allRows.indexOf(r);
 
-     // Status checkmarks - 4 steps of verification (new workflow)
-     const disciplineApproved = r.status === 'รอตรวจสอบผู้เข้าร่วม' || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
-     const participantApproved = r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
-     const financeConfirmed = r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+    // Status checkmarks - 3 steps of verification (updated workflow)
+    const disciplineApproved = r.status !== 'รอตรวจสอบวินัย';
+    const participantApproved = r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+    const financeConfirmed = r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
 
      const canApprove = hasPermission('approve');
      const canConfirmPayment = hasPermission('confirm_payment');
@@ -963,11 +962,31 @@ window.addEventListener('resize', () => {
 
 // ===== UPDATE STATUS =====
 async function updateStatus(idx, newStatus) {
-  if (!hasPermission('approve')) {
+  const row = allRows[idx];
+  const currentStatus = row.status;
+  
+  // Check permission based on current status
+  const statusPermissionMap = {
+    'รอตรวจสอบวินัย': 'approve_discipline',
+    'รอตรวจสอบผู้เข้าร่วม': 'approve_participant',
+    'รอชำระเงิน': 'confirm_payment',
+    'ชำระแล้ว': 'confirm_payment',
+    'ยกเลิก': 'cancel'
+  };
+  
+  const requiredPerm = statusPermissionMap[currentStatus];
+  
+  // Reject can be done by anyone with approve/approve_discipline/approve_participant
+  if (newStatus === 'ไม่อนุมัติ') {
+    if (!hasPermission('approve') && !hasPermission('approve_discipline') && !hasPermission('approve_participant')) {
+      alert('คุณไม่มีสิทธิ์ในการดำเนินการนี้');
+      return;
+    }
+  } else if (requiredPerm && !hasPermission(requiredPerm)) {
     alert('คุณไม่มีสิทธิ์ในการดำเนินการนี้');
     return;
   }
-  const row = allRows[idx];
+  
   if (!confirm(`ยืนยัน: ${newStatus} การจองของ "${row.visitorName}" ?`)) return;
   row.status = newStatus;
   try {
@@ -986,22 +1005,25 @@ async function updateStatus(idx, newStatus) {
 
 // ===== CONFIRM PAYMENT (ยืนยันการชำระเงิน) =====
 async function confirmPayment(idx) {
+  const row = allRows[idx];
+  const s = normalizeStatus(row.status);
+  const targetStatus = s === 'รอชำระเงิน' ? 'ชำระแล้ว' : 'เสร็จสิ้น';
+  
   if (!hasPermission('confirm_payment')) {
     alert('คุณไม่มีสิทธิ์ในการยืนยันการชำระเงิน');
     return;
   }
-  const row = allRows[idx];
-  if (!confirm(`ยืนยันการชำระเงินสำหรับ "${row.visitorName}" (${row.ref}) ?\nสถานะจะเปลี่ยนเป็น "เสร็จสิ้น"`)) return;
-  row.status = 'เสร็จสิ้น';
+  if (!confirm(`ยืนยันการชำระเงินสำหรับ "${row.visitorName}" (${row.ref}) ?\nสถานะจะเปลี่ยนเป็น "${targetStatus}"`)) return;
+  row.status = targetStatus;
   try {
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'เสร็จสิ้น', pass: currentUser.password })
+      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: targetStatus, pass: currentUser.password })
     });
   } catch(e) { /* demo mode */ }
-  logEvent('confirm_payment', `ยืนยันการชำระเงิน ${row.ref}`);
+  logEvent(s === 'รอชำระเงิน' ? 'confirm_payment_pending' : 'confirm_payment', `${s === 'รอชำระเงิน' ? 'ยืนยันชำระเงิน' : 'เสร็จสิ้น'} ${row.ref}`);
   updateStats();
   renderTable();
   renderDashboardHome();
@@ -1293,10 +1315,15 @@ function viewDetail(idx) {
         <span class="dlbl">💰 ค่าบริการอาหาร</span>
         <span class="dval" style="color:var(--blue);font-size:15px;">${total.toLocaleString()} บาท</span>
       </div>
-      <div class="detail-row">
+<div class="detail-row">
         <span class="dlbl">🕐 จองเมื่อ</span>
         <span class="dval">${r.timestamp || '—'}</span>
       </div>
+      ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-approve" onclick="approveParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✓ อนุมัติผู้เข้าร่วม</button>
+        <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
+      </div>` : ''}
     </div>
   `;
   document.getElementById('detailModalBg').classList.add('show');
@@ -1306,6 +1333,46 @@ function closeDetailModal(e) {
   if (!e || e.target === document.getElementById('detailModalBg')) {
     document.getElementById('detailModalBg').classList.remove('show');
   }
+}
+
+async function approveParticipantInDetail(idx) {
+  if (!hasPermission('approve_participant')) return;
+  const row = allRows[idx];
+  if (!confirm(`อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ใช่หรือไม่?`)) return;
+  row.status = 'รอชำระเงิน';
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: currentUser.password })
+    });
+  } catch(e) { /* demo mode */ }
+  logEvent('approve_participant', `อนุมัติผู้เข้าร่วม ${row.ref}`);
+  updateStats();
+  renderTable();
+  renderDashboardHome();
+  closeDetailModal();
+}
+
+async function rejectParticipantInDetail(idx) {
+  if (!hasPermission('approve_participant')) return;
+  const row = allRows[idx];
+  if (!confirm(`ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ให้หรือไม่?`)) return;
+  row.status = 'ไม่อนุมัติ';
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'ไม่อนุมัติ', pass: currentUser.password })
+    });
+  } catch(e) { /* demo mode */ }
+  logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
+  updateStats();
+  renderTable();
+  renderDashboardHome();
+  closeDetailModal();
 }
 
 // ===== EXPORT FILTERED DATA AS CSV =====
