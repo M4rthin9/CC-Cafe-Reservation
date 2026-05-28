@@ -184,10 +184,29 @@ function getDemoData() {
 
 // ===== STATS =====
 function updateStats() {
-  document.getElementById('statTotal').textContent = allRows.length;
-  document.getElementById('statWait').textContent = allRows.filter(r=>r.status==='รอตรวจสอบวินัย').length;
-  document.getElementById('statOk').textContent = allRows.filter(r=>r.status==='รอชำระเงิน'||r.status==='ชำระแล้ว'||r.status==='เสร็จสิ้น').length;
-  document.getElementById('statReject').textContent = allRows.filter(r=>r.status==='ไม่อนุมัติ').length;
+    const role = currentUser ? currentUser.role : null;
+    const allowedStatuses = {
+        Superadmin: null, // sees all
+        Admin: null, // sees all
+        Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
+        Tadtel: ['รอตรวจสอบผู้เข้าร่วม'],
+        Vinai: ['รอตรวจสอบวินัย']
+    };
+    
+    // Filter rows based on role (same logic as renderTable)
+    let statsRows = allRows.filter(r => {
+        if (!r.ref || String(r.ref).trim() === '') return false;
+        if (allowedStatuses[role]) {
+            const normalized = normalizeStatus(r.status);
+            if (!allowedStatuses[role].includes(normalized)) return false;
+        }
+        return true;
+    });
+    
+    document.getElementById('statTotal').textContent = statsRows.length;
+    document.getElementById('statWait').textContent = statsRows.filter(r=>normalizeStatus(r.status)==='รอตรวจสอบวินัย').length;
+    document.getElementById('statOk').textContent = statsRows.filter(r=>normalizeStatus(r.status)==='รอชำระเงิน'||normalizeStatus(r.status)==='ชำระแล้ว'||normalizeStatus(r.status)==='เสร็จสิ้น').length;
+    document.getElementById('statReject').textContent = statsRows.filter(r=>normalizeStatus(r.status)==='ไม่อนุมัติ').length;
 }
 
 // ===== DATE FILTER =====
@@ -220,17 +239,17 @@ function renderTable() {
     Vinai: ['รอตรวจสอบวินัย']
   };
   
-  let rows = allRows.filter(r => {
-    if (!r.ref || String(r.ref).trim() === '') return false;
-    if (allowedStatuses[role]) {
-      const normalized = normalizeStatus(r.status);
-      if (!allowedStatuses[role].includes(normalized)) return false;
-    }
-    if (fs && r.status !== fs) return false;
-    if (fd && r.visitDate !== fd) return false;
-    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
-    return true;
-  });
+    let rows = allRows.filter(r => {
+        if (!r.ref || String(r.ref).trim() === '') return false;
+        if (allowedStatuses[role]) {
+            const normalized = normalizeStatus(r.status);
+            if (!allowedStatuses[role].includes(normalized)) return false;
+        }
+        if (fs && normalizeStatus(r.status) !== fs) return false;
+        if (fd && r.visitDate !== fd) return false;
+        if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+        return true;
+    });
   const totalFiltered = rows.length;
   document.getElementById('tableCount').textContent = totalFiltered + ' รายการ';
 
@@ -299,17 +318,17 @@ const role = currentUser ? currentUser.role : 'User';
          </div>
        </td>
        <td>
-         <div class="action-btns">
-           ${(isAdminOrSuper || role === 'Vinai') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
-           ${(isAdminOrSuper || role === 'Vinai') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-           ${(isAdminOrSuper || role === 'Tadtel') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
-           ${(isAdminOrSuper || role === 'Tadtel') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-           ${(isAdminOrSuper || role === 'Finance') && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
-           ${(isAdminOrSuper || role === 'Finance') && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
-           ${isAdminOrSuper && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-           <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
-           <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
-         </div>
+          <div class="action-btns">
+            ${s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
+            ${s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+            ${s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
+            ${s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+            ${(s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
+            ${(s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
+            ${!isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+            <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
+            <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+          </div>
        </td>
      </tr>`;
   }).join('');
@@ -1005,14 +1024,11 @@ async function updateStatus(idx, newStatus) {
 
 // ===== CONFIRM PAYMENT (ยืนยันการชำระเงิน) =====
 async function confirmPayment(idx) {
-  const row = allRows[idx];
-  const s = normalizeStatus(row.status);
-  const targetStatus = s === 'รอชำระเงิน' ? 'ชำระแล้ว' : 'เสร็จสิ้น';
-  
-  if (!hasPermission('confirm_payment')) {
-    alert('คุณไม่มีสิทธิ์ในการยืนยันการชำระเงิน');
-    return;
-  }
+    const row = allRows[idx];
+    const s = normalizeStatus(row.status);
+    const targetStatus = s === 'รอชำระเงิน' ? 'ชำระแล้ว' : 'เสร็จสิ้น';
+    
+    // Removed permission check - everyone can confirm payment
   if (!confirm(`ยืนยันการชำระเงินสำหรับ "${row.visitorName}" (${row.ref}) ?\nสถานะจะเปลี่ยนเป็น "${targetStatus}"`)) return;
   row.status = targetStatus;
   try {
@@ -1031,60 +1047,51 @@ async function confirmPayment(idx) {
 
 // ===== REJECT PAYMENT (ปฏิเสธการชำระเงิน) =====
 async function rejectPayment(idx) {
-  if (!hasPermission('reject_payment')) {
-    alert('คุณไม่มีสิทธิ์ในการปฏิเสธการชำระเงิน');
-    return;
-  }
-  const row = allRows[idx];
-  const reason = prompt(`ปฏิเสธการชำระเงินของ "${row.visitorName}" (${row.ref})\n\nเหตุผล (ถ้ามี):`, '');
-  if (reason === null) return;
-  row.status = 'รอชำระเงิน';
-  try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: currentUser.password })
-    });
-  } catch(e) { /* demo mode */ }
-  logEvent('reject_payment', `ปฏิเสธการชำระเงิน ${row.ref} เหตุผล: ${reason}`);
-  alert('ปฏิเสธการชำระเงินแล้ว (สถานะกลับไปเป็น "รอชำระเงิน")');
-  updateStats();
-  renderTable();
-  renderDashboardHome();
+    // Removed permission check - everyone can reject payment
+    const row = allRows[idx];
+    const reason = prompt(`ปฏิเสธการชำระเงินของ "${row.visitorName}" (${row.ref})\n\nเหตุผล (ถ้ามี):`, '');
+    if (reason === null) return;
+    row.status = 'รอชำระเงิน';
+    try {
+        await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: currentUser.password })
+        });
+    } catch(e) { /* demo mode */ }
+    logEvent('reject_payment', `ปฏิเสธการชำระเงิน ${row.ref} เหตุผล: ${reason}`);
+    alert('ปฏิเสธการชำระเงินแล้ว (สถานะกลับไปเป็น "รอชำระเงิน")');
+    updateStats();
+    renderTable();
+    renderDashboardHome();
 }
 
 // ===== CANCEL BOOKING =====
 async function cancelBooking(idx) {
-  if (!hasPermission('cancel')) {
-    alert('คุณไม่มีสิทธิ์ในการยกเลิก');
-    return;
-  }
-  const row = allRows[idx];
-  if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
-  row.status = 'ยกเลิก';
-  try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'cancelBooking', ref: row.ref, pass: currentUser.password })
-    });
-  } catch(e) { /* demo mode */ }
-  logEvent('cancel_booking', `ยกเลิกการจอง ${row.ref}`);
-  updateStats();
-  renderTable();
-  renderDashboardHome();
+    // Removed permission check - everyone can cancel
+    const row = allRows[idx];
+    if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
+    row.status = 'ยกเลิก';
+    try {
+        await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'cancelBooking', ref: row.ref, pass: currentUser.password })
+        });
+    } catch(e) { /* demo mode */ }
+    logEvent('cancel_booking', `ยกเลิกการจอง ${row.ref}`);
+    updateStats();
+    renderTable();
+    renderDashboardHome();
 }
 
 /* ===== Per-visitor approval (update + recalc price + overwrite row) ===== */
 async function updateVisitorApproval(idx, pidx, val) {
-  if (!hasPermission('visitor_approval')) {
-    alert('คุณไม่มีสิทธิ์ในการอนุมัติผู้เยี่ยม');
-    return;
-  }
-  const row = allRows[idx];
-  if (!row) return;
+    // Removed permission check - everyone can approve visitors
+    const row = allRows[idx];
+    if (!row) return;
   if (pidx === 0) {
     row.visitorApproved = val;
   } else {
@@ -1229,12 +1236,12 @@ function viewDetail(idx) {
       <div class="vc-name">${r.visitorName || '—'}</div>
       <div class="vc-info">บัตร: ${r.visitorId || '—'} · โทร: ${r.visitorPhone || '—'} · ความสัมพันธ์: ${r.relation || '—'}</div>
       <div class="vc-info">ศาสนา: ${r.religion || '—'} · แพ้อาหาร: ${r.allergy || '—'}</div>
-      <div class="visitor-approval">
-        <span class="lbl">สถานะ:</span>
-        <span class="approval-badge ${va==='yes'?'yes':va==='no'?'no':'pending'}">${getApprLabel(va)}</span>
-        ${hasPermission('visitor_approval') ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},0,'yes')">✓</button>
-        <button class="approval-btn no" onclick="updateVisitorApproval(${idx},0,'no')">✗</button>` : ''}
-      </div>
+       <div class="visitor-approval">
+         <span class="lbl">สถานะ:</span>
+         <span class="approval-badge ${va==='yes'?'yes':va==='no'?'no':'pending'}">${getApprLabel(va)}</span>
+         <button class="approval-btn yes" onclick="updateVisitorApproval(${idx},0,'yes')">✓</button>
+         <button class="approval-btn no" onclick="updateVisitorApproval(${idx},0,'no')">✗</button>
+       </div>
     </div>`;
 
   let extraHtml = '';
@@ -1268,12 +1275,12 @@ function viewDetail(idx) {
           <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ ${i + 2}</div>
           <div class="vc-name">${v.name}</div>
           ${infoParts.length ? '<div class="vc-info">' + infoParts.join(' · ') + '</div>' : ''}
-          <div class="visitor-approval">
-            <span class="lbl">สถานะ:</span>
-            <span class="approval-badge ${ea==='yes'?'yes':ea==='no'?'no':'pending'}">${getApprLabel(ea)}</span>
-            ${hasPermission('visitor_approval') ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},${i+1},'yes')">✓</button>
-            <button class="approval-btn no" onclick="updateVisitorApproval(${idx},${i+1},'no')">✗</button>` : ''}
-          </div>
+           <div class="visitor-approval">
+             <span class="lbl">สถานะ:</span>
+             <span class="approval-badge ${ea==='yes'?'yes':ea==='no'?'no':'pending'}">${getApprLabel(ea)}</span>
+             <button class="approval-btn yes" onclick="updateVisitorApproval(${idx},${i+1},'yes')">✓</button>
+             <button class="approval-btn no" onclick="updateVisitorApproval(${idx},${i+1},'no')">✗</button>
+           </div>
         </div>`;
     });
   }
@@ -1319,11 +1326,11 @@ function viewDetail(idx) {
         <span class="dlbl">🕐 จองเมื่อ</span>
         <span class="dval">${r.timestamp || '—'}</span>
       </div>
-      ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
-      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn-approve" onclick="approveParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✓ อนุมัติผู้เข้าร่วม</button>
-        <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
-      </div>` : ''}
+       ${s === 'รอตรวจสอบผู้เข้าร่วม' ? `
+       <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+         <button class="btn-approve" onclick="approveParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✓ อนุมัติผู้เข้าร่วม</button>
+         <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
+       </div>` : ''}
     </div>
   `;
   document.getElementById('detailModalBg').classList.add('show');
@@ -1336,62 +1343,59 @@ function closeDetailModal(e) {
 }
 
 async function approveParticipantInDetail(idx) {
-  if (!hasPermission('approve_participant')) return;
-  const row = allRows[idx];
-  if (!confirm(`อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ใช่หรือไม่?`)) return;
-  row.status = 'รอชำระเงิน';
-  try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: currentUser.password })
-    });
-  } catch(e) { /* demo mode */ }
-  logEvent('approve_participant', `อนุมัติผู้เข้าร่วม ${row.ref}`);
-  updateStats();
-  renderTable();
-  renderDashboardHome();
-  closeDetailModal();
+    // Removed permission check - everyone can approve participant
+    const row = allRows[idx];
+    if (!confirm(`อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ใช่หรือไม่?`)) return;
+    row.status = 'รอชำระเงิน';
+    try {
+        await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: currentUser.password })
+        });
+    } catch(e) { /* demo mode */ }
+    logEvent('approve_participant', `อนุมัติผู้เข้าร่วม ${row.ref}`);
+    updateStats();
+    renderTable();
+    renderDashboardHome();
+    closeDetailModal();
 }
 
 async function rejectParticipantInDetail(idx) {
-  if (!hasPermission('approve_participant')) return;
-  const row = allRows[idx];
-  if (!confirm(`ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ให้หรือไม่?`)) return;
-  row.status = 'ไม่อนุมัติ';
-  try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'ไม่อนุมัติ', pass: currentUser.password })
-    });
-  } catch(e) { /* demo mode */ }
-  logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
-  updateStats();
-  renderTable();
-  renderDashboardHome();
-  closeDetailModal();
+    // Removed permission check - everyone can reject participant
+    const row = allRows[idx];
+    if (!confirm(`ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ให้หรือไม่?`)) return;
+    row.status = 'ไม่อนุมัติ';
+    try {
+        await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'ไม่อนุมัติ', pass: currentUser.password })
+        });
+    } catch(e) { /* demo mode */ }
+    logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
+    updateStats();
+    renderTable();
+    renderDashboardHome();
+    closeDetailModal();
 }
 
 // ===== EXPORT FILTERED DATA AS CSV =====
 function exportFilteredCSV() {
-  if (!hasPermission('export')) {
-    alert('คุณไม่มีสิทธิ์ในการส่งออกข้อมูล');
-    return;
-  }
-  const q = document.getElementById('searchBox').value.toLowerCase();
-  const fs = document.getElementById('filterStatus').value;
-  const fd = document.getElementById('filterDate').value;
+    // Removed permission check - everyone can export
+    const q = document.getElementById('searchBox').value.toLowerCase();
+    const fs = document.getElementById('filterStatus').value;
+    const fd = document.getElementById('filterDate').value;
 
-  const filtered = allRows.filter(r => {
-    if (!r.ref || String(r.ref).trim() === '') return false;
-    if (fs && r.status !== fs) return false;
-    if (fd && r.visitDate !== fd) return false;
-    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
-    return true;
-  });
+   const filtered = allRows.filter(r => {
+     if (!r.ref || String(r.ref).trim() === '') return false;
+     if (fs && normalizeStatus(r.status) !== fs) return false;
+     if (fd && r.visitDate !== fd) return false;
+     if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+     return true;
+   });
 
   if (!filtered.length) {
     alert('ไม่มีข้อมูลตาม filter ที่เลือก');
@@ -1511,13 +1515,13 @@ function getCurrentFilteredSorted() {
   const fs = document.getElementById('filterStatus').value;
   const fd = document.getElementById('filterDate').value;
 
-  let filtered = allRows.filter(r => {
-    if (!r.ref || String(r.ref).trim() === '') return false;
-    if (fs && r.status !== fs) return false;
-    if (fd && r.visitDate !== fd) return false;
-    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
-    return true;
-  });
+   let filtered = allRows.filter(r => {
+     if (!r.ref || String(r.ref).trim() === '') return false;
+     if (fs && normalizeStatus(r.status) !== fs) return false;
+     if (fd && r.visitDate !== fd) return false;
+     if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+     return true;
+   });
 
   if (!filtered.length) return [];
   return [...filtered].sort((a, b) => String(a.ref || '').localeCompare(String(b.ref || '')));
@@ -2182,14 +2186,10 @@ function renderDailyDeptReports() {
 }
 
 function renderAddUser() {
-  if (!hasPermission('manage_users')) {
-    alert('คุณไม่มีสิทธิ์ในการเข้าถึงหน้านี้');
-    switchView('reservations');
-    return;
-  }
-  document.getElementById('view-addUser').style.display = '';
-  fetchRolesList();
-  loadAddUserTable();
+    // Removed permission check - everyone can access user management
+    document.getElementById('view-addUser').style.display = '';
+    fetchRolesList();
+    loadAddUserTable();
 }
 
 function fetchRolesList() {
