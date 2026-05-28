@@ -394,45 +394,43 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
   }
 
   // ===== Public actions (no login required) =====
-  const publicActions = ['uploadSlip', 'updateSlipAndStatus'];
-  if (publicActions.includes(action) && (username === 'public' || !username)) {
-    // allow public slip upload / payment confirmation
-  } else if (action === 'getAll' && !isAuthorized(username, pass)) {
-    return jsonResp({ status: 'error', message: 'Unauthorized' });
-  }
+ const publicActions = ['uploadSlip', 'updateSlipAndStatus'];
+ if (publicActions.includes(action) && (username === 'public' || !username)) {
+   // allow public slip upload / payment confirmation
+ } else if (!publicActions.includes(action) && !isAuthorized(username, pass)) {
+   logEvent(username || 'unknown', action, body.ref || '', { reason: 'unauthorized' }, 'denied');
+   return jsonResp({ status: 'error', message: 'Unauthorized' });
+ }
 
-  // ── get all reservations (POST) ──
-  if (action === 'getAll') {
-    const sheet = getMainSheet();
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
+ // ── get all reservations (POST) ──
+ if (action === 'getAll') {
+   const sheet = getMainSheet();
+   const data = sheet.getDataRange().getValues();
+   if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
 
-    const headers = data[0];
-    const rows = data.slice(1)
-      .filter(row => row[headers.indexOf('ref')] && String(row[headers.indexOf('ref')]).trim() !== '')
-      .map(row => {
-        const obj = {};
-        headers.forEach((h, i) => {
-          let val = row[i];
-          if (val instanceof Date) {
-            if (h === 'visitDateISO') {
-              const y = val.getFullYear();
-              const m = String(val.getMonth() + 1).padStart(2, '0');
-              const d = String(val.getDate()).padStart(2, '0');
-              val = y + '-' + m + '-' + d;
-            } else {
-              val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
-            }
-          }
-          obj[h] = val;
-        });
-        return obj;
-      });
-    return jsonResp({ status: 'ok', rows: rows.reverse() });
-  } else if (!isAuthorized(username, pass)) {
-    logEvent(username || 'unknown', action, body.ref || '', { reason: 'unauthorized' }, 'denied');
-    return jsonResp({ status: 'error', message: 'Unauthorized' });
-  }
+   const headers = data[0];
+   const rows = data.slice(1)
+     .filter(row => row[headers.indexOf('ref')] && String(row[headers.indexOf('ref')]).trim() !== '')
+     .map(row => {
+       const obj = {};
+       headers.forEach((h, i) => {
+         let val = row[i];
+         if (val instanceof Date) {
+           if (h === 'visitDateISO') {
+             const y = val.getFullYear();
+             const m = String(val.getMonth() + 1).padStart(2, '0');
+             const d = String(val.getDate()).padStart(2, '0');
+             val = y + '-' + m + '-' + d;
+           } else {
+             val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+           }
+         }
+         obj[h] = val;
+       });
+       return obj;
+     });
+   return jsonResp({ status: 'ok', rows: rows.reverse() });
+ }
 
    // ── CANCEL BOOKING ──
    if (action === 'cancelBooking') {
