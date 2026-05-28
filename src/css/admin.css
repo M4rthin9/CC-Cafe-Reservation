@@ -31,6 +31,56 @@
   --radius: 10px;
   --radius-sm: 6px;
 }
+
+/* Pipeline visualization */
+.pipeline-bar {
+  margin: 12px 0;
+  background: #f9fafb;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.pipeline-steps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 11px;
+  text-align: center;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--bg2);
+}
+.pipeline-step[data-status="รอตรวจสอบ"] { background: var(--status-pending); color: #fff; }
+.pipeline-step[data-status="รอตรวจสอบวินัย"] { background: var(--status-discipline); color: #fff; }
+.pipeline-step[data-status="รอตรวจสอบผู้เข้าร่วม"] { background: var(--status-participant); color: #fff; }
+.pipeline-step[data-status="รอชำระเงิน"] { background: var(--status-payment); color: #fff; }
+.pipeline-step[data-status="ชำระแล้ว"] { background: var(--status-paid); color: #fff; }
+.pipeline-step[data-status="เสร็จสิ้น"] { background: var(--status-completed); color: #fff; }
+.pipeline-arrow {
+  font-size: 12px;
+  margin: 0 4px;
+  color: var(--text2);
+}
+.pipeline-role {
+  font-size: 9px;
+  color: var(--text2);
+}
+
+  --status-pending: #9CA3AF;
+  --status-discipline: #3B82F6;
+  --status-participant: #F97316;
+  --status-payment: #EAB308;
+  --status-paid: #22C55E;
+  --status-completed: #1E3A8A;
+  --status-rejected: #DC2626;
+  --status-cancelled: #A1A1AA;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--text); min-height: 100vh; }
 
@@ -86,12 +136,22 @@ td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align:
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #f8f9fa; }
 .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .badge-wait    { background: #F5EFD8; color: #8B6B2E; }
+   .badge-wait    { background: #F5EFD8; color: #8B6B2E; }
 .badge-ok      { background: var(--green-light); color: var(--green); }
 .badge-reject  { background: var(--red-light); color: var(--red); }
-  .badge-pay     { background: #E8ECF4; color: #0B2545; }
-  .badge-paid    { background: #DCE5F0; color: #0A203D; }
+   .badge-pay     { background: #E8ECF4; color: #0B2545; }
+   .badge-paid    { background: #DCE5F0; color: #0A203D; }
 .badge-cancel  { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+/* ===== New Workflow Status Badges ===== */
+.badge-pending-review    { background: var(--status-pending); color: #fff; }
+.badge-discipline-check  { background: var(--status-discipline); color: #fff; }
+.badge-participant-check { background: var(--status-participant); color: #fff; }
+.badge-payment-pending   { background: var(--status-payment); color: #fff; }
+.badge-paid              { background: var(--status-paid); color: #fff; }
+.badge-completed         { background: var(--status-completed); color: #fff; }
+.badge-rejected          { background: var(--status-rejected); color: #fff; }
+.badge-cancelled         { background: var(--status-cancelled); color: #fff; }
 .btn-cancel { padding: 5px 12px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
 .btn-cancel:hover { background: #fee2e2; color: #dc2626; border-color: #dc2626; }
 .btn-confirm-pay { padding: 5px 12px; background: #1a56db; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }

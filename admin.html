@@ -73,6 +73,24 @@
           <div class="overview-meta" id="overviewLastUpdated">—</div>
         </div>
 
+        <!-- Approval Pipeline Visualization -->
+        <div class="pipeline-bar" id="approvalPipeline" style="display:none">
+          <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px">ไหลการอนุมัติ</div>
+          <div class="pipeline-steps">
+            <div class="pipeline-step" data-status="รอตรวจสอบ"><span class="pipeline-icon">⏳</span><span class="pipeline-label">รอตรวจสอบ</span><div class="pipeline-role">Admin/Super</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" data-status="รอตรวจสอบวินัย"><span class="pipeline-icon">🔍</span><span class="pipeline-label">รอตรวจสอบวินัย</span><div class="pipeline-role">Vinai ONLY</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" data-status="รอตรวจสอบผู้เข้าร่วม"><span class="pipeline-icon">👥</span><span class="pipeline-label">รอตรวจสอบผู้เข้าร่วม</span><div class="pipeline-role">Tadtel ONLY</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" data-status="รอชำระเงิน"><span class="pipeline-icon">💰</span><span class="pipeline-label">รอชำระเงิน</span><div class="pipeline-role">Finance ONLY</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" data-status="ชำระแล้ว"><span class="pipeline-icon">✅</span><span class="pipeline-label">ชำระแล้ว</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" data-status="เสร็จสิ้น"><span class="pipeline-icon">🏁</span><span class="pipeline-label">เสร็จสิ้น</span></div>
+          </div>
+        </div>
+
         <!-- Primary Metrics (Core KPIs) -->
         <div class="metrics-row primary">
           <div class="stat-card blue">

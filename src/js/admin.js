@@ -1,10 +1,10 @@
 // ===== CONFIG =====
 const PERMISSIONS = {
-  Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
-  Admin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
+  Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog', 'approve_discipline', 'approve_participant'],
+  Admin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog', 'approve_discipline', 'approve_participant'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
-  Vinai: ['approve', 'view_slip', 'view_detail'],
-  Tadtel: ['visitor_approval', 'view_slip', 'view_detail'],
+  Vinai: ['approve_discipline', 'view_slip', 'view_detail'],
+  Tadtel: ['approve_participant', 'view_slip', 'view_detail'],
   User: ['print']
 };
 
@@ -666,6 +666,30 @@ if (financeCanvasEl) {
 }
 
 function renderDashboardHome() {
+  // Role‑based KPI visibility
+  const role = currentUser && currentUser.role;
+  const visible = {
+    Superadmin: ['statTotal','statWait','statOk','statReject','statUniquePrisoners','statThisWeek','statThisMonth','statUniqueVisitors'],
+    Admin: ['statTotal','statWait','statOk','statReject','statUniquePrisoners','statThisWeek','statThisMonth','statUniqueVisitors'],
+    Vinai: ['statWait','statThisWeek'],
+    Tadtel: ['statOk','statThisWeek'],
+    Finance: ['statOk','statThisWeek','statUniqueVisitors']
+  }[role]||[];
+  // hide all KPI cards then show allowed
+  ['statTotal','statWait','statOk','statReject','statUniquePrisoners','statThisWeek','statThisMonth','statUniqueVisitors'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && el.parentElement && el.parentElement.parentElement){
+      el.parentElement.parentElement.style.display = visible.includes(id)?'' : 'none';
+    }
+  });
+
+  // Show pipeline for admin roles
+  const pipeline = document.getElementById('approvalPipeline');
+  if(pipeline && (role === 'Superadmin' || role === 'Admin')) {
+    pipeline.style.display = 'block';
+  } else if(pipeline) {
+    pipeline.style.display = 'none';
+  }
 
   const recentEl = document.getElementById('recentBookings');
   if (!recentEl) return;
