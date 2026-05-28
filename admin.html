@@ -139,25 +139,25 @@
 
       <!-- RESERVATIONS VIEW -->
       <div id="view-reservations" class="view" style="display:none" role="main">
-        <div class="controls">
-          <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
-          <select class="filter-select" id="filterStatus" aria-label="กรองตามสถานะ" onchange="resetToFirstPage();renderTable()">
-            <option value="">ทุกสถานะ</option>
-            <option value="รอตรวจสอบวินัย">รอตรวจสอบวินัย</option>
-            <option value="รอตรวจสอบผู้เข้าร่วม">รอตรวจสอบผู้เข้าร่วม</option>
-            <option value="รอชำระเงิน">รอชำระเงิน</option>
-            <option value="ชำระแล้ว">ชำระแล้ว</option>
-            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
-            <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
-          </select>
-          <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
-            <option value="">ทุกวัน</option>
-          </select>
-          <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄 โหลดใหม่</button>
-          <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV">📤 Export CSV</button>
-          <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน">🖨️ พิมพ์รายงาน</button>
-          <button class="btn-print-vinai" onclick="printPrisonerVinaiList()" aria-label="พิมพ์รายชื่อผู้ต้องขัง">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
-        </div>
+<div class="controls">
+           <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
+           <select class="filter-select" id="filterStatus" aria-label="กรองตามสถานะ" onchange="resetToFirstPage();renderTable()" style="display:none">
+             <option value="">ทุกสถานะ</option>
+             <option value="รอตรวจสอบวินัย">รอตรวจสอบวินัย</option>
+             <option value="รอตรวจสอบผู้เข้าร่วม">รอตรวจสอบผู้เข้าร่วม</option>
+             <option value="รอชำระเงิน">รอชำระเงิน</option>
+             <option value="ชำระแล้ว">ชำระแล้ว</option>
+             <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+             <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+           </select>
+           <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
+             <option value="">ทุกวัน</option>
+           </select>
+           <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄 โหลดใหม่</button>
+           <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤 Export CSV</button>
+           <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️ พิมพ์รายงาน</button>
+           <button class="btn-print-vinai" onclick="printPrisonerVinaiList()" aria-label="พิมพ์รายชื่อผู้ต้องขัง" id="btnPrintVinai" style="display:none">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
+         </div>
 
         <div class="table-wrap">
           <div class="table-header">

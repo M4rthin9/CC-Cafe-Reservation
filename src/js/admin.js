@@ -72,18 +72,29 @@ currentUser = {
     document.getElementById('userName').textContent = currentUser.username;
 document.getElementById('userInfo').style.display = 'block';
       
-      // Show/hide sidebar menu items based on role
-      const visibleMenu = SIDEBAR_MENU[currentUser.role] || [];
-      document.querySelectorAll('.sb-link').forEach(link => {
-        const view = link.getAttribute('data-view');
-        if (view && !visibleMenu.includes(view)) {
-          link.style.display = 'none';
-        } else {
-          link.style.display = '';
-        }
-      });
+// Show/hide sidebar menu items based on role
+       const visibleMenu = SIDEBAR_MENU[currentUser.role] || [];
+       document.querySelectorAll('.sb-link').forEach(link => {
+         const view = link.getAttribute('data-view');
+         if (view && !visibleMenu.includes(view)) {
+           link.style.display = 'none';
+         } else {
+           link.style.display = '';
+         }
+       });
 
-     switchView(visibleMenu.includes('home') ? 'home' : visibleMenu[0] || 'reservations');
+       // Show/hide UI elements based on role (filter status, export/print buttons)
+       const isAdminOrSuper = currentUser.role === 'Superadmin' || currentUser.role === 'Admin';
+       const filterStatusEl = document.getElementById('filterStatus');
+       const btnExport = document.getElementById('btnExport');
+       const btnPrint = document.getElementById('btnPrint');
+       const btnPrintVinai = document.getElementById('btnPrintVinai');
+       if (filterStatusEl) filterStatusEl.style.display = isAdminOrSuper ? '' : 'none';
+       if (btnExport) btnExport.style.display = isAdminOrSuper ? '' : 'none';
+       if (btnPrint) btnPrint.style.display = isAdminOrSuper ? '' : 'none';
+       if (btnPrintVinai) btnPrintVinai.style.display = isAdminOrSuper ? '' : 'none';
+     
+      switchView(visibleMenu.includes('home') ? 'home' : visibleMenu[0] || 'reservations');
      renderDashboardHome();
     loadData();
     
@@ -198,8 +209,23 @@ function renderTable() {
   const q = document.getElementById('searchBox').value.toLowerCase();
   const fs = document.getElementById('filterStatus').value;
   const fd = document.getElementById('filterDate').value;
+  const role = currentUser ? currentUser.role : null;
+  
+  // Filter by role - each role sees only specific statuses
+  const allowedStatuses = {
+    Superadmin: null, // sees all
+    Admin: null, // sees all
+    Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
+    Tadtel: ['รอตรวจสอบผู้เข้าร่วม'],
+    Vinai: ['รอตรวจสอบวินัย']
+  };
+  
   let rows = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
+    if (allowedStatuses[role]) {
+      const normalized = normalizeStatus(r.status);
+      if (!allowedStatuses[role].includes(normalized)) return false;
+    }
     if (fs && r.status !== fs) return false;
     if (fd && r.visitDate !== fd) return false;
     if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
@@ -244,50 +270,48 @@ document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
     const participantApproved = r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
     const financeConfirmed = r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
 
-     const canApprove = hasPermission('approve');
-     const canConfirmPayment = hasPermission('confirm_payment');
-     const canRejectPayment = hasPermission('reject_payment');
-     const canCancel = hasPermission('cancel');
-
-     return `<tr>
-      <td><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
-      <td style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
-      <td class="hide-mobile" style="white-space:nowrap">${r.visitDate||'—'}</td>
-      <td>
-        <div style="font-weight:600">${r.visitorName}</div>
-        <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
-      </td>
-      <td class="hide-mobile">
-        <div style="font-weight:600">${r.prisonerName}</div>
-        <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
-      </td>
-      <td class="hide-mobile">${r.wing||'—'}</td>
-      <td class="hide-mobile">
-        <div>${r.visitorCount} คน</div>
-        <div style="font-weight:700;color:var(--blue)">${(r.total||0).toLocaleString()} บ.</div>
-      </td>
-      <td><span class="badge ${badgeClass}">${r.status}</span></td>
-      <td>
-        <div style="display:flex;gap:8px;align-items:center;justify-content:center">
-          <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
-          <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
-          <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
-        </div>
-      </td>
-      <td>
-        <div class="action-btns">
-          ${hasPermission('approve_discipline') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
-          ${hasPermission('approve_discipline') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-          ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
-          ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-          ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
-          ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
-          ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-          ${hasPermission('view_slip') ? `<button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>` : ''}
-          ${hasPermission('view_detail') ? `<button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>` : ''}
-        </div>
-      </td>
-    </tr>`;
+const role = currentUser ? currentUser.role : 'User';
+    const isAdminOrSuper = role === 'Superadmin' || role === 'Admin';
+    
+    return `<tr>
+       <td><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
+       <td style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
+       <td class="hide-mobile" style="white-space:nowrap">${r.visitDate||'—'}</td>
+       <td>
+         <div style="font-weight:600">${r.visitorName}</div>
+         <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
+       </td>
+       <td class="hide-mobile">
+         <div style="font-weight:600">${r.prisonerName}</div>
+         <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
+       </td>
+       <td class="hide-mobile">${r.wing||'—'}</td>
+       <td class="hide-mobile">
+         <div>${r.visitorCount} คน</div>
+         <div style="font-weight:700;color:var(--blue)">${(r.total||0).toLocaleString()} บ.</div>
+       </td>
+       <td><span class="badge ${badgeClass}">${r.status}</span></td>
+       <td>
+         <div style="display:flex;gap:8px;align-items:center;justify-content:center">
+           <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
+           <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
+           <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
+         </div>
+       </td>
+       <td>
+         <div class="action-btns">
+           ${(isAdminOrSuper || role === 'Vinai') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
+           ${(isAdminOrSuper || role === 'Vinai') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+           ${(isAdminOrSuper || role === 'Tadtel') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
+           ${(isAdminOrSuper || role === 'Tadtel') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+           ${(isAdminOrSuper || role === 'Finance') && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
+           ${(isAdminOrSuper || role === 'Finance') && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
+           ${isAdminOrSuper && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+           <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
+           <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+         </div>
+       </td>
+     </tr>`;
   }).join('');
   renderPagination(totalPages, totalFiltered);
 }
