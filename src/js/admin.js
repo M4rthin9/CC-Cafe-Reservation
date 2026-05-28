@@ -1,7 +1,7 @@
 // ===== CONFIG =====
 const PERMISSIONS = {
   Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog', 'approve_discipline', 'approve_participant'],
-  Admin: ['approve', 'reject', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
+  Admin: ['approve', 'reject', 'confirm_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
   Vinai: ['approve_discipline', 'view_slip', 'view_detail'],
   Tadtel: ['approve_participant', 'view_slip', 'view_detail'],
@@ -281,8 +281,7 @@ const isWait = s === 'รอตรวจสอบวินัย';
           ${hasPermission('approve_discipline') && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
           ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
           ${hasPermission('approve_participant') && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-          ${canConfirmPayment && s === 'รอชำระเงิน' ? `<button class="btn-confirm-pay" onclick="updateStatus(${rowIdx},'ชำระแล้ว')">💳 ยืนยันชำระเงิน</button>` : ''}
-          ${canConfirmPayment && s === 'ชำระแล้ว' ? `<button class="btn-confirm-pay" onclick="updateStatus(${rowIdx},'เสร็จสิ้น')">✅ เสร็จสิ้น</button>` : ''}
+          ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
           ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
           ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
           ${hasPermission('view_slip') ? `<button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>` : ''}
@@ -1695,6 +1694,28 @@ function printReport() {
     margin-top: 20px;
   }
   
+  /* Page footer - fixed at bottom of page */
+  body {
+    margin-bottom: 16mm;
+  }
+  .page-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 12mm;
+    border-top: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #666;
+    background: #fff;
+  }
+  .table-block {
+    margin-bottom: 16mm;
+  }
+  
   @media print {
     @page { size: A4; margin: 10mm 8mm; }
     body { padding: 4mm 6mm; font-size: 11px; line-height: 1.4; }
@@ -1797,6 +1818,25 @@ function printReport() {
     }
     .grand-total .g-number {
       font-size: 20px;
+    }
+    
+    /* Page footer */
+    .page-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 12mm;
+      border-top: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #666;
+      background: #fff;
+    }
+    .table-block {
+      margin-bottom: 16mm;
     }
   }
 </style></head><body>`;
@@ -1902,11 +1942,15 @@ function printReport() {
   html += `<span class="g-number">${totalPeople} คน</span>`;
   html += `</div>`;
   
-  html += `</div>`;
-  html += `<div class="footer-note">พิมพ์จากระบบ CC Cafe Reservation · ทัณฑสถานบำบัดพิเศษกลาง · ${now}</div>`;
-  html += `</div>`;
-
-  html += `</body></html>`;
+html += `</div>`;
+   html += `<div class="footer-note">พิมพ์จากระบบ CC Cafe Reservation · ทัณฑสถานบำบัดพิเศษกลาง · ${now}</div>`;
+   html += `</div>`;
+   
+   // Page footer for print
+   const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
+   html += `<div class="page-footer">ผู้ปริ้น: ${printerName} · พิมพ์เมื่อ ${now}</div>`;
+   
+   html += `</body></html>`;
 
   const w = window.open('', '_blank', 'width=1200,height=850');
   if (!w) {
@@ -1975,8 +2019,10 @@ function printPrisonerVinaiList() {
 
   html += `</tbody></table>`;
 
-  html += `<div class="note">สำหรับใช้ตรวจสอบวินัย • ข้อมูลจากระบบการจอง CC Cafe</div>`;
-  html += `</body></html>`;
+html += `<div class="note">สำหรับใช้ตรวจสอบวินัย • ข้อมูลจากระบบการจอง CC Cafe</div>`;
+   const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
+   html += `<div style="margin-top:8mm;font-size:10px;color:#666;text-align:center;">ผู้ปริ้น: ${printerName} · พิมพ์เมื่อ ${now}</div>`;
+   html += `</body></html>`;
 
   const w = window.open('', '_blank', 'width=900,height=700');
   if (!w) {
