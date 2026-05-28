@@ -1413,7 +1413,11 @@ async function approveParticipantInDetail(idx) {
     // Removed permission check - everyone can approve participant
     const row = allRows[idx];
     if (!confirm(`อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ใช่หรือไม่?`)) return;
+    
+    // Optimistic update
+    const oldStatus = row.status;
     row.status = 'รอชำระเงิน';
+    
     try {
         await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
@@ -1421,19 +1425,34 @@ async function approveParticipantInDetail(idx) {
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: currentUser.password })
         });
-    } catch(e) { /* demo mode */ }
-    logEvent('approve_participant', `อนุมัติผู้เข้าร่วม ${row.ref}`);
-    updateStats();
-    renderTable();
-    renderDashboardHome();
-    closeDetailModal();
+        
+        // Success
+        logEvent('approve_participant', `อนุมัติผู้เข้าร่วม ${row.ref}`);
+        updateStats();
+        renderTable();
+        renderDashboardHome();
+        closeDetailModal();
+    } catch(e) {
+        // Error - revert optimistic update
+        console.error('Approve participant error:', e);
+        row.status = oldStatus;
+        alert(`ไม่สามารถอนุมัติผู้เข้าร่วมได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+        updateStats();
+        renderTable();
+        renderDashboardHome();
+        closeDetailModal();
+    }
 }
 
 async function rejectParticipantInDetail(idx) {
     // Removed permission check - everyone can reject participant
     const row = allRows[idx];
     if (!confirm(`ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ให้หรือไม่?`)) return;
+    
+    // Optimistic update
+    const oldStatus = row.status;
     row.status = 'ไม่อนุมัติ';
+    
     try {
         await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
@@ -1441,12 +1460,23 @@ async function rejectParticipantInDetail(idx) {
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'ไม่อนุมัติ', pass: currentUser.password })
         });
-    } catch(e) { /* demo mode */ }
-    logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
-    updateStats();
-    renderTable();
-    renderDashboardHome();
-    closeDetailModal();
+        
+        // Success
+        logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
+        updateStats();
+        renderTable();
+        renderDashboardHome();
+        closeDetailModal();
+    } catch(e) {
+        // Error - revert optimistic update
+        console.error('Reject participant error:', e);
+        row.status = oldStatus;
+        alert(`ไม่สามารถปฏิเสธผู้เข้าร่วมได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+        updateStats();
+        renderTable();
+        renderDashboardHome();
+        closeDetailModal();
+    }
 }
 
 // ===== EXPORT FILTERED DATA AS CSV =====
