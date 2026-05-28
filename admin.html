@@ -42,6 +42,7 @@
       <a class="sb-link" data-view="reservations" onclick="switchView('reservations');return false">📋 <span class="sb-text">รายการจอง</span></a>
       <a class="sb-link" data-view="reports" onclick="switchView('reports');return false">📊 <span class="sb-text">รายงาน</span></a>
       <a class="sb-link" data-view="eventlog" onclick="switchView('eventlog');return false">📝 <span class="sb-text">บันทึกการทำงาน</span></a>
+      <a class="sb-link" data-view="addUser" onclick="switchView('addUser');return false">👤 <span class="sb-text">เพิ่มผู้ใช้</span></a>
     </nav>
     <div class="sb-bottom">
       <button onclick="doLogout()" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">ออกจากระบบ</button>
@@ -251,11 +252,46 @@
                 </tr>
               </thead>
               <tbody id="eventlogBody">
+                 <tr><td colspan="4" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
+               </tbody>
+             </table>
+           </div>
+         </div>
+
+      <!-- ADD USER VIEW -->
+      <div id="view-addUser" class="view" style="display:none">
+        <!-- Add User Form -->
+         <div class="controls">
+           <input class="search-box" id="addUserUsername" type="text" placeholder="🔍 ชื่อผู้ใช้" oninput="resetToFirstPage();renderAddUserTable()">
+           <input class="search-box" id="addUserPassword" type="password" placeholder="🔐 รหัสผ่าน">
+           <input class="search-box" id="addUserConfirmPassword" type="password" placeholder="🔐 ยืนยันรหัสผ่าน">
+           <select class="filter-select" id="addUserRole" onchange="resetToFirstPage();renderAddUserTable()">
+             <!-- Roles will be populated via JS -->
+           </select>
+           <button class="refresh-btn" onclick="resetToFirstPage();createAddUser()">👤 สร้างผู้ใช้</button>
+           <button class="refresh-btn" onclick="switchView('home')">ยกเลิก</button>
+         </div>
+        <div class="table-wrap">
+          <div class="table-header">
+            <h2>รายการผู้ใช้ทั้งหมด</h2>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อผู้ใช้</th>
+                  <th>บทบาท</th>
+                  <th>สถานะ</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="addUserTableBody">
                 <tr><td colspan="4" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
               </tbody>
             </table>
           </div>
-        </div>
+          <div id="addUserPagination" class="pagination"></div>
+</div>
       </div>
     </div>
   </div>

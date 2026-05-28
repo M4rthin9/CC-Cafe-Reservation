@@ -1,9 +1,11 @@
 // ===== CONFIG =====
 const PERMISSIONS = {
   Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
+  Admin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
   Vinai: ['approve', 'view_slip', 'view_detail'],
-  Tadtel: ['visitor_approval', 'view_slip', 'view_detail']
+  Tadtel: ['visitor_approval', 'view_slip', 'view_detail'],
+  User: ['print']
 };
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ7QxwrJHFBvDdnjtJA4NVw5ESW65sKCwuEUXNHoiWI19Xl-HN1jLBikEpeierrqn7zw/exec';
@@ -57,7 +59,16 @@ async function doLogin() {
     // Show user info in sidebar
     document.getElementById('userRole').textContent = currentUser.role;
     document.getElementById('userName').textContent = currentUser.username;
-    document.getElementById('userInfo').style.display = 'block';
+     document.getElementById('userInfo').style.display = 'block';
+     // Show/hide add user link based on permission
+     const addUserLink = document.querySelector('.sb-link[data-view="addUser"]');
+     if (addUserLink) {
+       if (hasPermission('manage_users')) {
+         addUserLink.style.display = '';
+       } else {
+         addUserLink.style.display = 'none';
+       }
+     }
     
     switchView('home');
     renderDashboardHome();
@@ -333,18 +344,20 @@ function switchView(v) {
     a.classList.toggle('active', a.getAttribute('data-view') === v);
   });
 
-  if (v === 'reservations') {
-    renderTable();
-  } else if (v === 'reports') {
-    populateReportsDateFilter();
-    renderReportsView();
-  } else if (v === 'eventlog') {
-    renderEventlog();
-  }
+   if (v === 'reservations') {
+     renderTable();
+   } else if (v === 'reports') {
+     populateReportsDateFilter();
+     renderReportsView();
+   } else if (v === 'eventlog') {
+     renderEventlog();
+   } else if (v === 'addUser') {
+     renderAddUser();
+   }
 
-  if (v === 'home') {
-    renderDashboardHome();
-  }
+   if (v === 'home') {
+     renderDashboardHome();
+   }
 }
 
 function renderEventlog() {
@@ -1930,7 +1943,6 @@ function renderDailyDeptReports() {
     return;
   }
 
-  // Group by visit date
   const byDate = {};
   filtered.forEach(r => {
     const dateKey = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
@@ -1959,36 +1971,28 @@ function renderDailyDeptReports() {
     });
 
     const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
-    const totalPeople = totalRelatives + rows.length; // +1 prisoner per booking
+    const totalPeople = totalRelatives + rows.length;
 
     html += `
       <div style="border:1px solid var(--border); border-radius:8px; padding:12px; background:var(--bg2);">
         <div style="font-weight:700; font-size:14px; margin-bottom:6px; color:var(--blue);">${date}</div>
-        
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:8px; font-size:12px;">
-          <!-- ส่วนทัณฑ์ -->
           <div style="background:#fff5f5; border:1px solid #c62828; border-radius:6px; padding:8px;">
             <strong style="color:#c62828">🚨 ส่วนทัณฑ์</strong><br>
             <div style="margin-top:4px;">${prisoners.length} คน</div>
             <div style="font-size:11px; color:#666; margin-top:2px;">${prisoners.slice(0,3).join(', ')}${prisoners.length > 3 ? ' ...' : ''}</div>
           </div>
-
-          <!-- Table -->
           <div style="background:#fff8f0; border:1px solid #ff9800; border-radius:6px; padding:8px;">
             <strong style="color:#e65100">🪑 โต๊ะ</strong><br>
             <div style="margin-top:4px; font-weight:700;">${totalTables} โต๊ะ</div>
             <div style="font-size:11px;">รวม ${totalPeople} คน</div>
           </div>
-
-          <!-- Kitchen -->
           <div style="background:#f0fff0; border:1px solid #2e7d32; border-radius:6px; padding:8px;">
             <strong style="color:#1b5e20">🍽️ ครัว</strong><br>
             ผู้ใหญ่: <strong>${totalAdults}</strong><br>
             เด็ก 5-8: <strong>${totalKids5_8}</strong><br>
             ต่ำกว่า 5: <strong>${totalKidsUnder5}</strong>
           </div>
-
-          <!-- Bakery -->
           <div style="background:#fffdf5; border:1px solid #c8922a; border-radius:6px; padding:8px;">
             <strong style="color:#8d6e00">🍰 เบเกอรี่</strong><br>
             ผู้ใหญ่: <strong>${totalAdults}</strong><br>
@@ -2002,6 +2006,143 @@ function renderDailyDeptReports() {
 
   container.innerHTML = html;
   section.style.display = 'block';
+}
+
+function renderAddUser() {
+  switchView('addUser');
+  fetchRolesList();
+  loadAddUserTable();
+}
+
+function fetchRolesList() {
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'getRoles', username: currentUser.username, password: currentUser.password })
+  })
+  .then(resp => resp.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      populateRoleDropdown(data.roles);
+    } else {
+      console.error('Failed to fetch roles:', data.message);
+    }
+  })
+  .catch(err => {
+    console.error('Error fetching roles:', err);
+  });
+}
+
+function populateRoleDropdown(roles) {
+  const select = document.getElementById('addUserRole');
+  select.innerHTML = '<option value="">เลือกบทบาท</option>';
+  roles.forEach(role => {
+    const option = document.createElement('option');
+    option.value = role.roleName;
+    option.textContent = role.roleName;
+    select.appendChild(option);
+  });
+}
+
+function createAddUser() {
+  const username = document.getElementById('addUserUsername').value.trim();
+  const password = document.getElementById('addUserPassword').value;
+  const confirmPassword = document.getElementById('addUserConfirmPassword').value;
+  const role = document.getElementById('addUserRole').value;
+
+  if (!username || !password || !confirmPassword || !role) {
+    alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+    return;
+  }
+  if (password !== confirmPassword) {
+    alert('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
+    return;
+  }
+  if (password.length < 6) {
+    alert('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+    return;
+  }
+
+  // Call createUser action
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'createUser', username: username, password: password, role: role, pass: currentUser.password })
+  })
+  .then(resp => resp.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      alert('สร้างผู้ใช้สำเร็จ');
+      // Clear form
+      document.getElementById('addUserUsername').value = '';
+      document.getElementById('addUserPassword').value = '';
+      document.getElementById('addUserConfirmPassword').value = '';
+      document.getElementById('addUserRole').value = '';
+      // Reload the table
+      loadAddUserTable();
+    } else {
+      alert('เกิดข้อผิดพลาด: ' + data.message);
+    }
+  })
+  .catch(err => {
+    console.error('Error creating user:', err);
+    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+  });
+}
+
+function loadAddUserTable() {
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'getUsers', username: currentUser.username, password: currentUser.password })
+  })
+  .then(resp => resp.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      renderAddUserTable(data.users);
+    } else {
+      console.error('Failed to fetch users:', data.message);
+    }
+  })
+  .catch(err => {
+    console.error('Error fetching users:', err);
+  });
+}
+
+function renderAddUserTable(users) {
+  const tbody = document.getElementById('addUserTableBody');
+  if (!tbody) return;
+
+  if (users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">ยังไม่มีผู้ใช้ในระบบ</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = users.map(u => {
+    // Determine if user can be edited/deleted? For simplicity, we just show.
+    return `<tr>
+      <td>${u.username}</td>
+      <td>${u.role}</td>
+      <td>${u.displayName || '-'}</td>
+      <td>
+        <button class="btn-refresh" onclick="editUser('${u.username}')">แก้ไข</button>
+        <button class="btn-refresh" onclick="deleteUser('${u.username}')">ลบ</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// Placeholder functions for edit/delete (optional)
+function editUser(username) {
+  alert('ฟังก์ชันแก้ไขผู้ใช้ยังไม่ได้ทำการติดตั้ง');
+}
+function deleteUser(username) {
+  if (confirm(`คุณต้องการลบผู้ใช้ "${username}" จริงหรือไม่?`)) {
+    alert('ฟังก์ชันลบผู้ใช้ยังไม่ได้ทำการติดตั้ง');
+  }
 }
 
 function printDailyDeptReports() {

@@ -7,16 +7,26 @@ const LEGACY_STAFF_PASS = '10900';
 
 const ROLES = {
   SUPERADMIN: 'superadmin',
+  ADMIN: 'admin',
   FINANCE: 'finance',
   DISCIPLINE_OFFICER: 'discipline_officer',
-  DISCIPLINARY_DEPT: 'disciplinary_dept'
+  DISCIPLINARY_DEPT: 'disciplinary_dept',
+  USER: 'user'
 };
+
+const AVAILABLE_PERMISSIONS = [
+  'approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 
+  'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 
+  'manage_users', 'view_eventlog'
+];
 
 const PERMISSIONS = {
   Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
+  Admin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
   Vinai: ['approve', 'view_slip', 'view_detail'],
-  Tadtel: ['visitor_approval', 'view_slip', 'view_detail']
+  Tadtel: ['visitor_approval', 'view_slip', 'view_detail'],
+  User: ['print']
 };
 
 // ===== GET =====
@@ -103,10 +113,33 @@ function doGet(e) {
       });
     }
 
-    // Sort by name (Thai friendly)
+// Sort by name (Thai friendly)
     prisoners.sort((a, b) => a.prisonerName.localeCompare(b.prisonerName, 'th'));
 
     return jsonResp({ status: 'ok', prisoners: prisoners });
+  }
+
+  // ===== GET ROLES LIST =====
+  if (action === 'getRoles') {
+    if (!isAuthorized(username, pass)) {
+      return jsonResp({ status: 'error', message: 'Unauthorized' });
+    }
+    const roles = getRolesList();
+    return jsonResp({ status: 'ok', roles: roles });
+  }
+
+  // ===== GET USERS LIST =====
+  if (action === 'getUsers') {
+    if (!isAuthorized(username, pass)) {
+      return jsonResp({ status: 'error', message: 'Unauthorized' });
+    }
+    const users = getAllUsers().map(u => ({
+      username: u.username,
+      role: u.role,
+      displayName: u.displayName || u.username,
+      createdAt: u.createdAt
+    }));
+    return jsonResp({ status: 'ok', users: users });
   }
 
   // ===== NEW: Connection test / health check endpoint =====
@@ -198,10 +231,10 @@ function doPost(e) {
   if (action === 'login') {
     const user = getUserByUsername(username);
     if (!user) {
-      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัดผ่านไม่ถูกต้อง' });
     }
     if (String(user.password) !== String(pass)) {
-      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัดผ่านไม่ถูกต้อง' });
     }
     return jsonResp({
       status: 'ok',
@@ -209,7 +242,117 @@ function doPost(e) {
     });
   }
 
-  // ===== Client-side event log (optional) =====
+  // ===== CHANGE PASSWORD (FIRST TIME LOGIN) =====
+  if (action === 'changePassword') {
+    const newPassword = body.newPassword || '';
+    const confirmPassword = body.confirmPassword || '';
+    
+    if (!newPassword || newPassword.length < 6) {
+      return jsonResp({ status: 'error', message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร' });
+    }
+    if (newPassword !== confirmPassword) {
+      return jsonResp({ status: 'error', message: 'รหัสผ่านไม่ตรงกัน' });
+    }
+    
+    const success = updatePassword(username, newPassword);
+    if (success) {
+      logEvent(username, 'password_changed', '', { method: 'first_time_login' }, 'success');
+      return jsonResp({ status: 'ok', message: 'เปลี่ยนรหัดผ่านสำเร็จ กรุณาเข้าระบบใหม่' });
+    }
+    return jsonResp({ status: 'error', message: 'ไม่สามารถเปลี่ยนรหัดผ่านได้' });
+  }
+
+// ===== CREATE NEW USER (SUPERADMIN ONLY) =====
+  if (action === 'createUser') {
+    if (username.toLowerCase() !== 'superadmin' && !hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'Only superadmin can create users' });
+    }
+
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+
+    const newUsername = body.username?.trim();
+    const newPassword = body.password?.trim();
+    const newRole = body.role?.trim();
+
+    if (!newUsername || !newPassword || !newRole) {
+      return jsonResp({ status: 'error', message: 'กรุณากรอกข้อมูลให้ครบ (username, password, role)' });
+    }
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][headers.indexOf('username')]).toLowerCase() === newUsername.toLowerCase()) {
+        return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้นั้นมีอยู่แล้ว' });
+      }
+    }
+
+    sheet.appendRow([
+      newUsername,
+      newPassword,
+      newRole,
+      newUsername + '_display',
+      new Date().toISOString()
+    ]);
+
+    logEvent(username, 'create_user', newUsername, { role: newRole });
+    return jsonResp({ status: 'ok', message: 'ผู้ใช้ถูกสร้างสำเร็จ', user: { username: newUsername, role: newRole } });
+  }
+
+// ===== CREATE CUSTOM ROLE (SUPERADMIN ONLY) =====
+  if (action === 'createRole') {
+    if (!hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะผู้ดูแลสูงสุดเท่านั้นที่สามารถสร้างบทบาทใหม่ได้' });
+    }
+
+    const roleName = body.roleName?.trim();
+    const permissionsInput = body.permissions;
+
+    if (!roleName) {
+      return jsonResp({ status: 'error', message: 'กรุณากรอกชื่อบทบาท' });
+    }
+
+    if (!Array.isArray(permissionsInput) || permissionsInput.length === 0) {
+      return jsonResp({ status: 'error', message: 'กรุณาเลือกอย่างน้อยหนึ่งสิทธิ์สำหรับบทบาท' });
+    }
+
+    const invalidPermissions = permissionsInput.filter(p => !AVAILABLE_PERMISSIONS.includes(p));
+    if (invalidPermissions.length > 0) {
+      return jsonResp({ status: 'error', message: 'สิทธิ์ต่อไปนี้ไม่ถูกต้อง: ' + invalidPermissions.join(', ') });
+    }
+
+    const rolesSheet = getRolesSheet();
+    const rolesData = rolesSheet.getDataRange().getValues();
+    const roleHeaders = rolesData[0];
+    const roleNameIdx = roleHeaders.indexOf('roleName');
+
+    if (roleNameIdx === -1) {
+      ensureRolesHeaders(rolesSheet);
+      rolesSheet.getRange(1, 1, 1, AVAILABLE_PERMISSIONS.length + 2).setValue([
+        'roleName', ...AVAILABLE_PERMISSIONS
+      ]);
+    }
+
+    for (let i = 1; i < rolesData.length; i++) {
+      if (String(rolesData[i][roleNameIdx]).toLowerCase() === roleName.toLowerCase()) {
+        return jsonResp({ status: 'error', message: 'ชื่อบทบาทนี้มีอยู่แล้วในระบบ' });
+      }
+    }
+
+    const rowValues = [roleName];
+    AVAILABLE_PERMISSIONS.forEach(perm => {
+      rowValues.push(permissionsInput.includes(perm) ? true : false);
+    });
+
+    rolesSheet.appendRow(rowValues);
+
+logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
+    return jsonResp({
+      status: 'ok',
+      message: 'สร้างบทบาทสำเร็จ',
+      role: { roleName, permissions: permissionsInput }
+    });
+  }
+
   if (action === 'logClientEvent') {
     logEvent(username || 'client', body.clientAction || 'client_action', body.targetRef || '', body.details || {}, 'success');
     return jsonResp({ status: 'ok' });
@@ -417,12 +560,6 @@ function doPost(e) {
   }
 
   return jsonResp({ status: 'error', message: 'Unknown action' });
-}
-
-// ===== AUTH HELPERS =====
-function isAuthorized(username, pass) {
-  // Legacy password-only auth
-  return String(pass) === String(LEGACY_STAFF_PASS);
 }
 
 // ===== EVENT LOG =====
@@ -642,6 +779,49 @@ function getAllUsers() {
   });
 }
 
+// ===== ROLES MANAGEMENT =====
+function getRolesSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Roles');
+  if (!sheet) {
+    sheet = ss.insertSheet('Roles');
+    ensureRolesHeaders(sheet);
+  }
+  return sheet;
+}
+
+function ensureRolesHeaders(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  const headers = ['roleName', ...AVAILABLE_PERMISSIONS];
+  sheet.appendRow(headers);
+  const range = sheet.getRange(1, 1, 1, headers.length);
+  range.setFontWeight('bold');
+  range.setBackground('#185FA5');
+  range.setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
+}
+
+
+function getRolesList() {
+  const rolesSheet = getRolesSheet();
+  const data = rolesSheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  const headers = data[0];
+  const rolesList = [];
+  for (let i = 1; i < data.length; i++) {
+    const roleName = data[i][0];
+    const permissions = [];
+    for (let j = 1; j < headers.length; j++) {
+      if (data[i][j] === true) {
+        permissions.push(headers[j]);
+      }
+    }
+    rolesList.push({ roleName, permissions });
+  }
+  return rolesList;
+}
+
+
 // ===== RBAC HELPERS =====
 function getRole(username) {
   const user = getUserByUsername(username);
@@ -667,6 +847,30 @@ function isAuthorized(username, pass) {
   if (!user) return false;
   
   return String(user.password) === String(pass);
+}
+
+function isFirstTimeLogin(username) {
+  const user = getUserByUsername(username);
+  if (!user) return false;
+  
+  // Check if user has default password (indicating first time login)
+  const defaultPasswords = ['SuperAdmin@10900', 'Finance@10900', 'Vinai@10900', 'Tadtel@10900'];
+  return defaultPasswords.includes(String(user.password));
+}
+
+function updatePassword(username, newPassword) {
+  const sheet = getUsersSheet();
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const usernameIdx = headers.indexOf('username');
+  
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][usernameIdx]).toLowerCase() === String(username).toLowerCase()) {
+      sheet.getRange(i + 1, headers.indexOf('password') + 1).setValue(newPassword);
+      return true;
+    }
+  }
+  return false;
 }
 
 function requirePermission(username, perm) {
