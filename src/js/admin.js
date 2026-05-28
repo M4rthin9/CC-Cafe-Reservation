@@ -1007,7 +1007,11 @@ window.addEventListener('resize', () => {
 async function updateStatus(idx, newStatus) {
   const row = allRows[idx];
   if (!confirm(`ยืนยัน: ${newStatus} การจองของ "${row.visitorName}" ?`)) return;
+  
+  // Optimistic update
+  const oldStatus = row.status;
   row.status = newStatus;
+  
   try {
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -1015,11 +1019,21 @@ async function updateStatus(idx, newStatus) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: newStatus, pass: currentUser.password })
     });
-  } catch(e) { /* demo mode */ }
-  logEvent('update_status', `เปลี่ยนสถานะ ${row.ref} เป็น ${newStatus}`);
-  updateStats();
-  renderTable();
-  renderDashboardHome();
+    
+    // Success
+    logEvent('update_status', `เปลี่ยนสถานะ ${row.ref} เป็น ${newStatus}`);
+    updateStats();
+    renderTable();
+    renderDashboardHome();
+  } catch(e) {
+    // Error - revert optimistic update
+    console.error('Update status error:', e);
+    row.status = oldStatus;
+    alert(`ไม่สามารถเปลี่ยนสถานะได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+    updateStats();
+    renderTable();
+    renderDashboardHome();
+  }
 }
 
 // ===== CONFIRM PAYMENT (ยืนยันการชำระเงิน) =====
@@ -1030,19 +1044,30 @@ async function confirmPayment(idx) {
     
     // Removed permission check - everyone can confirm payment
   if (!confirm(`ยืนยันการชำระเงินสำหรับ "${row.visitorName}" (${row.ref}) ?\nสถานะจะเปลี่ยนเป็น "${targetStatus}"`)) return;
+  
+  // Optimistic update
+  const oldStatus = row.status;
   row.status = targetStatus;
+  
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: targetStatus, pass: currentUser.password })
-    });
-  } catch(e) { /* demo mode */ }
-  logEvent(s === 'รอชำระเงิน' ? 'confirm_payment_pending' : 'confirm_payment', `${s === 'รอชำระเงิน' ? 'ยืนยันชำระเงิน' : 'เสร็จสิ้น'} ${row.ref}`);
-  updateStats();
-  renderTable();
-  renderDashboardHome();
+     await fetch(APPS_SCRIPT_URL, {
+       method: 'POST',
+       redirect: 'follow',
+       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+       body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: targetStatus, pass: currentUser.password })
+     });
+   } catch(e) {
+     // Error - revert optimistic update
+     console.error('Confirm payment error:', e);
+     row.status = oldStatus;
+     alert(`ไม่สามารถยืนยันการชำระเงินได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+   }
+   
+   // Only proceed with UI updates if successful
+   logEvent(s === 'รอชำระเงิน' ? 'confirm_payment_pending' : 'confirm_payment', `${s === 'รอชำระเงิน' ? 'ยืนยันชำระเงิน' : 'เสร็จสิ้น'} ${row.ref}`);
+   updateStats();
+   renderTable();
+   renderDashboardHome();
 }
 
 // ===== REJECT PAYMENT (ปฏิเสธการชำระเงิน) =====
@@ -1051,7 +1076,11 @@ async function rejectPayment(idx) {
     const row = allRows[idx];
     const reason = prompt(`ปฏิเสธการชำระเงินของ "${row.visitorName}" (${row.ref})\n\nเหตุผล (ถ้ามี):`, '');
     if (reason === null) return;
+    
+    // Optimistic update
+    const oldStatus = row.status;
     row.status = 'รอชำระเงิน';
+    
     try {
         await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
@@ -1059,7 +1088,14 @@ async function rejectPayment(idx) {
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: currentUser.password })
         });
-    } catch(e) { /* demo mode */ }
+    } catch(e) {
+        // Error - revert optimistic update
+        console.error('Reject payment error:', e);
+        row.status = oldStatus;
+        alert(`ไม่สามารถปฏิเสธการชำระเงินได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+        return;
+    }
+    
     logEvent('reject_payment', `ปฏิเสธการชำระเงิน ${row.ref} เหตุผล: ${reason}`);
     alert('ปฏิเสธการชำระเงินแล้ว (สถานะกลับไปเป็น "รอชำระเงิน")');
     updateStats();
@@ -1072,7 +1108,11 @@ async function cancelBooking(idx) {
     // Removed permission check - everyone can cancel
     const row = allRows[idx];
     if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
+    
+    // Optimistic update
+    const oldStatus = row.status;
     row.status = 'ยกเลิก';
+    
     try {
         await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
@@ -1080,7 +1120,14 @@ async function cancelBooking(idx) {
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'cancelBooking', ref: row.ref, pass: currentUser.password })
         });
-    } catch(e) { /* demo mode */ }
+    } catch(e) {
+        // Error - revert optimistic update
+        console.error('Cancel booking error:', e);
+        row.status = oldStatus;
+        alert(`ไม่สามารถยกเลิกการจองได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+        return;
+    }
+    
     logEvent('cancel_booking', `ยกเลิกการจอง ${row.ref}`);
     updateStats();
     renderTable();
@@ -1101,18 +1148,38 @@ async function updateVisitorApproval(idx, pidx, val) {
     arr[pidx-1] = val;
     row.extraVisitorApproved = arr.join(';;');
   }
+  
+  // Optimistic update for visitor count and total
+  const oldVisitorApproved = row.visitorApproved;
+  const oldExtraVisitorApproved = row.extraVisitorApproved;
+  const oldVisitorCount = row.visitorCount;
+  const oldTotal = row.total;
+  
   let approvedRel = ((row.visitorApproved || '') === 'yes' ? 1 : 0);
   if (row.extraVisitorApproved) {
     approvedRel += String(row.extraVisitorApproved).split(';;').filter(v => (v||'').trim().toLowerCase() === 'yes').length;
   }
   row.visitorCount = approvedRel;
   row.total = (approvedRel + 1) * 1000;
+  
   try {
     await fetch(APPS_SCRIPT_URL, { method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({ action:'updateVisitorApproval', ref:row.ref, visitorApproved: row.visitorApproved||'', extraVisitorApproved: row.extraVisitorApproved||'', visitorCount: row.visitorCount, total: row.total, pass: currentUser.password }) });
-  } catch(e){}
-  logEvent('visitor_approval', `อัปเดตการอนุมัติ ${row.ref} ให้ ${val}`);
-  viewDetail(idx);
-  renderTable();
+    
+    // Success
+    logEvent('visitor_approval', `อัปเดตการอนุมัติ ${row.ref} ให้ ${val}`);
+    viewDetail(idx);
+    renderTable();
+  } catch(e) {
+    // Error - revert optimistic update
+    console.error('Visitor approval error:', e);
+    row.visitorApproved = oldVisitorApproved;
+    row.extraVisitorApproved = oldExtraVisitorApproved;
+    row.visitorCount = oldVisitorCount;
+    row.total = oldTotal;
+    alert(`ไม่สามารถอัปเดตการอนุมัติผู้เข้าร่วมได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+    viewDetail(idx);
+    renderTable();
+  }
 }
 
 /* ===== Visitor per-person approval helpers ===== */
