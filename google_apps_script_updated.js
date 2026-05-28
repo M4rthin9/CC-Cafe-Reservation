@@ -580,27 +580,28 @@ function getUsersSheet() {
   let sheet = ss.getSheetByName(USERS_SHEET);
   if (!sheet) {
     sheet = ss.insertSheet(USERS_SHEET);
-    ensureUserHeaders(sheet);
   }
+  ensureUserHeadersAndUsers(sheet);
   return sheet;
 }
 
-function ensureUserHeaders(sheet) {
-  if (sheet.getLastRow() > 0) {
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      seedDefaultUsers(sheet);
-    }
-    return;
+function ensureUserHeadersAndUsers(sheet) {
+  // Always ensure headers exist (for new or empty sheets)
+  if (sheet.getLastRow() === 0) {
+    const headers = ['username', 'password', 'role', 'displayName', 'createdAt'];
+    sheet.appendRow(headers);
+    const range = sheet.getRange(1, 1, 1, headers.length);
+    range.setFontWeight('bold');
+    range.setBackground('#185FA5');
+    range.setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
   }
-  const headers = ['username', 'password', 'role', 'displayName', 'createdAt'];
-  sheet.appendRow(headers);
-  const range = sheet.getRange(1, 1, 1, headers.length);
-  range.setFontWeight('bold');
-  range.setBackground('#185FA5');
-  range.setFontColor('#ffffff');
-  sheet.setFrozenRows(1);
-  seedDefaultUsers(sheet);
+  
+  // Seed default users if only headers exist
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    seedDefaultUsers(sheet);
+  }
 }
 
 function seedDefaultUsers(sheet) {

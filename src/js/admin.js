@@ -6,7 +6,7 @@ const PERMISSIONS = {
   Tadtel: ['visitor_approval', 'view_slip', 'view_detail']
 };
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxG-5FV4YqoxTKYDOT5oFmsMmkBldereIdg5TztHuJWLoaCEzq0NWXsrv17cfLUwfpN4Ug/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ7QxwrJHFBvDdnjtJA4NVw5ESW65sKCwuEUXNHoiWI19Xl-HN1jLBikEpeierrqn7zw/exec';
 
 // ===== STATE =====
 let allRows = [];
