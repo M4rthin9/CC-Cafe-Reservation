@@ -1,17 +1,23 @@
 const SHEET_NAME = 'การจอง';
 const EVENTLOG_SHEET = 'EventLog';
-const PRISONER_SHEET = 'ผู้ต้องขัง';  // Database ผู้ต้องขัง (Prisoner Master Data)
+const PRISONER_SHEET = 'ผู้ต้องขัง';
+const USERS_SHEET = 'Users';
 
-// ===== CONNECTION TEST / HEALTH CHECK =====
-// List all sheets in the spreadsheet for debugging
-function listAllSheets() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = ss.getSheets();
-  return sheets.map(s => ({ name: s.getName(), rows: s.getLastRow(), cols: s.getLastColumn() }));
-}
-
-// Legacy fallback password (for transition / public pages). Remove in production after full migration.
 const LEGACY_STAFF_PASS = '10900';
+
+const ROLES = {
+  SUPERADMIN: 'superadmin',
+  FINANCE: 'finance',
+  DISCIPLINE_OFFICER: 'discipline_officer',
+  DISCIPLINARY_DEPT: 'disciplinary_dept'
+};
+
+const PERMISSIONS = {
+  Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
+  Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
+  Vinai: ['approve', 'view_slip', 'view_detail'],
+  Tadtel: ['visitor_approval', 'view_slip', 'view_detail']
+};
 
 // ===== GET =====
 function doGet(e) {
@@ -186,7 +192,22 @@ function doPost(e) {
 
   const action = body.action || 'saveReservation';
   const username = body.username || body.user || 'public';
-  const pass = body.pass || '';
+  const pass = body.pass || body.password || '';
+
+  // ===== LOGIN ACTION =====
+  if (action === 'login') {
+    const user = getUserByUsername(username);
+    if (!user) {
+      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+    }
+    if (String(user.password) !== String(pass)) {
+      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+    }
+    return jsonResp({
+      status: 'ok',
+      user: { username: user.username, role: user.role, displayName: user.displayName || user.username }
+    });
+  }
 
   // ===== Client-side event log (optional) =====
   if (action === 'logClientEvent') {
@@ -233,6 +254,38 @@ function doPost(e) {
   const publicActions = ['uploadSlip', 'updateSlipAndStatus'];
   if (publicActions.includes(action) && (username === 'public' || !username)) {
     // allow public slip upload / payment confirmation
+  } else if (action === 'getAll' && !isAuthorized(username, pass)) {
+    return jsonResp({ status: 'error', message: 'Unauthorized' });
+  }
+
+  // ── get all reservations (POST) ──
+  if (action === 'getAll') {
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
+
+    const headers = data[0];
+    const rows = data.slice(1)
+      .filter(row => row[headers.indexOf('ref')] && String(row[headers.indexOf('ref')]).trim() !== '')
+      .map(row => {
+        const obj = {};
+        headers.forEach((h, i) => {
+          let val = row[i];
+          if (val instanceof Date) {
+            if (h === 'visitDateISO') {
+              const y = val.getFullYear();
+              const m = String(val.getMonth() + 1).padStart(2, '0');
+              const d = String(val.getDate()).padStart(2, '0');
+              val = y + '-' + m + '-' + d;
+            } else {
+              val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+            }
+          }
+          obj[h] = val;
+        });
+        return obj;
+      });
+    return jsonResp({ status: 'ok', rows: rows.reverse() });
   } else if (!isAuthorized(username, pass)) {
     logEvent(username || 'unknown', action, body.ref || '', { reason: 'unauthorized' }, 'denied');
     return jsonResp({ status: 'error', message: 'Unauthorized' });
@@ -519,6 +572,106 @@ function ensurePrisonerHeaders(sheet) {
   range.setBackground('#185FA5');
   range.setFontColor('#ffffff');
   sheet.setFrozenRows(1);
+}
+
+// ===== USER MANAGEMENT =====
+function getUsersSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(USERS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(USERS_SHEET);
+    ensureUserHeaders(sheet);
+  }
+  return sheet;
+}
+
+function ensureUserHeaders(sheet) {
+  if (sheet.getLastRow() > 0) {
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      seedDefaultUsers(sheet);
+    }
+    return;
+  }
+  const headers = ['username', 'password', 'role', 'displayName', 'createdAt'];
+  sheet.appendRow(headers);
+  const range = sheet.getRange(1, 1, 1, headers.length);
+  range.setFontWeight('bold');
+  range.setBackground('#185FA5');
+  range.setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
+  seedDefaultUsers(sheet);
+}
+
+function seedDefaultUsers(sheet) {
+  const now = new Date().toISOString();
+  const defaultUsers = [
+    ['superadmin', 'SuperAdmin@10900', 'Superadmin', 'ผู้ดูแลระบบ', now],
+    ['finance', 'Finance@10900', 'Finance', 'การเงิน', now],
+    ['vinai', 'Vinai@10900', 'Vinai', 'ตรวจสอบวินัย', now],
+    ['tadtel', 'Tadtel@10900', 'Tadtel', 'ฝ่ายทัณฑ์', now]
+  ];
+  defaultUsers.forEach(user => sheet.appendRow(user));
+}
+
+function getUserByUsername(username) {
+  const sheet = getUsersSheet();
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return null;
+  const headers = data[0];
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][headers.indexOf('username')]).toLowerCase() === String(username).toLowerCase()) {
+      const user = {};
+      headers.forEach((h, idx) => user[h] = data[i][idx]);
+      return user;
+    }
+  }
+  return null;
+}
+
+function getAllUsers() {
+  const sheet = getUsersSheet();
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  const headers = data[0];
+  return data.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = r[i]);
+    return obj;
+  });
+}
+
+// ===== RBAC HELPERS =====
+function getRole(username) {
+  const user = getUserByUsername(username);
+  return user ? user.role : null;
+}
+
+function hasPermission(username, perm) {
+  const user = getUserByUsername(username);
+  if (!user) return false;
+  
+  const permissions = PERMISSIONS[user.role];
+  if (!permissions) return false;
+  
+  return permissions.includes(perm);
+}
+
+function isAuthorized(username, pass) {
+  // Legacy password-only auth for backward compatibility
+  if (String(pass) === String(LEGACY_STAFF_PASS)) return true;
+  
+  // RBAC auth
+  const user = getUserByUsername(username);
+  if (!user) return false;
+  
+  return String(user.password) === String(pass);
+}
+
+function requirePermission(username, perm) {
+  if (!hasPermission(username, perm)) {
+    throw new Error('Permission denied: ' + perm);
+  }
 }
 
 function jsonResp(obj) {

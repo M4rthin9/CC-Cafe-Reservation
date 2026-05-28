@@ -640,6 +640,28 @@ tr:hover td { background: #f8f9fa; }
 #view-home .stats { margin-bottom: 4px; }
 .dash .stats { margin-bottom: 1rem; }
 
+/* Status Checkmarks */
+.status-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-check.done {
+  background: var(--green);
+  color: #fff;
+}
+
+.status-check.pending {
+  background: #ccc;
+  color: #666;
+}
+
 /* sidebar responsive (fixed) */
 @media(max-width: 720px) {
   .sidebar { width: 58px; }

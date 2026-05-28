@@ -1,47 +1,114 @@
 // ===== CONFIG =====
-const PASSWORD = '10900';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxG-5FV4YqoxTKYDOT5oFmsMmkB6ereIdg5TztHuJWLoaCEzq0NWXsrv17cfLUwfpN4Ug/exec';
+const PERMISSIONS = {
+  Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
+  Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
+  Vinai: ['approve', 'view_slip', 'view_detail'],
+  Tadtel: ['visitor_approval', 'view_slip', 'view_detail']
+};
+
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxG-5FV4YqoxTKYDOT5oFmsMmkBldereIdg5TztHuJWLoaCEzq0NWXsrv17cfLUwfpN4Ug/exec';
 
 // ===== STATE =====
 let allRows = [];
 let currentPage = 1;
 let pageSize = 10;
+let currentUser = null;
 
 // ===== LOGIN =====
-function doLogin() {
+async function doLogin() {
+  const username = document.getElementById('userInput').value;
   const pass = document.getElementById('passInput').value;
-  if (pass === PASSWORD) {
+  
+  if (!username || !pass) {
+    document.getElementById('loginErr').textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าย';
+    document.getElementById('loginErr').style.display = 'block';
+    return;
+  }
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'login', username: username, password: pass })
+    });
+    
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    
+    if (data.status !== 'ok' || !data.user) {
+      throw new Error(data.message || 'การเข้าสู่ระบบล้มเหลว');
+    }
+    
+    currentUser = {
+      username: data.user.username,
+      role: data.user.role,
+      password: pass
+    };
+    
+    // Clear error display
+    document.getElementById('loginErr').style.display = 'none';
+    
+    // Show dashboard
     document.getElementById('loginWrap').style.display = 'none';
     document.getElementById('dash').style.display = 'block';
     document.getElementById('topDate').textContent = new Date().toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'});
+    
+    // Show user info in sidebar
+    document.getElementById('userRole').textContent = currentUser.role;
+    document.getElementById('userName').textContent = currentUser.username;
+    document.getElementById('userInfo').style.display = 'block';
+    
     switchView('home');
     renderDashboardHome();
     loadData();
-  } else {
+    
+  } catch(e) {
+    console.error('Login error:', e);
+    document.getElementById('loginErr').textContent = e.message || 'การเข้าสู่ระบบล้มเหลว กรุณาตรวจสอบข้อมูล';
     document.getElementById('loginErr').style.display = 'block';
     document.getElementById('passInput').value = '';
     setTimeout(() => document.getElementById('loginErr').style.display = 'none', 3000);
   }
 }
+
+function hasPermission(action) {
+  return currentUser && PERMISSIONS[currentUser.role] && PERMISSIONS[currentUser.role].includes(action);
+}
+
+function logEvent(action, details) {
+  const event = {
+    timestamp: new Date().toLocaleString('th-TH'),
+    user: currentUser ? currentUser.username : 'unknown',
+    role: currentUser ? currentUser.role : 'unknown',
+    action: action,
+    details: details
+  };
+  allEvents.unshift(event);
+  localStorage.setItem('eventlog', JSON.stringify(allEvents));
+}
+
+let allEvents = JSON.parse(localStorage.getItem('eventlog') || '[]');
 function doLogout() {
+  currentUser = null;
   document.getElementById('loginWrap').style.display = 'flex';
   document.getElementById('dash').style.display = 'none';
   document.getElementById('passInput').value = '';
+  document.getElementById('userInput').value = '';
+  document.getElementById('userInfo').style.display = 'none';
   allRows = [];
-  // reset views to home
-  const h = document.getElementById('view-home');
-  const r = document.getElementById('view-reservations');
-  if (h) h.style.display = '';
-  if (r) r.style.display = 'none';
-  document.querySelectorAll('.sb-link').forEach(a => a.classList.toggle('active', a.getAttribute('data-view') === 'home'));
 }
 
 // ===== LOAD DATA =====
 async function loadData() {
-  document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="10" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</span></tr>';
   try {
-    // Use legacy password-only authentication (no username required)
-    const resp = await fetch(APPS_SCRIPT_URL + '?action=getAll&pass=' + encodeURIComponent(PASSWORD), { redirect: 'follow' });
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getAll', username: currentUser.username, password: currentUser.password })
+    });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const data = JSON.parse(text);
@@ -51,18 +118,18 @@ async function loadData() {
   } catch(e) {
     console.error('Load data error:', e);
     // Demo mode: use sample data if no Apps Script
-    if (APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
       allRows = getDemoData();
       document.getElementById('lastUpdated').textContent = 'โหมด Demo (ยังไม่ได้เชื่อม Google Sheet)';
     } else {
-      document.getElementById('tableBody').innerHTML = `<tr><td colspan="9" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
+      document.getElementById('tableBody').innerHTML = `<tr><td colspan="10" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
       return;
     }
   }
   updateStats();
   buildDateFilter();
   renderTable();
-  renderDashboardHome();
+  logEvent('load_data', 'โหลดข้อมูลการจอง');
 }
 
 // ===== DEMO DATA =====
@@ -103,7 +170,7 @@ function renderTable() {
   const fs = document.getElementById('filterStatus').value;
   const fd = document.getElementById('filterDate').value;
   let rows = allRows.filter(r => {
-    if (!r.ref || String(r.ref).trim() === '') return false; // ✅ กรอง row ว่าง
+    if (!r.ref || String(r.ref).trim() === '') return false;
     if (fs && r.status !== fs) return false;
     if (fd && r.visitDate !== fd) return false;
     if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
@@ -120,23 +187,35 @@ function renderTable() {
   const pageRows = rows.slice(startIdx, startIdx + pageSize);
 
   if (!totalFiltered) {
-    document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="empty-state">ไม่พบข้อมูล</td></tr>';
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="10" class="empty-state">ไม่พบข้อมูล</td></tr>';
     renderPagination(0, 0);
     return;
   }
   document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
-  const s = normalizeStatus(r.status);
-  let badgeClass = 'badge-wait';
-  if (s === 'รอชำระเงิน') badgeClass = 'badge-pay';
-  else if (s === 'ชำระแล้ว') badgeClass = 'badge-paid';
-  else if (s === 'เสร็จสิ้น') badgeClass = 'badge-done';
-  else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-reject';
-  else if (s === 'ยกเลิก') badgeClass = 'badge-cancel';
+    const s = normalizeStatus(r.status);
+    let badgeClass = 'badge-wait';
+    if (s === 'รอชำระเงิน') badgeClass = 'badge-pay';
+    else if (s === 'ชำระแล้ว') badgeClass = 'badge-paid';
+    else if (s === 'เสร็จสิ้น') badgeClass = 'badge-done';
+    else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-reject';
+    else if (s === 'ยกเลิก') badgeClass = 'badge-cancel';
 
-    const isWait      = s === 'รอตรวจสอบ';
-    const isPaid      = s === 'ชำระแล้ว';
+    const isWait = s === 'รอตรวจสอบ';
+    const isPaid = s === 'ชำระแล้ว';
     const isCancelled = s === 'ยกเลิก';
-    const rowIdx      = allRows.indexOf(r);
+    const rowIdx = allRows.indexOf(r);
+    
+    // Status checkmarks - 3 steps of verification
+    const vinaiApproved = r.visitorApproved === 'yes' || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+    const tadtelApproved = r.extraVisitorApproved && String(r.extraVisitorApproved).split(';;').some(a => a === 'yes') || r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+    const financeDone = r.status === 'เสร็จสิ้น';
+
+    const canApprove = hasPermission('approve');
+    const canVisitorApproval = hasPermission('visitor_approval');
+    const canConfirmPayment = hasPermission('confirm_payment');
+    const canRejectPayment = hasPermission('reject_payment');
+    const canCancel = hasPermission('cancel');
+
     return `<tr>
       <td><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
       <td style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
@@ -156,18 +235,21 @@ function renderTable() {
       </td>
       <td><span class="badge ${badgeClass}">${r.status}</span></td>
       <td>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center">
+          <span class="status-check ${vinaiApproved ? 'done' : 'pending'}" title="อนุมัติการตรวจสอบวินัย">✓</span>
+          <span class="status-check ${tadtelApproved ? 'done' : 'pending'}" title="ฝ่ายทัณฑ์ เข้าร่วม/ปฏิเสธ">✓</span>
+          <span class="status-check ${financeDone ? 'done' : 'pending'}" title="ยืนยันการชำระเงินแล้ว">✓</span>
+        </div>
+      </td>
+      <td>
         <div class="action-btns">
-          ${isWait ? `
-            <button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติ</button>
-            <button class="btn-reject"  onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>
-          ` : ''}
-          ${isPaid ? `
-            <button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">💳 ยืนยันชำระเงิน</button>
-            <button class="btn-reject-pay" onclick="rejectPayment(${rowIdx})">✗ ปฏิเสธ</button>
-          ` : ''}
-          ${!isCancelled ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-          <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
-          <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+          ${canApprove && isWait ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติ</button>` : ''}
+          ${canApprove && isWait ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+          ${canConfirmPayment && isPaid ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">💳 ยืนยันชำระเงิน</button>` : ''}
+          ${canRejectPayment && isPaid ? `<button class="btn-reject-pay" onclick="rejectPayment(${rowIdx})">✗ ปฏิเสธ</button>` : ''}
+          ${canCancel && !isCancelled ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+          ${hasPermission('view_slip') ? `<button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>` : ''}
+          ${hasPermission('view_detail') ? `<button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -256,11 +338,34 @@ function switchView(v) {
   } else if (v === 'reports') {
     populateReportsDateFilter();
     renderReportsView();
+  } else if (v === 'eventlog') {
+    renderEventlog();
   }
 
   if (v === 'home') {
     renderDashboardHome();
   }
+}
+
+function renderEventlog() {
+  const container = document.getElementById('eventlogBody');
+  if (!container) return;
+  
+  document.getElementById('eventlogCount').textContent = allEvents.length + ' รายการ';
+  
+  if (allEvents.length === 0) {
+    container.innerHTML = '<tr><td colspan="4" class="empty-state">ยังไม่มีบันทึกการทำงาน</td></tr>';
+    return;
+  }
+  
+  container.innerHTML = allEvents.map(e => `
+    <tr>
+      <td style="white-space:nowrap;font-size:12px;">${e.timestamp}</td>
+      <td style="font-size:12px;">${e.user} <span style="color:var(--text2);">(${e.role})</span></td>
+      <td style="font-size:12px;">${e.action}</td>
+      <td style="font-size:12px;">${e.details}</td>
+    </tr>
+  `).join('');
 }
 
 function computeFinanceStats(rows) {
@@ -794,6 +899,10 @@ window.addEventListener('resize', () => {
 
 // ===== UPDATE STATUS =====
 async function updateStatus(idx, newStatus) {
+  if (!hasPermission('approve')) {
+    alert('คุณไม่มีสิทธิ์ในการดำเนินการนี้');
+    return;
+  }
   const row = allRows[idx];
   if (!confirm(`ยืนยัน: ${newStatus} การจองของ "${row.visitorName}" ?`)) return;
   row.status = newStatus;
@@ -802,9 +911,10 @@ async function updateStatus(idx, newStatus) {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: newStatus, pass: PASSWORD })
+      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: newStatus, pass: currentUser.password })
     });
   } catch(e) { /* demo mode */ }
+  logEvent('update_status', `เปลี่ยนสถานะ ${row.ref} เป็น ${newStatus}`);
   updateStats();
   renderTable();
   renderDashboardHome();
@@ -812,6 +922,10 @@ async function updateStatus(idx, newStatus) {
 
 // ===== CONFIRM PAYMENT (ยืนยันการชำระเงิน) =====
 async function confirmPayment(idx) {
+  if (!hasPermission('confirm_payment')) {
+    alert('คุณไม่มีสิทธิ์ในการยืนยันการชำระเงิน');
+    return;
+  }
   const row = allRows[idx];
   if (!confirm(`ยืนยันการชำระเงินสำหรับ "${row.visitorName}" (${row.ref}) ?\nสถานะจะเปลี่ยนเป็น "เสร็จสิ้น"`)) return;
   row.status = 'เสร็จสิ้น';
@@ -820,9 +934,10 @@ async function confirmPayment(idx) {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'เสร็จสิ้น', pass: PASSWORD })
+      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'เสร็จสิ้น', pass: currentUser.password })
     });
   } catch(e) { /* demo mode */ }
+  logEvent('confirm_payment', `ยืนยันการชำระเงิน ${row.ref}`);
   updateStats();
   renderTable();
   renderDashboardHome();
@@ -830,18 +945,23 @@ async function confirmPayment(idx) {
 
 // ===== REJECT PAYMENT (ปฏิเสธการชำระเงิน) =====
 async function rejectPayment(idx) {
+  if (!hasPermission('reject_payment')) {
+    alert('คุณไม่มีสิทธิ์ในการปฏิเสธการชำระเงิน');
+    return;
+  }
   const row = allRows[idx];
   const reason = prompt(`ปฏิเสธการชำระเงินของ "${row.visitorName}" (${row.ref})\n\nเหตุผล (ถ้ามี):`, '');
-  if (reason === null) return; // User cancelled
-  row.status = 'รอชำระเงิน'; // Back to waiting for payment
+  if (reason === null) return;
+  row.status = 'รอชำระเงิน';
   try {
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: PASSWORD })
+      body: JSON.stringify({ action: 'updateStatus', ref: row.ref, status: 'รอชำระเงิน', pass: currentUser.password })
     });
   } catch(e) { /* demo mode */ }
+  logEvent('reject_payment', `ปฏิเสธการชำระเงิน ${row.ref} เหตุผล: ${reason}`);
   alert('ปฏิเสธการชำระเงินแล้ว (สถานะกลับไปเป็น "รอชำระเงิน")');
   updateStats();
   renderTable();
@@ -850,6 +970,10 @@ async function rejectPayment(idx) {
 
 // ===== CANCEL BOOKING =====
 async function cancelBooking(idx) {
+  if (!hasPermission('cancel')) {
+    alert('คุณไม่มีสิทธิ์ในการยกเลิก');
+    return;
+  }
   const row = allRows[idx];
   if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
   row.status = 'ยกเลิก';
@@ -858,9 +982,10 @@ async function cancelBooking(idx) {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'cancelBooking', ref: row.ref, pass: PASSWORD })
+      body: JSON.stringify({ action: 'cancelBooking', ref: row.ref, pass: currentUser.password })
     });
   } catch(e) { /* demo mode */ }
+  logEvent('cancel_booking', `ยกเลิกการจอง ${row.ref}`);
   updateStats();
   renderTable();
   renderDashboardHome();
@@ -868,6 +993,10 @@ async function cancelBooking(idx) {
 
 /* ===== Per-visitor approval (update + recalc price + overwrite row) ===== */
 async function updateVisitorApproval(idx, pidx, val) {
+  if (!hasPermission('visitor_approval')) {
+    alert('คุณไม่มีสิทธิ์ในการอนุมัติผู้เยี่ยม');
+    return;
+  }
   const row = allRows[idx];
   if (!row) return;
   if (pidx === 0) {
@@ -879,16 +1008,16 @@ async function updateVisitorApproval(idx, pidx, val) {
     arr[pidx-1] = val;
     row.extraVisitorApproved = arr.join(';;');
   }
-  // Consistent recalc: approved relatives + always 1 prisoner
   let approvedRel = ((row.visitorApproved || '') === 'yes' ? 1 : 0);
   if (row.extraVisitorApproved) {
     approvedRel += String(row.extraVisitorApproved).split(';;').filter(v => (v||'').trim().toLowerCase() === 'yes').length;
   }
   row.visitorCount = approvedRel;
-  row.total = (approvedRel + 1) * 1000;  // relatives + prisoner
+  row.total = (approvedRel + 1) * 1000;
   try {
-    await fetch(APPS_SCRIPT_URL, { method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({ action:'updateVisitorApproval', ref:row.ref, visitorApproved: row.visitorApproved||'', extraVisitorApproved: row.extraVisitorApproved||'', visitorCount: row.visitorCount, total: row.total, pass: PASSWORD }) });
+    await fetch(APPS_SCRIPT_URL, { method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({ action:'updateVisitorApproval', ref:row.ref, visitorApproved: row.visitorApproved||'', extraVisitorApproved: row.extraVisitorApproved||'', visitorCount: row.visitorCount, total: row.total, pass: currentUser.password }) });
   } catch(e){}
+  logEvent('visitor_approval', `อัปเดตการอนุมัติ ${row.ref} ให้ ${val}`);
   viewDetail(idx);
   renderTable();
 }
@@ -1009,8 +1138,8 @@ function viewDetail(idx) {
       <div class="visitor-approval">
         <span class="lbl">สถานะ:</span>
         <span class="approval-badge ${va==='yes'?'yes':va==='no'?'no':'pending'}">${getApprLabel(va)}</span>
-        <button class="approval-btn yes" onclick="updateVisitorApproval(${idx},0,'yes')">✓</button>
-        <button class="approval-btn no" onclick="updateVisitorApproval(${idx},0,'no')">✗</button>
+        ${hasPermission('visitor_approval') ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},0,'yes')">✓</button>
+        <button class="approval-btn no" onclick="updateVisitorApproval(${idx},0,'no')">✗</button>` : ''}
       </div>
     </div>`;
 
@@ -1048,8 +1177,8 @@ function viewDetail(idx) {
           <div class="visitor-approval">
             <span class="lbl">สถานะ:</span>
             <span class="approval-badge ${ea==='yes'?'yes':ea==='no'?'no':'pending'}">${getApprLabel(ea)}</span>
-            <button class="approval-btn yes" onclick="updateVisitorApproval(${idx},${i+1},'yes')">✓</button>
-            <button class="approval-btn no" onclick="updateVisitorApproval(${idx},${i+1},'no')">✗</button>
+            ${hasPermission('visitor_approval') ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},${i+1},'yes')">✓</button>
+            <button class="approval-btn no" onclick="updateVisitorApproval(${idx},${i+1},'no')">✗</button>` : ''}
           </div>
         </div>`;
     });
@@ -1109,6 +1238,10 @@ function closeDetailModal(e) {
 
 // ===== EXPORT FILTERED DATA AS CSV =====
 function exportFilteredCSV() {
+  if (!hasPermission('export')) {
+    alert('คุณไม่มีสิทธิ์ในการส่งออกข้อมูล');
+    return;
+  }
   const q = document.getElementById('searchBox').value.toLowerCase();
   const fs = document.getElementById('filterStatus').value;
   const fd = document.getElementById('filterDate').value;
@@ -1149,6 +1282,7 @@ function exportFilteredCSV() {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+  logEvent('export_csv', 'ส่งออกข้อมูลเป็น CSV');
 }
 
 // ===== HELPER: Parse extra visitors (same logic as detail view) =====
@@ -1186,7 +1320,10 @@ function computeDeptReportData(row) {
   let kids5_8 = 0, kidsUnder5 = 0;
   const kids5_8Names = [], kidsUnder5Names = [];
 
-  extras.forEach(v => {
+  extras.forEach((v, vi) => {
+    const ea = String(row.extraVisitorApproved || '').split(';;')[vi] || '';
+    if (ea === 'no') return;
+    
     if (v.relation === 'บุตร / ธิดา') {
       const a = parseInt(v.age, 10);
       if (!isNaN(a)) {
@@ -1634,12 +1771,18 @@ function printReport() {
 
     // Extra visitors (full width)
     if (extras.length > 0) {
-      html += `<div class="extra-section">`;
-      html += `<div class="extra-title">👥 ผู้เยี่ยมเพิ่มเติม (${extras.length} คน)</div>`;
-      extras.forEach((e) => {
-        html += `<div class="extra-item">${e.name || '—'} · ${e.relation || '—'}${e.id ? ' · บัตร ' + e.id : ''}</div>`;
+      const approvedExtras = extras.filter((e, ei) => {
+        const ea = String(r.extraVisitorApproved || '').split(';;')[ei] || '';
+        return ea !== 'no';
       });
-      html += `</div>`;
+      if (approvedExtras.length > 0) {
+        html += `<div class="extra-section">`;
+        html += `<div class="extra-title">👥 ผู้เยี่ยมเพิ่มเติม (${approvedExtras.length} คน)</div>`;
+        approvedExtras.forEach((e) => {
+          html += `<div class="extra-item">${e.name || '—'} · ${e.relation || '—'}${e.id ? ' · บัตร ' + e.id : ''}</div>`;
+        });
+        html += `</div>`;
+      }
     }
 
     html += `</div>`; // End content-grid
@@ -2238,8 +2381,11 @@ function printSingleReport(type, date) {
 
       let visitors = [r.visitorName || '—'];
       const extras = parseExtraVisitors(r);
-      extras.forEach(ex => {
-        if (ex.name) visitors.push(ex.name);
+      extras.forEach((ex, ei) => {
+        if (ex.name) {
+          const ea = String(r.extraVisitorApproved || '').split(';;')[ei] || '';
+          if (ea !== 'no') visitors.push(ex.name);
+        }
       });
 
       const totalPeople = (parseInt(r.visitorCount) || 1) + 1;
@@ -2276,3 +2422,4 @@ function printSingleReport(type, date) {
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModal(); closeDetailModal(); } });
 document.getElementById('passInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('userInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
