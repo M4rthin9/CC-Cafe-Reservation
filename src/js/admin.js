@@ -305,8 +305,8 @@ return `<tr>
           <td data-label="ผู้เข้าร่วม">
             <div style="font-weight:600">${r.visitorName}</div>
             <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
-            <div class="mobile-show-prisoner" style="font-size:11px;color:var(--text2);margin-top:4px;display:none">
-              <strong>🏢 ${r.prisonerName || ''}</strong> #${r.prisonerId || ''}
+            <div class="mobile-show-prisoner" style="font-size:11px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);display:none">
+              <span style="font-weight:600;color:var(--text2)">ผู้ต้องขัง:</span> ${r.prisonerName || ''} (#${r.prisonerId || ''})
             </div>
           </td>
           <td data-label="ผู้ต้องขัง" class="hide-mobile">
