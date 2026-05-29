@@ -296,7 +296,7 @@ const role = currentUser ? currentUser.role : 'User';
      const canApproveDiscipline = isAdminOrSuper || hasPermission('approve_discipline');
      const canRejectDiscipline = isAdminOrSuper || hasPermission('reject_discipline');
      const canApproveParticipant = isAdminOrSuper || hasPermission('approve_participant');
-     const canConfirmPayment = isAdminOrSuper || hasPermission('confirm_payment');
+     const canConfirmPayment = (role === 'Superadmin' || role === 'Admin' || hasPermission('confirm_payment'));
      const canRejectPayment = isAdminOrSuper || hasPermission('reject_payment');
      const canCancel = isAdminOrSuper || hasPermission('cancel');
      
