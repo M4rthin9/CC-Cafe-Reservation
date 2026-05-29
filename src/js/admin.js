@@ -157,8 +157,8 @@ async function loadData() {
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
   } catch(e) {
     console.error('Load data error:', e);
-    // Demo mode: use sample data if no Apps Script
-    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+    // Demo mode: use sample data if no Apps Script configured and DEMO_MODE is not explicitly disabled
+    if (window.DEMO_MODE !== false && (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE')) {
       allRows = getDemoData();
       document.getElementById('lastUpdated').textContent = 'โหมด Demo (ยังไม่ได้เชื่อม Google Sheet)';
     } else {
@@ -440,14 +440,16 @@ function renderEventlog() {
   const container = document.getElementById('eventlogBody');
   if (!container) return;
   
-  document.getElementById('eventlogCount').textContent = allEvents.length + ' รายการ';
+  // Limit to 100 entries max for display
+  const displayEvents = allEvents.slice(0, 100);
+  document.getElementById('eventlogCount').textContent = allEvents.length + ' รายการ' + (allEvents.length > 100 ? ' (แสดง 100 รายการล่าสุด)' : '');
   
   if (allEvents.length === 0) {
     container.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีบันทึกการทำงาน</td></tr>';
     return;
   }
   
-  container.innerHTML = allEvents.map(e => `
+  container.innerHTML = displayEvents.map(e => `
     <tr>
       <td style="white-space:nowrap;font-size:12px;">${e.timestamp}</td>
       <td style="font-size:12px;">${e.user} <span style="color:var(--text2);">(${e.role})</span></td>
@@ -1252,8 +1254,10 @@ function getApprLabel(v){ return v==='yes' ? '✅ เข้าได้' : v==='
 // Normalize legacy statuses for consistent display across pages
 function normalizeStatus(s) {
   const v = (s || '').toString().trim().toLowerCase();
-  // New workflow statuses (priority - return as-is)
-  if (['รอตรวจสอบ', 'รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ยกเลิก', 'ไม่อนุมัติ'].includes(v)) {
+  // Legacy status for initial state (map to new workflow)
+  if (v === 'รอตรวจสอบ') return 'รอตรวจสอบวินัย';
+  // New workflow statuses (return as-is)
+  if (['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ยกเลิก', 'ไม่อนุมัติ'].includes(v)) {
     return s;
   }
   // Legacy status mappings
@@ -1261,7 +1265,7 @@ function normalizeStatus(s) {
   if (['rejected'].includes(v)) return 'ไม่อนุมัติ';
   if (['paid'].includes(v)) return 'ชำระแล้ว';
   if (['done'].includes(v)) return 'เสร็จสิ้น';
-  return s || 'รอตรวจสอบ';
+  return s || 'รอตรวจสอบวินัย';
 }
 
 function viewSlip(idx) {
@@ -1462,11 +1466,17 @@ extras.forEach((v, i) => {
          <span class="dlbl">🕐 จองเมื่อ</span>
          <span class="dval">${r.timestamp || '—'}</span>
        </div>
-        ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
-        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn-approve" onclick="approveParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✓ อนุมัติผู้เข้าร่วม</button>
-          <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
-        </div>` : ''}
+${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
+         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+           <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:8px;">
+             <span style="font-size:12px;color:var(--text2);">อนุมัติทั้งหมด:</span>
+             <button class="btn-approve" onclick="approveAllVisitorsInDetail(${idx})" style="font-size:12px;padding:6px 12px;">✓ อนุมัติทั้งหมดทันที</button>
+           </div>
+           <div style="display:flex;gap:8px;justify-content:flex-end">
+             <button class="btn-approve" onclick="approveParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✓ อนุมัติผู้เข้าร่วม (หลังตรวจสอบแต่ละคน)</button>
+             <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
+           </div>
+         </div>` : ''}
      </div>
    `;
   document.getElementById('detailModalBg').classList.add('show');
@@ -1547,21 +1557,106 @@ async function rejectParticipantInDetail(idx) {
          if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
          
          // Success
-         logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
-         updateStats();
-         renderTable();
-         renderDashboardHome();
-         closeDetailModal();
-     } catch(e) {
-         // Error - revert optimistic update
-         console.error('Reject participant error:', e);
-         row.status = oldStatus;
-         alert(`ไม่สามารถปฏิเสธผู้เข้าร่วมได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
-         updateStats();
-         renderTable();
-         renderDashboardHome();
-         closeDetailModal();
-     }
+logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
+          updateStats();
+          renderTable();
+          renderDashboardHome();
+          closeDetailModal();
+      } catch(e) {
+          // Error - revert optimistic update
+          console.error('Reject participant error:', e);
+          row.status = oldStatus;
+          alert(`ไม่สามารถปฏิเสธผู้เข้าร่วมได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+          updateStats();
+          renderTable();
+          renderDashboardHome();
+          closeDetailModal();
+      }
+}
+
+/* ===== Approve all visitors at once (Tadtel flow) ===== */
+async function approveAllVisitorsInDetail(idx) {
+  const row = allRows[idx];
+  const role = currentUser ? currentUser.role : null;
+
+  // Permission check
+  if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('approve_participant')) {
+    alert('คุณไม่มีสิทธิ์ทำรายการนี้');
+    return;
+  }
+
+  if (!confirm(`อนุมัติผู้เข้าร่วมทุกคนสำหรับ "${row.visitorName}" ใช่หรือไม่? (จะอนุมัติทันทีโดยไม่ต้องตรวจสอบแต่ละคน)`)) return;
+
+  // Approve all visitors automatically
+  const oldStatus = row.status;
+  const oldVisitorApproved = row.visitorApproved;
+  const oldExtraVisitorApproved = row.extraVisitorApproved;
+
+  row.visitorApproved = 'yes';
+  const extras = parseExtraVisitors(row);
+  if (extras.length > 0) {
+    row.extraVisitorApproved = extras.map(() => 'yes').join(';;');
+  } else {
+    row.extraVisitorApproved = '';
+  }
+
+  // Calculate visitor count and total
+  const approvedRel = 1 + (row.extraVisitorApproved ? row.extraVisitorApproved.split(';;').filter(v => (v||'').trim().toLowerCase() === 'yes').length : 0);
+  row.visitorCount = approvedRel;
+  row.total = (approvedRel + 1) * 1000;
+
+  // Now approve to next status
+  const newStatus = 'รอชำระเงิน';
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'updateVisitorApproval',
+        username: currentUser.username,
+        password: currentUser.password,
+        ref: row.ref,
+        visitorApproved: row.visitorApproved,
+        extraVisitorApproved: row.extraVisitorApproved,
+        visitorCount: row.visitorCount,
+        total: row.total
+      })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
+
+    // Then update status
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'updateStatus',
+        username: currentUser.username,
+        password: currentUser.password,
+        ref: row.ref,
+        status: newStatus
+      })
+    });
+
+    logEvent('approve_all_visitors', `อนุมัติผู้เข้าร่วมทั้งหมด ${row.ref}`);
+    updateStats();
+    renderTable();
+    renderDashboardHome();
+    closeDetailModal();
+  } catch(e) {
+    console.error('Approve all visitors error:', e);
+    row.status = oldStatus;
+    row.visitorApproved = oldVisitorApproved;
+    row.extraVisitorApproved = oldExtraVisitorApproved;
+    alert(`ไม่สามารถอนุมัติผู้เข้าร่วมทั้งหมดได้: ${e.message || 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง'}`);
+    updateStats();
+    renderTable();
+    closeDetailModal();
+  }
 }
 
 // ===== EXPORT FILTERED DATA AS CSV =====
@@ -2522,6 +2617,7 @@ function printDailyDeptReports() {
   });
 
   const now = new Date().toLocaleString('th-TH');
+  const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
 
   let html = `
     <html><head><meta charset="UTF-8">
@@ -2535,12 +2631,13 @@ function printDailyDeptReports() {
       .dept strong { display:block; margin-bottom:4px; }
       table { width:100%; border-collapse:collapse; margin-top:8px; }
       th, td { border:1px solid #999; padding:4px 6px; text-align:left; font-size:12px; }
+      .footer-note { text-align:center; font-size:11px; color:#888; margin-top:20px; }
     </style>
     </head><body>
     <h1>รายงานสรุปประจำวัน (แยกตามฝ่าย)</h1>
-    <div style="text-align:center; margin-bottom:16px; color:#555;">พิมพ์เมื่อ ${now}</div>
+    <div style="text-align:center; margin-bottom:8px; color:#555;">ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ ${now}</div>
   `;
-
+  
   Object.keys(byDate).sort().forEach(date => {
     const rows = byDate[date];
     let totalAdults=0, total5_8=0, totalUnder5=0, prisoners=[];
@@ -2559,12 +2656,12 @@ function printDailyDeptReports() {
     html += `<div class="date-block">`;
     html += `<div class="date-title">${date}</div>`;
 
-    // ส่วนทัณฑ์
-    html += `<div class="dept" style="border-color:#c62828;">`;
-    html += `<strong style="color:#c62828">🚨 ส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong>`;
-    html += `จำนวน: <strong>${prisoners.length} คน</strong><br>`;
-    html += prisoners.map(p => `• ${p}`).join('<br>');
-    html += `</div>`;
+// ส่วนทัณฑ์
+     html += `<div class="dept" style="border-color:#c62828;">`;
+     html += `<strong style="color:#c62828">🚨 ส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong>`;
+     html += `จำนวน: <strong>${prisoners.length} คน</strong><br>`;
+     html += prisoners.map((p, i) => `${i+1}. ${p}`).join('<br>');
+     html += `</div>`;
 
     // Table
     html += `<div class="dept" style="border-color:#ff9800;">`;
@@ -2605,7 +2702,7 @@ function getReportsFilteredRows() {
   const fd = dateEl ? dateEl.value : '';
 
   return allRows.filter(r => {
-    if (fs && r.status !== fs) return false;
+    if (fs && normalizeStatus(r.status) !== fs) return false;
     if (fd && (r.visitDate !== fd && r.visitDateISO !== fd)) return false;
 
     if (q) {
@@ -2820,9 +2917,9 @@ function printSingleReport(type, date) {
 
     content = `<h2>🚨 รายงานส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง) - ${date}</h2>`;
     content += `<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;font-size:13px;">`;
-    content += `<tr style="background:#f0f0f0;"><th>ชื่อ-นามสกุล</th><th>เลขประจำตัวผู้ต้องขัง</th><th>แดน</th></tr>`;
-    prisoners.forEach(p => {
-      content += `<tr><td><strong>น.ช. ${p.name}</strong></td><td>${p.id}</td><td>${p.wing || '-'}</td></tr>`;
+    content += `<tr style="background:#f0f0f0;"><th>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>เลขประจำตัวผู้ต้องขัง</th><th>แดน</th></tr>`;
+    prisoners.forEach((p, i) => {
+      content += `<tr><td>${i+1}</td><td><strong>น.ช. ${p.name}</strong></td><td>${p.id}</td><td>${p.wing || '-'}</td></tr>`;
     });
     content += `</table>`;
   } 
@@ -2916,7 +3013,7 @@ function printSingleReport(type, date) {
     <style>body{font-family:'Sarabun',sans-serif;padding:20px;font-size:14px;} table{width:100%;} h2{margin-bottom:16px;}</style>
     </head><body>
     ${content}
-    <div style="margin-top:30px;font-size:11px;color:#888;">พิมพ์เมื่อ ${now} • ทัณฑสถานบำบัดพิเศษกลาง</div>
+    <div style="margin-top:30px;font-size:11px;color:#888;">ผู้ปริ้น: ${currentUser?.displayName || currentUser?.username || 'ไม่ระบุ'} • พิมพ์เมื่อ ${now} • ทัณฑสถานบำบัดพิเศษกลาง</div>
     </body></html>
   `);
   printWin.document.close();

@@ -25,7 +25,7 @@ const PERMISSIONS = {
   Admin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
   Vinai: ['approve', 'view_slip', 'view_detail'],
-  Tadtel: ['visitor_approval', 'view_slip', 'view_detail'],
+  Tadtel: ['approve_participant', 'visitor_approval', 'view_slip', 'view_detail'],
   User: ['print']
 };
 
@@ -732,9 +732,13 @@ function ensureUserHeadersAndUsers(sheet) {
     sheet.setFrozenRows(1);
   }
   
-  // Seed default users if only headers exist
+  // Seed default users only if no users exist AND not in production mode
+  // Check script property: set DISABLE_SEED_USERS=true in production
+  const scriptProps = PropertiesService.getScriptProperties();
+  const disableSeed = scriptProps.getProperty('DISABLE_SEED_USERS');
   const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) {
+  
+  if (data.length <= 1 && disableSeed !== 'true') {
     seedDefaultUsers(sheet);
   }
 }

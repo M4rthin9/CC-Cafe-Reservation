@@ -219,7 +219,7 @@
         </div>
       </div>
 
-      <!-- EVENTLOG VIEW -->
+<!-- EVENTLOG VIEW -->
       <div id="view-eventlog" class="view" style="display:none">
         <div style="margin-bottom:12px">
           <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">📝 บันทึกการทำงาน</h1>
@@ -231,24 +231,26 @@
             <span class="table-count" id="eventlogCount">0 รายการ</span>
           </div>
           <div style="overflow-x:auto">
-            <table>
-<thead>
-               <tr>
-                 <th>เวลา</th>
-                 <th>ผู้ใช้</th>
-                 <th>ชื่อเต็ม</th>
-                 <th>ประเภท</th>
-                 <th>รายละเอียด</th>
-               </tr>
-             </thead>
-<tbody id="eventlogBody">
+            <div class="eventlog-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>เวลา</th>
+                    <th>ผู้ใช้</th>
+                    <th>ชื่อเต็ม</th>
+                    <th>ประเภท</th>
+                    <th>รายละเอียด</th>
+                  </tr>
+                </thead>
+                <tbody id="eventlogBody">
                   <tr><td colspan="5" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
                 </tbody>
-             </table>
-           </div>
-         </div>
-
-      
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+       
     </div>
   </div>
 </div>
