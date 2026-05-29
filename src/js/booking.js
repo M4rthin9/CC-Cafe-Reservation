@@ -42,6 +42,19 @@ function parseLocalDate(dateStr) {
   return new Date(y, m - 1, d);
 }
 
+function maskPrisonerName(name) {
+  if (!name) return name;
+  const trimmed = name.trim();
+  const lastSpace = trimmed.lastIndexOf(' ');
+  if (lastSpace > 0) {
+    const firstName = trimmed.substring(0, lastSpace + 1);
+    const lastName = trimmed.substring(lastSpace + 1);
+    const maskedLast = lastName.length > 4 ? lastName.slice(0, -4) : lastName;
+    return firstName + maskedLast;
+  }
+  return trimmed.length > 3 ? trimmed.slice(0, 3) : trimmed;
+}
+
 function renderCalendar() {
   const title = new Date(calYear, calMonth, 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
   document.getElementById('calTitle').textContent = title;
@@ -377,7 +390,7 @@ function filterPrisonerSuggestions() {
     div.className = 'suggestion-item';
     div.innerHTML = `
       <div style="flex:1">
-        <strong style="font-size:15px;">${p.prisonerName}</strong>
+        <strong style="font-size:15px;">${maskPrisonerName(p.prisonerName)}</strong>
       </div>
       <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
         #${p.prisonerId}<br>
@@ -396,8 +409,8 @@ function selectPrisoner(p) {
   document.getElementById('prisonerName').value = p.prisonerName;
   document.getElementById('wing').value = p.wing || '';
 
-  // Update read-only display
-  document.getElementById('dispPrisonerName').textContent = p.prisonerName;
+  // Update read-only display (masked for privacy)
+  document.getElementById('dispPrisonerName').textContent = maskPrisonerName(p.prisonerName);
   document.getElementById('dispPrisonerId').textContent = p.prisonerId;
   document.getElementById('dispWing').textContent = p.wing || '';
   document.getElementById('selectedPrisonerDisplay').style.display = 'block';
@@ -409,7 +422,7 @@ function selectPrisoner(p) {
 
   // Show confirmation (below search)
   const statusEl = document.getElementById('prisonerMatchStatus');
-  statusEl.textContent = `✓ เลือกจากฐานข้อมูล: ${p.prisonerName} (#${p.prisonerId}) — ${p.wing}`;
+  statusEl.textContent = `✓ เลือกจากฐานข้อมูล: ${maskPrisonerName(p.prisonerName)} (#${p.prisonerId}) — ${p.wing}`;
   statusEl.style.display = 'block';
   statusEl.style.color = 'var(--green)';
 }

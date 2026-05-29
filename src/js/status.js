@@ -252,7 +252,7 @@ function renderResult(row) {
       <div class="result-body">
         <div class="info-row"><span class="lbl">👤 ผู้ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitorName || '—')}</span></div>
         <div class="info-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${escHtml(row.visitorPhone || '—')}</span></div>
-        <div class="info-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${escHtml(row.prisonerName || '—')} (#${escHtml(row.prisonerId || '—')})</span></div>
+        <div class="info-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${escHtml(maskPrisonerName(row.prisonerName) || '—')} (#${escHtml(row.prisonerId || '—')})</span></div>
         <div class="info-row"><span class="lbl">🏢 แดน</span><span class="val">${escHtml(row.wing || '—')}</span></div>
         <div class="info-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>
         <div class="info-row"><span class="lbl">👥 จำนวน</span><span class="val">ญาติ ${visitorCount} + ผู้ต้องขัง 1 = ${totalPersons} คน</span></div>
@@ -290,9 +290,12 @@ function renderResult(row) {
       </div>
 
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
-        <div class="section-title" style="font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;">
-          <i class="ti ti-upload"></i> อัปโหลดสลิปการโอนเงิน
-        </div>
+<div class="section-title" style="font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;">
+           <i class="ti ti-upload"></i> อัปโหลดสลิปการโอนเงิน
+         </div>
+         <div style="background:#fff7ed;border:1px solid #fdba7a;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px;color:#9a3412;line-height:1.6;">
+           📋 หลังแนบสลิปแล้ว กรุณามาทำการลงทะเบียนในวันที่จอง ก่อนเวลาเข้าเยี่ยมในเวลา 9.00 ตามมาที่รับแขก
+         </div>
         <div class="upload-area" id="uploadArea"
           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
           <input type="file" accept="image/*,application/pdf" id="slipFileInput" onchange="handleUpload(event)">
@@ -516,15 +519,15 @@ function showThankYou() {
   document.getElementById('thankYouArea').style.display = 'block';
   document.getElementById('tyRefNumber').textContent = row.ref;
 
-  document.getElementById('tySummary').innerHTML = `
-    <div>📋 <strong>Ref No.:</strong> ${escHtml(row.ref)}</div>
-    <div>👤 <strong>ผู้ร่วมกิจกรรม:</strong> ${escHtml(row.visitorName)}</div>
-    <div>🔒 <strong>ผู้ต้องขัง:</strong> ${escHtml(row.prisonerName)} (#${escHtml(row.prisonerId)})</div>
-    <div>🏢 <strong>แดน:</strong> ${escHtml(row.wing)}</div>
-    <div>📅 <strong>วันที่:</strong> ${escHtml(row.visitDate)}</div>
-    <div>👥 <strong>จำนวน:</strong> ${totalPersons} คน</div>
-    <div>💰 <strong>ยอดชำระ:</strong> ${total.toLocaleString()} บาท ✓</div>
-  `;
+document.getElementById('tySummary').innerHTML = `
+     <div>📋 <strong>Ref No.:</strong> ${escHtml(row.ref)}</div>
+     <div>👤 <strong>ผู้ร่วมกิจกรรม:</strong> ${escHtml(row.visitorName)}</div>
+     <div>🔒 <strong>ผู้ต้องขัง:</strong> ${escHtml(maskPrisonerName(row.prisonerName))} (#${escHtml(row.prisonerId)})</div>
+     <div>🏢 <strong>แดน:</strong> ${escHtml(row.wing)}</div>
+     <div>📅 <strong>วันที่:</strong> ${escHtml(row.visitDate)}</div>
+     <div>👥 <strong>จำนวน:</strong> ${totalPersons} คน</div>
+     <div>💰 <strong>ยอดชำระ:</strong> ${total.toLocaleString()} บาท ✓</div>
+   `;
   window.scrollTo(0, 0);
 }
 
@@ -548,6 +551,19 @@ function setOverlay(show, msg) {
 }
 
 // ===== UTILS =====
+function maskPrisonerName(name) {
+  if (!name || name === '—') return name;
+  const trimmed = name.trim();
+  const lastSpace = trimmed.lastIndexOf(' ');
+  if (lastSpace > 0) {
+    const firstName = trimmed.substring(0, lastSpace + 1);
+    const lastName = trimmed.substring(lastSpace + 1);
+    const maskedLast = lastName.length > 4 ? lastName.slice(0, -4) : lastName;
+    return firstName + maskedLast;
+  }
+  return trimmed.length > 3 ? trimmed.slice(0, 3) : trimmed;
+}
+
 function escHtml(str) {
   return String(str || '')
     .replace(/&/g, '&amp;')
