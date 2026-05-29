@@ -397,6 +397,39 @@
     .hero { padding: 2.5rem 1.25rem 5rem; }
   }
 
+  /* iPhone SE (375x667) - small mobile */
+  @media (max-width: 375px) {
+    .hero { padding: 2rem 1rem 4rem; }
+    .cta-group { max-width: 340px; }
+    .btn-cta { padding: 14px 16px; font-size: 15px; }
+    .step-t { width: 70px; }
+    .step-t-dot { width: 32px; height: 32px; font-size: 14px; }
+    .step-t-label { font-size: 10px; }
+  }
+
+  /* iPad Mini/Tablet (768x1024) */
+  @media (min-width: 481px) and (max-width: 768px) {
+    .hero { padding: 3rem 1.5rem 4rem; }
+    .info-section { padding: 2rem 1rem 3rem; }
+    .info-cards { grid-template-columns: 1fr; }
+  }
+
+  /* Desktop 1920x1080 - large displays */
+  @media (min-width: 1920px) {
+    .hero { padding: 4rem 2rem 6rem; }
+    .hero h1 { font-size: 32px; max-width: 680px; }
+    .hero-sub { font-size: 16px; max-width: 520px; }
+    .cta-group { max-width: 420px; }
+    .cta-group { gap: 18px; margin-bottom: 4rem; }
+    .info-section { max-width: 900px; padding: 3.5rem 2rem 5rem; }
+    .info-cards { grid-template-columns: 1fr 1fr; gap: 18px; }
+    .info-card { padding: 1.25rem 1.4rem; }
+    .info-card-text h3 { font-size: 16px; }
+    .info-card-text p { font-size: 14px; }
+    .btn-primary, .btn-secondary { padding: 15px 24px; font-size: 16px; min-width: 220px; }
+    .steps-teaser { max-width: 560px; }
+  }
+
   /* ===== Visitor Approval (per-relative) - shared for consistency ===== */
   .visitor-approval { margin-top:6px; font-size:11px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
   .visitor-approval .lbl { color:var(--text2); font-size:10px; flex-shrink:0; }

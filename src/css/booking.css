@@ -245,6 +245,45 @@
   @media (max-width: 480px) {
     .form-grid { grid-template-columns: 1fr; }
     .form-group.full { grid-column: 1; }
+    .header { padding: 1.25rem; }
+    .header h1 { font-size: 16px; }
+    .quota-info { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .success-icon { width: 60px; height: 60px; font-size: 30px; }
+    .ref-box span { font-size: 24px; letter-spacing: 2px; }
+  }
+
+  /* iPhone SE (375x667) - small mobile */
+  @media (max-width: 375px) {
+    .app { padding: 1rem 0.75rem 2.5rem; }
+    .header { padding: 1rem; }
+    .section { padding: 1rem; }
+    .steps-bar { margin-bottom: 1rem; }
+    .step-circle { width: 28px; height: 28px; font-size: 12px; }
+    .day-btn { padding: 5px 1px; font-size: 11px; }
+    .btn-primary, .btn-secondary { padding: 12px; font-size: 14px; }
+  }
+
+  /* iPad Mini/Tablet (768x1024) */
+  @media (min-width: 481px) and (max-width: 768px) {
+    .app { max-width: 720px; padding: 1.5rem 1.25rem 3rem; }
+    .header h1 { font-size: 20px; }
+    .confirm-hero-main { font-size: 22px; }
+    .review-value { font-size: 16px; }
+  }
+
+  /* Desktop 1920x1080 - large displays */
+  @media (min-width: 1920px) {
+    .app { max-width: 800px; padding: 2rem 2rem 4rem; }
+    .header h1 { font-size: 24px; }
+    .header { padding: 2rem 2.5rem 1.5rem; }
+    .section { padding: 1.5rem 1.75rem; }
+    .section-title { font-size: 15px; }
+    label { font-size: 14px; }
+    input, select { padding: 11px 14px; font-size: 15px; }
+    .btn-primary, .btn-secondary { padding: 15px; font-size: 16px; }
+    .calendar-section { max-width: 680px; margin: 0 auto; }
+    .success-icon { width: 80px; height: 80px; font-size: 40px; }
+    .ref-box span { font-size: 32px; letter-spacing: 5px; }
   }
 
   /* ===== Visitor Approval (per-relative อนุมัติเข้า/ห้ามเข้า) - shared ===== */

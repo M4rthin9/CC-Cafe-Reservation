@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>หน้าเจ้าหน้าที่ — ตรวจสอบการจอง</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/css/admin.css">
@@ -128,8 +128,12 @@
           </div>
           <div class="dash-card">
             <div class="dash-card-h">
-              <span>🕒</span> การจองล่าสุด
+              <span>🕒</span> แนวโน้มการจอง
             </div>
+            <canvas id="trendChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟแนวโน้มการจอง"></canvas>
+          </div>
+          <div class="dash-card" style="grid-column: 1 / -1">
+            <div class="dash-card-h"><span>📋</span> การจองล่าสุด</div>
             <div id="recentBookings" style="margin-top:8px"></div>
           </div>
         </div>
@@ -165,20 +169,20 @@
             <span class="table-count" id="tableCount" aria-live="polite">0 รายการ</span>
           </div>
           <table role="table" aria-label="ตารางรายการจอง">
-            <thead>
-              <tr>
-                <th scope="col">เลขอ้างอิง</th>
-                <th scope="col">วันที่จอง</th>
-                <th scope="col" class="hide-mobile">วันที่ร่วมกิจกรรม</th>
-                <th scope="col">ผู้เข้าร่วมกิจกรรม</th>
-                <th scope="col" class="hide-mobile">ผู้ต้องขัง</th>
-                <th scope="col" class="hide-mobile">แดน</th>
-                <th scope="col" class="hide-mobile">จำนวน/ยอด</th>
-                <th scope="col">สถานะ</th>
-                <th scope="col">ตรวจสอบ</th>
-                <th scope="col">จัดการ</th>
-              </tr>
-            </thead>
+<thead>
+               <tr>
+                 <th scope="col">เลขอ้างอิง</th>
+                 <th scope="col" class="hide-mobile">วันที่จอง</th>
+                 <th scope="col" class="hide-mobile hide-tablet">วันที่ร่วมกิจกรรม</th>
+                 <th scope="col">ผู้เข้าร่วมกิจกรรม</th>
+                 <th scope="col" class="hide-mobile hide-tablet">ผู้ต้องขัง</th>
+                 <th scope="col" class="hide-mobile">แดน</th>
+                 <th scope="col" class="hide-mobile">จำนวน/ยอด</th>
+                 <th scope="col">สถานะ</th>
+                 <th scope="col">ตรวจสอบ</th>
+                 <th scope="col">จัดการ</th>
+               </tr>
+             </thead>
             <tbody id="tableBody">
               <tr><td colspan="10" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
             </tbody>
