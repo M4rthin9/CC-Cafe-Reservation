@@ -300,47 +300,46 @@ const role = currentUser ? currentUser.role : 'User';
      const canRejectPayment = isAdminOrSuper || hasPermission('reject_payment');
      const canCancel = isAdminOrSuper || hasPermission('cancel');
      
-return `<tr>
-          <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
-          <td data-label="ผู้เข้าร่วม">
-            <div style="font-weight:600">${r.visitorName}</div>
-            <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
-            <div class="mobile-show-prisoner" style="font-size:11px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);display:none">
-              <span style="font-weight:600;color:var(--text2)">ผู้ต้องขัง:</span> ${r.prisonerName || ''} (#${r.prisonerId || ''})
-            </div>
-          </td>
-          <td data-label="ผู้ต้องขัง" class="hide-mobile">
-            <div style="font-weight:600">${r.prisonerName}</div>
-            <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
-          </td>
-          <td data-label="แดน">${r.wing||'—'}</td>
-          <td data-label="จำนวน/ยอด">
-            <div>${r.visitorCount} คน • ${(r.total||0).toLocaleString()} บ.</div>
-          </td>
-          <td data-label="สถานะ"><span class="badge ${badgeClass}">${r.status}</span></td>
-          <td data-label="ตรวจสอบ">
-            <div style="display:flex;gap:4px;align-items:center;justify-content:center">
-              <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
-              <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
-              <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
-            </div>
-          </td>
-          <td data-label="จัดการ">
-             <div class="action-btns">
-               ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
-               ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-               ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
-               ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-               ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
-               ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
-               ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-               <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
-               <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+return `<tr data-idx="${rowIdx}">
+           <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
+           <td data-label="ผู้เข้าร่วม">
+             <div style="font-weight:600">${r.visitorName}</div>
+             <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
+           </td>
+           <td data-label="ผู้ต้องขัง" class="hide-mobile">
+             <div style="font-weight:600">${r.prisonerName}</div>
+             <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
+           </td>
+           <td data-label="แดน">${r.wing||'—'}</td>
+           <td data-label="จำนวน/ยอด">
+             <div>${r.visitorCount} คน • ${(r.total||0).toLocaleString()} บ.</div>
+           </td>
+           <td data-label="สถานะ"><span class="badge ${badgeClass}">${r.status}</span></td>
+           <td data-label="ตรวจสอบ">
+             <div style="display:flex;gap:4px;align-items:center;justify-content:center">
+               <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
+               <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
+               <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
              </div>
-          </td>
-        </tr>`;
-  }).join('');
-  renderPagination(totalPages, totalFiltered);
+           </td>
+<td data-label="จัดการ">
+               <div class="action-btns">
+                 <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
+                 <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+                 ${(canApproveDiscipline || canRejectDiscipline || canApproveParticipant || canConfirmPayment || canRejectPayment || canCancel) ? `<button class="btn-more-actions row-expand-btn" onclick="toggleRowActions(this)" style="font-size:11px;padding:4px 8px;background:rgba(0,0,0,0.05)">▼ เพิ่มเติม</button>` : ''}
+               </div>
+               <div class="mobile-actions-expanded" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+                 ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
+                 ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
+                 ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+                 ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
+                 ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
+                 ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+               </div>
+            </td>
+          </tr>`;
+   }).join('');
+   renderPagination(totalPages, totalFiltered);
 }
 
 function changePage(p) {
@@ -357,6 +356,13 @@ function changePageSize(newSize) {
 
 function resetToFirstPage() {
   currentPage = 1;
+}
+
+function toggleRowActions(button) {
+  const expanded = button.closest('td').querySelector('.mobile-actions-expanded');
+  const isExpanded = expanded.style.display === 'block';
+  expanded.style.display = isExpanded ? 'none' : 'block';
+  button.textContent = isExpanded ? '▼ เพิ่มเติม' : '▲ ซ่อน';
 }
 
 function renderPagination(totalPages, totalFiltered) {
@@ -418,22 +424,27 @@ function switchView(v) {
   document.querySelectorAll('.sb-link').forEach(a => {
     a.classList.toggle('active', a.getAttribute('data-view') === v);
   });
+  // Update bottom nav active state on mobile
+  const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
+  bottomNavItems.forEach(item => {
+    item.classList.toggle('active', item.dataset.view === v);
+  });
 
-   if (v === 'reservations') {
-     renderTable();
-   } else if (v === 'reports') {
-     populateReportsDateFilter();
-     renderReportsView();
-   } else if (v === 'eventlog') {
-     renderEventlog();
-   } else if (v === 'addUser') {
-     renderAddUser();
-   }
+  if (v === 'reservations') {
+    renderTable();
+  } else if (v === 'reports') {
+    populateReportsDateFilter();
+    renderReportsView();
+  } else if (v === 'eventlog') {
+    renderEventlog();
+  } else if (v === 'addUser') {
+    renderAddUser();
+  }
 
-   // Dashboard home view - only for Admin/Superadmin who have access
-   if (v === 'home' && SIDEBAR_MENU[currentUser?.role]?.includes('home')) {
-     renderDashboardHome();
-   }
+  // Dashboard home view - only for Admin/Superadmin who have access
+  if (v === 'home' && SIDEBAR_MENU[currentUser?.role]?.includes('home')) {
+    renderDashboardHome();
+  }
 }
 
 function renderEventlog() {
@@ -714,7 +725,7 @@ function drawFinanceLineChart(canvas, timeSeries) {
   });
 }
 
-// Hover tooltip for finance line chart
+// Hover tooltip for finance line chart (desktop) + tap support (mobile)
 const financeCanvasEl = document.getElementById('financeChart');
 if (financeCanvasEl) {
   financeCanvasEl.addEventListener('mousemove', (e) => {
@@ -741,6 +752,13 @@ if (financeCanvasEl) {
   financeCanvasEl.addEventListener('mouseleave', () => {
     financeCanvasEl.style.cursor = 'default';
     financeCanvasEl.title = '';
+  });
+  // Tap for mobile
+  financeCanvasEl.addEventListener('click', (e) => {
+    if ('ontouchstart' in window) {
+      showChartTooltip(financeCanvasEl, financeChartCache, financeCanvasEl.getBoundingClientRect(), e.clientX, e.clientY);
+      setTimeout(hideChartTooltip, 2000);
+    }
   });
 }
 
@@ -994,16 +1012,14 @@ function drawReservationTrendChart() {
   ctx.fillText(maxVal, paddingLeft - 6, paddingTop + 3);
 }
 
-// Simple hover tooltip for trend chart
+// Simple hover tooltip for trend chart (desktop) + tap support (mobile)
 const trendCanvas = document.getElementById('trendChart');
 if (trendCanvas) {
   trendCanvas.addEventListener('mousemove', (e) => {
     if (!trendDataCache.length) return;
-
     const rect = trendCanvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-
     let found = null;
     for (const item of trendDataCache) {
       if (mouseX >= item.x && mouseX <= item.x + item.width &&
@@ -1012,7 +1028,6 @@ if (trendCanvas) {
         break;
       }
     }
-
     if (found) {
       trendCanvas.style.cursor = 'pointer';
       trendCanvas.title = `${found.label} — ${found.count} รายการ`;
@@ -1021,10 +1036,16 @@ if (trendCanvas) {
       trendCanvas.title = '';
     }
   });
-
   trendCanvas.addEventListener('mouseleave', () => {
     trendCanvas.style.cursor = 'default';
     trendCanvas.title = '';
+  });
+  // Tap for mobile
+  trendCanvas.addEventListener('click', (e) => {
+    if ('ontouchstart' in window) {
+      showChartTooltip(trendCanvas, trendDataCache, trendCanvas.getBoundingClientRect(), e.clientX, e.clientY);
+      setTimeout(hideChartTooltip, 2000);
+    }
   });
 }
 
@@ -1032,7 +1053,6 @@ if (trendCanvas) {
 window.addEventListener('resize', () => {
   const homeView = document.getElementById('view-home');
   if (homeView && homeView.style.display !== 'none' && document.getElementById('trendChart')) {
-    // debounce lightly
     clearTimeout(window._trendResizeTimer);
     window._trendResizeTimer = setTimeout(() => {
       if (typeof drawReservationTrendChart === 'function') drawReservationTrendChart();
@@ -1042,6 +1062,261 @@ window.addEventListener('resize', () => {
       }
     }, 120);
   }
+});
+
+// ===== MOBILE CHART INTERACTIONS - Touch/Tap Tooltips =====
+let activeTooltip = null;
+function showChartTooltip(canvas, data, rect, clientX, clientY) {
+  const mouseX = clientX - rect.left;
+  const mouseY = clientY - rect.top;
+  
+  let found = null;
+  let best = Infinity;
+  
+  for (const item of data) {
+    const cx = item.x + item.width / 2;
+    const cy = item.y + item.height / 2;
+    const d = Math.hypot(mouseX - cx, mouseY - cy);
+    if (d < 20 && d < best) { best = d; found = item; }
+  }
+  
+  if (found) {
+    if (activeTooltip) activeTooltip.remove();
+    activeTooltip = document.createElement('div');
+    activeTooltip.className = 'chart-tooltip';
+    activeTooltip.style.cssText = `
+      position: fixed; background: rgba(11,37,69,0.95); color: #fff;
+      padding: 8px 12px; border-radius: 6px; font-size: 12px; pointer-events: none;
+      z-index: 9999; max-width: 200px; text-align: center;
+    `;
+    activeTooltip.textContent = `${found.label} · ${found.series}: ${found.value.toLocaleString('th-TH')} บาท`;
+    activeTooltip.style.left = (clientX + 10) + 'px';
+    activeTooltip.style.top = (clientY - 30) + 'px';
+    document.body.appendChild(activeTooltip);
+  }
+}
+
+function hideChartTooltip() {
+  if (activeTooltip) {
+    activeTooltip.remove();
+    activeTooltip = null;
+  }
+}
+
+// Setup touch/click handlers for both charts
+function setupChartTouchInteractions() {
+  const financeCanvas = document.getElementById('financeChart');
+  if (financeCanvas) {
+    financeCanvas.addEventListener('click', (e) => {
+      showChartTooltip(financeCanvas, financeChartCache, financeCanvas.getBoundingClientRect(), e.clientX, e.clientY);
+      setTimeout(hideChartTooltip, 2000);
+    });
+  }
+  
+  const trendCanvas = document.getElementById('trendChart');
+  if (trendCanvas) {
+    trendCanvas.addEventListener('click', (e) => {
+      showChartTooltip(trendCanvas, trendDataCache, trendCanvas.getBoundingClientRect(), e.clientX, e.clientY);
+      setTimeout(hideChartTooltip, 2000);
+    });
+  }
+}
+
+// ===== SWIPE GESTURE FOR BOOKING CARDS =====
+let touchStartX = 0;
+let touchStartY = 0;
+function initSwipeGestures() {
+  // Touch handlers for table rows
+  document.addEventListener('touchstart', (e) => {
+    const tr = e.target.closest('tr[data-idx]');
+    if (!tr) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  
+  document.addEventListener('touchend', (e) => {
+    const tr = e.target.closest('tr[data-idx]');
+    if (!tr) return;
+    
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
+    
+    // Only handle horizontal swipes wider than vertical movement
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > deltaY) {
+      const idx = parseInt(tr.dataset.idx);
+      const status = normalizeStatus(allRows[idx]?.status);
+      
+      if (deltaX > 0) {
+        // Swipe right - approve action
+        handleSwipeApprove(idx, status);
+      } else {
+        // Swipe left - reject/cancel action
+        handleSwipeReject(idx, status);
+      }
+    }
+  }, { passive: true });
+}
+
+function handleSwipeApprove(idx, status) {
+  const row = allRows[idx];
+  if (!row) return;
+  
+  if (status === 'รอตรวจสอบวินัย' && (hasPermission('approve_discipline') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
+    if (confirm(`✓ อนุมัติวินัยสำหรับ "${row.visitorName}" ?`)) {
+      updateStatus(idx, 'รอตรวจสอบผู้เข้าร่วม');
+    }
+  } else if (status === 'รอตรวจสอบผู้เข้าร่วม' && (hasPermission('approve_participant') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
+    if (confirm(`✓ อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ?`)) {
+      updateStatus(idx, 'รอชำระเงิน');
+    }
+  } else if ((status === 'รอชำระเงิน' || status === 'ชำระแล้ว') && (hasPermission('confirm_payment') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
+    const target = status === 'รอชำระเงิน' ? 'ชำระแล้ว' : 'เสร็จสิ้น';
+    if (confirm(`✓ ยืนยันจาก ${status} ?`)) {
+      updateStatus(idx, target);
+    }
+  }
+}
+
+function handleSwipeReject(idx, status) {
+  const row = allRows[idx];
+  if (!row) return;
+  
+  if (status === 'รอตรวจสอบวินัย' && (hasPermission('reject_discipline') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
+    if (confirm(`✗ ปฏิเสธวินัยสำหรับ "${row.visitorName}" ?`)) {
+      updateStatus(idx, 'ไม่อนุมัติ');
+    }
+  } else if (status === 'รอตรวจสอบผู้เข้าร่วม' && (hasPermission('approve_participant') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
+    if (confirm(`✗ ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ?`)) {
+      updateStatus(idx, 'ไม่อนุมัติ');
+    }
+  } else if (status === 'รอชำระเงิน' && (hasPermission('reject_payment') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
+    if (confirm(`✗ ปฏิเสธการชำระเงินสำหรับ "${row.visitorName}" ?`)) {
+      updateStatus(idx, 'รอชำระเงิน');
+    }
+  }
+}
+
+// ===== PROGRESIVE DISCLOSURE FOR TABLE ROWS =====
+function initRowExpansion() {
+  document.addEventListener('click', (e) => {
+    const expandBtn = e.target.closest('.row-expand-btn');
+    if (expandBtn) {
+      const row = expandBtn.closest('tr');
+      const detailRow = row.nextElementSibling;
+      
+      if (detailRow && detailRow.classList.contains('detail-row-mobile')) {
+        detailRow.classList.toggle('expanded');
+        expandBtn.textContent = detailRow.classList.contains('expanded') ? '▲ ซ่อน' : '▼ เพิ่มเติม';
+      }
+    }
+  });
+}
+
+// ===== FILTER STATE MANAGEMENT =====
+const filterState = {
+  search: '',
+  status: '',
+  date: '',
+  pageSize: 10
+};
+
+function updateFilterState(key, value) {
+  filterState[key] = value;
+  localStorage.setItem('adminFilterState', JSON.stringify(filterState));
+}
+
+function loadFilterState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('adminFilterState') || '{}');
+    Object.assign(filterState, saved);
+  } catch (e) {
+    // Ignore parse errors
+  }
+}
+
+function applySavedFilters() {
+  const searchBox = document.getElementById('searchBox');
+  const filterStatus = document.getElementById('filterStatus');
+  const filterDate = document.getElementById('filterDate');
+  
+  if (searchBox && filterState.search) searchBox.value = filterState.search;
+  if (filterStatus && filterState.status) filterStatus.value = filterState.status;
+  if (filterDate && filterState.date) filterDate.value = filterState.date;
+  
+  const reportsSearchBox = document.getElementById('reportsSearchBox');
+  if (reportsSearchBox && filterState.search) reportsSearchBox.value = filterState.search;
+}
+
+// ===== PULL TO REFRESH =====
+let pullStartY = 0;
+let pullRefreshEl = null;
+
+function initPullToRefresh() {
+  const main = document.querySelector('.main');
+  if (!main) return;
+  
+  pullRefreshEl = document.getElementById('pullRefresh');
+  if (!pullRefreshEl) return;
+  
+  let startY = 0;
+  let currentY = 0;
+  let pulling = false;
+  
+  main.addEventListener('touchstart', (e) => {
+    if (window.scrollY === 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+    }
+  }, { passive: true });
+  
+  main.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+    
+    if (diff > 0 && diff < 80) {
+      pullRefreshEl.style.top = (-50 + diff) + 'px';
+      if (diff > 50) {
+        pullRefreshEl.classList.add('visible');
+      }
+    }
+  }, { passive: true });
+  
+  main.addEventListener('touchend', () => {
+    if (!pulling) return;
+    pulling = false;
+    const diff = currentY - startY;
+    
+    if (diff > 50) {
+      pullRefreshEl.classList.remove('visible');
+      pullRefreshEl.style.top = '-50px';
+      resetToFirstPage();
+      loadData();
+    } else {
+      pullRefreshEl.style.top = '-50px';
+    }
+  }, { passive: true });
+}
+
+// Initialize mobile features on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  loadFilterState();
+  initSwipeGestures();
+  initRowExpansion();
+  setupChartTouchInteractions();
+  initPullToRefresh();
+  
+  const searchBox = document.getElementById('searchBox');
+  if (searchBox) searchBox.addEventListener('input', (e) => updateFilterState('search', e.target.value));
+  
+  const filterStatus = document.getElementById('filterStatus');
+  if (filterStatus) filterStatus.addEventListener('change', (e) => updateFilterState('status', e.target.value));
+  
+  const filterDate = document.getElementById('filterDate');
+  if (filterDate) filterDate.addEventListener('change', (e) => updateFilterState('date', e.target.value));
+  
+  // Apply saved filters after load
+  applySavedFilters();
 });
 
 // ===== UPDATE STATUS =====
