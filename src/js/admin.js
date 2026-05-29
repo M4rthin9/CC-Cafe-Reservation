@@ -141,7 +141,7 @@ function doLogout() {
 
 // ===== LOAD DATA =====
 async function loadData() {
-  document.getElementById('tableBody').innerHTML = '<tr><td colspan="10" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</span></tr>';
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -162,7 +162,7 @@ async function loadData() {
       allRows = getDemoData();
       document.getElementById('lastUpdated').textContent = 'โหมด Demo (ยังไม่ได้เชื่อม Google Sheet)';
     } else {
-      document.getElementById('tableBody').innerHTML = `<tr><td colspan="10" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
+      document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
       return;
     }
   }
@@ -260,11 +260,11 @@ function renderTable() {
   const startIdx = (currentPage - 1) * pageSize;
   const pageRows = rows.slice(startIdx, startIdx + pageSize);
 
-  if (!totalFiltered) {
-    document.getElementById('tableBody').innerHTML = '<tr><td colspan="10" class="empty-state">ไม่พบข้อมูล</td></tr>';
-    renderPagination(0, 0);
-    return;
-  }
+if (!totalFiltered) {
+     document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="empty-state">ไม่พบข้อมูล</td></tr>';
+     renderPagination(0, 0);
+     return;
+   }
 document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
     const s = normalizeStatus(r.status);
     let badgeClass = 'badge-discipline-check';
@@ -301,44 +301,44 @@ const role = currentUser ? currentUser.role : 'User';
      const canCancel = isAdminOrSuper || hasPermission('cancel');
      
 return `<tr>
-         <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
-         <td data-label="วันที่จอง" class="hide-mobile" style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
-         <td data-label="วันที่ร่วมกิจกรรม" class="hide-mobile" style="white-space:nowrap">${r.visitDate||'—'}</td>
-         <td data-label="ผู้เข้าร่วมกิจกรรม">
-           <div style="font-weight:600">${r.visitorName}</div>
-           <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
-         </td>
-         <td data-label="ผู้ต้องขัง" class="hide-mobile hide-tablet">
-           <div style="font-weight:600">${r.prisonerName}</div>
-           <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
-         </td>
-         <td data-label="แดน" class="hide-mobile">${r.wing||'—'}</td>
-         <td data-label="จำนวน/ยอด" class="hide-mobile">
-           <div>${r.visitorCount} คน</div>
-           <div style="font-weight:700;color:var(--blue)">${(r.total||0).toLocaleString()} บ.</div>
-         </td>
-         <td data-label="สถานะ"><span class="badge ${badgeClass}">${r.status}</span></td>
-         <td data-label="ตรวจสอบ">
-           <div style="display:flex;gap:8px;align-items:center;justify-content:center">
-             <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
-             <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
-             <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
-           </div>
-         </td>
-         <td data-label="จัดการ">
-            <div class="action-btns">
-              ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
-              ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-              ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
-              ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-              ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
-              ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
-              ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-              <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
-              <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+          <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
+          <td data-label="ผู้เข้าร่วม">
+            <div style="font-weight:600">${r.visitorName}</div>
+            <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
+            <div class="mobile-show-prisoner" style="font-size:11px;color:var(--text2);margin-top:4px;display:none">
+              <strong>🏢 ${r.prisonerName || ''}</strong> #${r.prisonerId || ''}
             </div>
-         </td>
-       </tr>`;
+          </td>
+          <td data-label="ผู้ต้องขัง" class="hide-mobile">
+            <div style="font-weight:600">${r.prisonerName}</div>
+            <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
+          </td>
+          <td data-label="แดน">${r.wing||'—'}</td>
+          <td data-label="จำนวน/ยอด">
+            <div>${r.visitorCount} คน • ${(r.total||0).toLocaleString()} บ.</div>
+          </td>
+          <td data-label="สถานะ"><span class="badge ${badgeClass}">${r.status}</span></td>
+          <td data-label="ตรวจสอบ">
+            <div style="display:flex;gap:4px;align-items:center;justify-content:center">
+              <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
+              <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
+              <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
+            </div>
+          </td>
+          <td data-label="จัดการ">
+             <div class="action-btns">
+               ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
+               ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+               ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
+               ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+               ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
+               ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
+               ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+               <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
+               <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+             </div>
+          </td>
+        </tr>`;
   }).join('');
   renderPagination(totalPages, totalFiltered);
 }

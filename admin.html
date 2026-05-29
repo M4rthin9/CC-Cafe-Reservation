@@ -167,33 +167,31 @@
            <button class="btn-print-vinai" onclick="printPrisonerVinaiList()" aria-label="พิมพ์รายชื่อผู้ต้องขัง" id="btnPrintVinai" style="display:none">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
          </div>
 
-        <div class="table-wrap">
+<div class="table-wrap">
           <div class="table-header">
             <h2>รายการจองทั้งหมด</h2>
             <span class="table-count" id="tableCount" aria-live="polite">0 รายการ</span>
           </div>
           <table role="table" aria-label="ตารางรายการจอง">
-<thead>
-               <tr>
-                 <th scope="col">เลขอ้างอิง</th>
-                 <th scope="col" class="hide-mobile">วันที่จอง</th>
-                 <th scope="col" class="hide-mobile hide-tablet">วันที่ร่วมกิจกรรม</th>
-                 <th scope="col">ผู้เข้าร่วมกิจกรรม</th>
-                 <th scope="col" class="hide-mobile hide-tablet">ผู้ต้องขัง</th>
-                 <th scope="col" class="hide-mobile">แดน</th>
-                 <th scope="col" class="hide-mobile">จำนวน/ยอด</th>
-                 <th scope="col">สถานะ</th>
-                 <th scope="col">ตรวจสอบ</th>
-                 <th scope="col">จัดการ</th>
-               </tr>
-             </thead>
-            <tbody id="tableBody">
-              <tr><td colspan="10" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
-            </tbody>
-          </table>
-          <div id="pagination" class="pagination"></div>
-          <div class="last-updated" id="lastUpdated">อัพเดทล่าสุด: —</div>
-        </div>
+            <thead>
+                <tr>
+                  <th scope="col">เลขอ้างอิง</th>
+                  <th scope="col">ผู้เข้าร่วม</th>
+                  <th scope="col" class="hide-mobile mobile-show-prisoner">ผู้ต้องขัง</th>
+                  <th scope="col" class="hide-mobile">แดน</th>
+                  <th scope="col" class="hide-mobile">จำนวน/ยอด</th>
+                  <th scope="col">สถานะ</th>
+                  <th scope="col">ตรวจสอบ</th>
+                  <th scope="col">จัดการ</th>
+                </tr>
+              </thead>
+             <tbody id="tableBody">
+               <tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>
+             </tbody>
+           </table>
+           <div id="pagination" class="pagination"></div>
+           <div class="last-updated" id="lastUpdated">อัพเดทล่าสุด: —</div>
+         </div>
       </div>
 
       <!-- REPORTS VIEW -->
