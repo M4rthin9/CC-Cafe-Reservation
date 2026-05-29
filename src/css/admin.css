@@ -801,6 +801,25 @@ tr:hover td { background: #f8f9fa; }
   background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(232,224,209,0.25) 100%);
 }
 
+/* Status Pipeline */
+.status-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.status-pipeline-item {
+  flex: 1;
+  min-width: 70px;
+  padding: 8px;
+  border-radius: 8px;
+  text-align: center;
+  transition: transform 0.15s ease;
+}
+.status-pipeline-item:hover {
+  transform: translateY(-1px);
+}
+
 /* Overview Dashboard */
 .overview-header {
   display: flex;
@@ -936,6 +955,12 @@ tr:hover td { background: #f8f9fa; }
 
 @media (max-width: 720px) {
   .finance-kpi { grid-template-columns: 1fr; }
+  .status-pipeline { flex-direction: column; }
+  .status-pipeline > div { min-width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .status-pipeline { gap: 6px; }
 }
 
 /* High contrast */

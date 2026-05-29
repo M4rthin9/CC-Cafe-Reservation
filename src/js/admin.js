@@ -789,22 +789,53 @@ function renderDashboardHome() {
     return;
   }
 
-  let rhtml = '';
-  allRows.slice(0, 5).forEach(r => {
-    const idx = allRows.indexOf(r);
-    const s = normalizeStatus(r.status);
-    let bcls = 'badge-pending-review';
-    if (s === 'รอชำระเงิน') bcls = 'badge-payment-pending';
-    else if (s === 'ชำระแล้ว') bcls = 'badge-paid';
-    else if (s === 'เสร็จสิ้น') bcls = 'badge-completed';
-    else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
-    else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
-    rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:5px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;gap:8px;align-items:center;">
-      <div style="flex:1;min-width:0"><b style="font-size:12px">${r.ref}</b><div style="font-size:11px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.visitorName || ''}</div></div>
-      <div><span class="badge ${bcls}" style="font-size:10px;padding:1px 7px">${s}</span></div>
-    </div>`;
-  });
-  recentEl.innerHTML = rhtml;
+let rhtml = '';
+   allRows.slice(0, 5).forEach(r => {
+     const idx = allRows.indexOf(r);
+     const s = normalizeStatus(r.status);
+     let bcls = 'badge-pending-review';
+     if (s === 'รอชำระเงิน') bcls = 'badge-payment-pending';
+     else if (s === 'ชำระแล้ว') bcls = 'badge-paid';
+     else if (s === 'เสร็จสิ้น') bcls = 'badge-completed';
+     else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
+     else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
+     rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:10px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;flex-direction:column;gap:6px;">
+       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+         <b style="font-size:13px;color:var(--blue)">${r.ref}</b>
+         <span class="badge ${bcls}" style="font-size:11px;padding:2px 8px;white-space:nowrap">${s}</span>
+       </div>
+       <div style="display:flex;flex-direction:column;gap:2px;font-size:12px">
+         <span><strong style="color:var(--text2)">👤</strong> ${r.visitorName || ''}</span>
+         <span><strong style="color:var(--text2)">🏢</strong> ${r.prisonerName || ''} (#${r.prisonerId || ''})</span>
+         <span><strong style="color:var(--text2)">📅</strong> ${r.visitDate || ''} • <strong style="color:var(--blue)">${(r.total||0).toLocaleString()} บ.</strong></span>
+       </div>
+     </div>`;
+   });
+   
+   const recentCountEl = document.getElementById('recentCount');
+   if (recentCountEl) recentCountEl.textContent = '(' + allRows.length + ' รายการทั้งหมด)';
+   
+   recentEl.innerHTML = rhtml || '<div style="color:#888;font-size:13px;padding:12px;text-align:center">ยังไม่มีข้อมูล</div>';
+   
+// ===== Status Pipeline Visualization =====
+    const statusOrder = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
+    const statusLabels = {'รอตรวจสอบวินัย':'วินัย','รอตรวจสอบผู้เข้าร่วม':'ผู้เข้าร่วม','รอชำระเงิน':'ชำระเงิน','ชำระแล้ว':'ชำระแล้ว','เสร็จสิ้น':'เสร็จ','ไม่อนุมัติ':'ปฏิเสธ','ยกเลิก':'ยกเลิก'};
+    const statusCounts = {}; statusOrder.forEach(s => statusCounts[s] = 0);
+    allRows.forEach(r => { const s = normalizeStatus(r.status); if (statusCounts[s]!==undefined) statusCounts[s]++; });
+    const grandTotal = allRows.length;
+    let pipelineHtml = '<div class="status-pipeline">';
+    statusOrder.forEach(status => {
+      const pct = grandTotal ? Math.round(statusCounts[status]/grandTotal*100) : 0;
+      const colors = {'รอตรวจสอบวินัย':'var(--status-discipline)','รอตรวจสอบผู้เข้าร่วม':'var(--status-participant)','รอชำระเงิน':'var(--status-payment)','ชำระแล้ว':'var(--status-paid)','เสร็จสิ้น':'var(--status-completed)','ไม่อนุมัติ':'var(--status-rejected)','ยกเลิก':'var(--status-cancelled)'};
+      pipelineHtml += `<div class="status-pipeline-item" style="flex:1;min-width:70px;padding:8px;border-radius:8px;background:${colors[status]}22;border:1px solid ${colors[status]}33;text-align:center">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:2px">${statusLabels[status]}</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text)">${statusCounts[status]}</div>
+        <div style="font-size:10px;color:var(--text2)">${pct}% ของทั้งหมด</div>
+      </div>`;
+    });
+    pipelineHtml += '</div>';
+    const pipelineEl = document.getElementById('statusPipeline');
+    if (pipelineEl) pipelineEl.innerHTML = pipelineHtml;
 
   // ===== NEW: Additional professional metrics =====
   const uniquePrisoners = new Set();
