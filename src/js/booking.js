@@ -758,41 +758,39 @@ async function submitBooking() {
     <div style="text-align:center;margin-bottom:8px">
       <strong style="color:#185fa5">✅ ส่งคำขอเรียบร้อย — Ref: ${ref}</strong>
     </div>
-
-    <div class="dept-report booking-report" style="border:1px solid #185fa5;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
-      <strong>📋 Booking:</strong> ${data.visitorName} (${data.visitorPhone}) → ${data.prisonerName} (#${data.prisonerId}) | ${data.visitDate} | ${data.total.toLocaleString()} บาท
+    
+    <div class="booking-details">
+      <div class="detail-row">
+        <span class="detail-label">📅 วันที่เข้าร่วม</span>
+        <span class="detail-value">${data.visitDate}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">👥 จำนวนผู้เข้าร่วม</span>
+        <span class="detail-value">ญาติ ${data.visitorCount} คน + ผู้ต้องขัง 1 คน = ${totalPersons} คน</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">👤 ชื่อผู้ต้องขัง</span>
+        <span class="detail-value">${data.prisonerName}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">🔢 เลขประจำตัวผู้ต้องขัง</span>
+        <span class="detail-value">${data.prisonerId}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">📍 แดนของผู้ต้องขัง</span>
+        <span class="detail-value">${data.wing}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">🧑 ชื่อผู้จอง</span>
+        <span class="detail-value">${data.visitorName}</span>
+      </div>
+      ${extras.length > 0 ? `<div class="detail-row">
+        <span class="detail-label">📋 รายชื่อผู้เข้าร่วมเพิ่มเติม</span>
+        <span class="detail-value" style="line-height:1.8">${extras.map((v, i) => `${i + 2}. ${v.name} (${v.relation})`).join('<br>')}</span>
+      </div>` : ''}
     </div>
-
-    <div class="dept-report table-report" style="border:1px solid #ff9800;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
-      <strong>🪑 Table:</strong> 1 โต๊ะ | ${totalPersons} คน | ติดต่อ ${data.visitorName}
-    </div>
-
-    <div class="dept-report disciplinary-report" style="border:2px solid #c62828;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
-      <strong>🚨 ส่วนทัณฑ์:</strong> ${data.prisonerName} (#${data.prisonerId}) — ${data.wing} | ${data.visitDate}
-    </div>
-
-    <div class="dept-report kitchen-report" style="border:2px solid #2e7d32;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
-      <strong>🍽️ ครัว:</strong> ผู้ใหญ่ ${cf.adults} · เด็ก5-8 ${cf.kids5_8} · ต่ำกว่า5 ${cf.kidsUnder5}
-    </div>
-
-    <div class="dept-report bakery-report" style="border:2px solid #c8922a;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;">
-      <strong>🍰 เบเกอรี่:</strong> ผู้ใหญ่ ${cf.adults} · เด็ก5-8 ${cf.kids5_8} · ต่ำกว่า5 ${cf.kidsUnder5}
-    </div>
-
-
-    <div class="dept-report" style="border:1px solid #ff9800;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;background:#fff8f0">
-      <strong>🪑 Table:</strong> 1 โต๊ะ | ${totalPersons} คน | ติดต่อ ${data.visitorName}
-    </div>
-
-    <div class="dept-report" style="border:1px solid #2e7d32;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;background:#f0fff0">
-      <strong>🍽️ ครัว:</strong> ผู้ใหญ่ ${cf.adults} | 5-8 ปี ${cf.kids5_8} | &lt;5 ปี ${cf.kidsUnder5}
-    </div>
-
-    <div class="dept-report" style="border:1px solid #c8922a;border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;background:#fffdf5">
-      <strong>🍰 เบเกอรี่:</strong> ผู้ใหญ่ ${cf.adults} | 5-8 ปี ${cf.kids5_8} | &lt;5 ปี ${cf.kidsUnder5}
-    </div>
-
-    <div style="font-size:11px;color:#888;text-align:center">ใช้ปุ่ม "ตรวจสอบสถานะ" เพื่อติดตาม หรือคัดลอก Ref ด้านบน</div>
+    
+    <div style="font-size:11px;color:#888;text-align:center;margin-top:12px">ใช้ปุ่ม "ตรวจสอบสถานะ" เพื่อติดตาม หรือคัดลอก Ref ด้านบน</div>
   `;
 
   // Store ref in sessionStorage for status page
