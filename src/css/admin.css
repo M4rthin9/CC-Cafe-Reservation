@@ -144,7 +144,7 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
 .table-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 .table-header h2 { font-size: 15px; font-weight: 700; }
 .table-count { font-size: 13px; color: var(--text2); }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 th { background: var(--bg); padding: 10px 14px; text-align: left; font-weight: 600; color: var(--text2); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
 tr:last-child td { border-bottom: none; }
@@ -161,8 +161,43 @@ tr:hover td { background: #f8f9fa; }
 .badge-rejected          { background: var(--status-rejected); color: #fff; }
 .badge-cancelled         { background: var(--status-cancelled); color: #fff; }
 
-.action-btns { display: flex; gap: 4px; flex-wrap: nowrap; min-width: fit-content; }
-.eventlog-container { max-height: 500px; overflow-y: auto; overflow-x: auto; }
+.action-btns { 
+  display: flex; 
+  gap: 4px; 
+  flex-wrap: wrap;
+  min-width: fit-content; 
+}
+.action-btns > * {
+  flex-shrink: 0;
+}
+@media(max-width:700px) {
+  .hide-mobile { display: none; }
+  td, th { padding: 8px 10px; font-size: 12px; }
+  .action-btns { gap: 2px; }
+  .btn-approve, .btn-reject, .btn-cancel, .btn-confirm-pay, .btn-reject-pay, .btn-slip, .btn-refresh {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
+
+/* Eventlog container enhancements */
+.eventlog-container {
+  max-height: 500px;
+  overflow-y: auto;
+}
+.eventlog-container table {
+  width: 100%;
+  table-layout: auto;
+}
+.eventlog-container th {
+  position: sticky;
+  top: 0;
+  background: var(--bg2);
+  z-index: 2;
+}
+.eventlog-container tbody tr:nth-child(even) {
+  background: var(--bg2);
+}
 .btn-approve { padding: 5px 12px; background: var(--green); color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
 .btn-approve:hover { opacity: 0.85; }
 .btn-reject { padding: 5px 12px; background: var(--red); color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
