@@ -323,21 +323,20 @@ return `<tr data-idx="${rowIdx}">
              </div>
            </td>
 <td data-label="จัดการ">
-               <div class="action-btns">
-                 <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
-                 <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
-                 ${(canApproveDiscipline || canRejectDiscipline || canApproveParticipant || canConfirmPayment || canRejectPayment || canCancel) ? `<button class="btn-more-actions row-expand-btn" onclick="toggleRowActions(this)" style="font-size:11px;padding:4px 8px;background:rgba(0,0,0,0.05)">▼ เพิ่มเติม</button>` : ''}
-               </div>
-               <div class="mobile-actions-expanded" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-                 ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
-                 ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
-                 ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-                 ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
-                 ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
-                 ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-               </div>
-            </td>
-          </tr>`;
+              <div class="action-btns">
+                <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
+                <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+              </div>
+              <div class="mobile-actions-expanded" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:${s === 'รอตรวจสอบวินัย' || s === 'รอตรวจสอบผู้เข้าร่วม' || s === 'รอชำระเงิน' ? 'flex' : 'none'};flex-wrap:wrap;gap:6px">
+                ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
+                ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
+                ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
+                ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
+                ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
+                ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
+              </div>
+           </td>
+         </tr>`;
    }).join('');
    renderPagination(totalPages, totalFiltered);
 }
@@ -356,13 +355,6 @@ function changePageSize(newSize) {
 
 function resetToFirstPage() {
   currentPage = 1;
-}
-
-function toggleRowActions(button) {
-  const expanded = button.closest('td').querySelector('.mobile-actions-expanded');
-  const isExpanded = expanded.style.display === 'block';
-  expanded.style.display = isExpanded ? 'none' : 'block';
-  button.textContent = isExpanded ? '▼ เพิ่มเติม' : '▲ ซ่อน';
 }
 
 function renderPagination(totalPages, totalFiltered) {
@@ -1122,96 +1114,6 @@ function setupChartTouchInteractions() {
   }
 }
 
-// ===== SWIPE GESTURE FOR BOOKING CARDS =====
-let touchStartX = 0;
-let touchStartY = 0;
-function initSwipeGestures() {
-  // Touch handlers for table rows
-  document.addEventListener('touchstart', (e) => {
-    const tr = e.target.closest('tr[data-idx]');
-    if (!tr) return;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-  
-  document.addEventListener('touchend', (e) => {
-    const tr = e.target.closest('tr[data-idx]');
-    if (!tr) return;
-    
-    const deltaX = e.changedTouches[0].clientX - touchStartX;
-    const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
-    
-    // Only handle horizontal swipes wider than vertical movement
-    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > deltaY) {
-      const idx = parseInt(tr.dataset.idx);
-      const status = normalizeStatus(allRows[idx]?.status);
-      
-      if (deltaX > 0) {
-        // Swipe right - approve action
-        handleSwipeApprove(idx, status);
-      } else {
-        // Swipe left - reject/cancel action
-        handleSwipeReject(idx, status);
-      }
-    }
-  }, { passive: true });
-}
-
-function handleSwipeApprove(idx, status) {
-  const row = allRows[idx];
-  if (!row) return;
-  
-  if (status === 'รอตรวจสอบวินัย' && (hasPermission('approve_discipline') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
-    if (confirm(`✓ อนุมัติวินัยสำหรับ "${row.visitorName}" ?`)) {
-      updateStatus(idx, 'รอตรวจสอบผู้เข้าร่วม');
-    }
-  } else if (status === 'รอตรวจสอบผู้เข้าร่วม' && (hasPermission('approve_participant') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
-    if (confirm(`✓ อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ?`)) {
-      updateStatus(idx, 'รอชำระเงิน');
-    }
-  } else if ((status === 'รอชำระเงิน' || status === 'ชำระแล้ว') && (hasPermission('confirm_payment') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
-    const target = status === 'รอชำระเงิน' ? 'ชำระแล้ว' : 'เสร็จสิ้น';
-    if (confirm(`✓ ยืนยันจาก ${status} ?`)) {
-      updateStatus(idx, target);
-    }
-  }
-}
-
-function handleSwipeReject(idx, status) {
-  const row = allRows[idx];
-  if (!row) return;
-  
-  if (status === 'รอตรวจสอบวินัย' && (hasPermission('reject_discipline') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
-    if (confirm(`✗ ปฏิเสธวินัยสำหรับ "${row.visitorName}" ?`)) {
-      updateStatus(idx, 'ไม่อนุมัติ');
-    }
-  } else if (status === 'รอตรวจสอบผู้เข้าร่วม' && (hasPermission('approve_participant') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
-    if (confirm(`✗ ปฏิเสธผู้เข้าร่วมสำหรับ "${row.visitorName}" ?`)) {
-      updateStatus(idx, 'ไม่อนุมัติ');
-    }
-  } else if (status === 'รอชำระเงิน' && (hasPermission('reject_payment') || currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin')) {
-    if (confirm(`✗ ปฏิเสธการชำระเงินสำหรับ "${row.visitorName}" ?`)) {
-      updateStatus(idx, 'รอชำระเงิน');
-    }
-  }
-}
-
-// ===== PROGRESIVE DISCLOSURE FOR TABLE ROWS =====
-function initRowExpansion() {
-  document.addEventListener('click', (e) => {
-    const expandBtn = e.target.closest('.row-expand-btn');
-    if (expandBtn) {
-      const row = expandBtn.closest('tr');
-      const detailRow = row.nextElementSibling;
-      
-      if (detailRow && detailRow.classList.contains('detail-row-mobile')) {
-        detailRow.classList.toggle('expanded');
-        expandBtn.textContent = detailRow.classList.contains('expanded') ? '▲ ซ่อน' : '▼ เพิ่มเติม';
-      }
-    }
-  });
-}
-
 // ===== FILTER STATE MANAGEMENT =====
 const filterState = {
   search: '',
@@ -1301,8 +1203,6 @@ function initPullToRefresh() {
 // Initialize mobile features on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   loadFilterState();
-  initSwipeGestures();
-  initRowExpansion();
   setupChartTouchInteractions();
   initPullToRefresh();
   

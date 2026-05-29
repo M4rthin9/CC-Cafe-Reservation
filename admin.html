@@ -49,11 +49,10 @@
       <button onclick="doLogout()" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">ออกจากระบบ</button>
     </div>
 </div>
-  
-   <!-- MAIN CONTENT -->
-   <div class="content-area">
-    <button class="menu-toggle" onclick="toggleMobileMenu()" style="display:none">☰</button>
-     <div class="topbar">
+   
+    <!-- MAIN CONTENT -->
+    <div class="content-area">
+      <div class="topbar">
        <div>
          <h1 id="topTitle">🏛️ ระบบตรวจสอบการจองเยี่ยม</h1>
          <div style="font-size:12px;opacity:0.8">ทัณฑสถานบำบัดพิเศษกลาง</div>
@@ -282,12 +281,6 @@
 </div>
 
 <script src="src/js/admin.js" defer></script>
-  <script>
-function toggleMobileMenu() {
-  const sidebar = document.querySelector('.sidebar');
-  if (sidebar) sidebar.classList.toggle('show');
-}
-  </script>
   
   <!-- Bottom Navigation for Mobile -->
   <nav class="bottom-nav" id="bottomNav" style="display:none">
