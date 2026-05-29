@@ -805,19 +805,22 @@ tr:hover td { background: #f8f9fa; }
 .status-pipeline {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 0;
 }
 .status-pipeline-item {
   flex: 1;
-  min-width: 70px;
-  padding: 8px;
+  min-width: 55px;
+  padding: 6px 4px;
   border-radius: 8px;
   text-align: center;
   transition: transform 0.15s ease;
 }
 .status-pipeline-item:hover {
   transform: translateY(-1px);
+}
+.status-pipeline-item .status-pct {
+  font-size: 9px;
 }
 
 /* Overview Dashboard */

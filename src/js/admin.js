@@ -827,10 +827,10 @@ let rhtml = '';
     statusOrder.forEach(status => {
       const pct = grandTotal ? Math.round(statusCounts[status]/grandTotal*100) : 0;
       const colors = {'รอตรวจสอบวินัย':'var(--status-discipline)','รอตรวจสอบผู้เข้าร่วม':'var(--status-participant)','รอชำระเงิน':'var(--status-payment)','ชำระแล้ว':'var(--status-paid)','เสร็จสิ้น':'var(--status-completed)','ไม่อนุมัติ':'var(--status-rejected)','ยกเลิก':'var(--status-cancelled)'};
-      pipelineHtml += `<div class="status-pipeline-item" style="flex:1;min-width:70px;padding:8px;border-radius:8px;background:${colors[status]}22;border:1px solid ${colors[status]}33;text-align:center">
+      pipelineHtml += `<div class="status-pipeline-item" style="flex:1;min-width:55px;padding:6px 4px;border-radius:8px;background:${colors[status]}22;border:1px solid ${colors[status]}33;text-align:center">
         <div style="font-size:10px;color:var(--text2);margin-bottom:2px">${statusLabels[status]}</div>
-        <div style="font-size:16px;font-weight:700;color:var(--text)">${statusCounts[status]}</div>
-        <div style="font-size:10px;color:var(--text2)">${pct}% ของทั้งหมด</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${statusCounts[status]}</div>
+        <div style="font-size:9px;color:var(--text2)" class="status-pct">${pct}% ของทั้งหมด</div>
       </div>`;
     });
     pipelineHtml += '</div>';
