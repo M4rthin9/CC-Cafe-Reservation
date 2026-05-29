@@ -189,8 +189,8 @@ function updateStats() {
         Superadmin: null, // sees all
         Admin: null, // sees all
         Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
-        Tadtel: ['รอตรวจสอบผู้เข้าร่วม'],
-        Vinai: ['รอตรวจสอบวินัย']
+        Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
+        Vinai: ['รอตรวจสอบวินัย', 'รอตรวจสอบ']
     };
     
     // Filter rows based on role (same logic as renderTable)
@@ -230,13 +230,13 @@ function renderTable() {
   const fd = document.getElementById('filterDate').value;
   const role = currentUser ? currentUser.role : null;
   
-  // Filter by role - each role sees only specific statuses
+// Filter by role - each role sees only specific statuses
   const allowedStatuses = {
     Superadmin: null, // sees all
     Admin: null, // sees all
     Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
-    Tadtel: ['รอตรวจสอบผู้เข้าร่วม'],
-    Vinai: ['รอตรวจสอบวินัย']
+    Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
+    Vinai: ['รอตรวจสอบวินัย', 'รอตรวจสอบ']
   };
   
     let rows = allRows.filter(r => {
@@ -1462,19 +1462,17 @@ function getApprLabel(v){ return v==='yes' ? '✅ เข้าได้' : v==='
 
 // Normalize legacy statuses for consistent display across pages
 function normalizeStatus(s) {
-  const v = (s || '').toString().trim().toLowerCase();
-  // Legacy status for initial state (map to new workflow)
-  if (v === 'รอตรวจสอบ') return 'รอตรวจสอบวินัย';
-  // New workflow statuses (return as-is)
+  const v = (s || '').toString().trim();
+  // New workflow statuses (return as-is) - check first before legacy mapping
   if (['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ยกเลิก', 'ไม่อนุมัติ'].includes(v)) {
-    return s;
+    return v;
   }
   // Legacy status mappings
-  if (['อนุมัติ', 'approved'].includes(v)) return 'รอตรวจสอบวินัย'; // Old approved -> step 2
-  if (['rejected'].includes(v)) return 'ไม่อนุมัติ';
-  if (['paid'].includes(v)) return 'ชำระแล้ว';
-  if (['done'].includes(v)) return 'เสร็จสิ้น';
-  return s || 'รอตรวจสอบวินัย';
+  if (v === 'รอตรวจสอบ' || ['อนุมัติ', 'approved'].includes(v) || v.toLowerCase() === 'approved') return 'รอตรวจสอบวินัย';
+  if (v.toLowerCase() === 'rejected') return 'ไม่อนุมัติ';
+  if (v.toLowerCase() === 'paid') return 'ชำระแล้ว';
+  if (v.toLowerCase() === 'done') return 'เสร็จสิ้น';
+  return v || 'รอตรวจสอบวินัย';
 }
 
 function viewSlip(idx) {
