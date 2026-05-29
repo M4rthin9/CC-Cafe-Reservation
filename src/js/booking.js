@@ -49,7 +49,7 @@ function maskPrisonerName(name) {
   if (lastSpace > 0) {
     const firstName = trimmed.substring(0, lastSpace + 1);
     const lastName = trimmed.substring(lastSpace + 1);
-    const maskedLast = lastName.length > 4 ? lastName.slice(0, -4) : lastName;
+    const maskedLast = lastName.slice(0, 4);
     return firstName + maskedLast;
   }
   return trimmed.length > 3 ? trimmed.slice(0, 3) : trimmed;
