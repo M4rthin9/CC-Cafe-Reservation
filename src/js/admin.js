@@ -300,32 +300,32 @@ const role = currentUser ? currentUser.role : 'User';
      const canRejectPayment = isAdminOrSuper || hasPermission('reject_payment');
      const canCancel = isAdminOrSuper || hasPermission('cancel');
      
-     return `<tr>
-        <td><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
-        <td style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
-        <td class="hide-mobile" style="white-space:nowrap">${r.visitDate||'—'}</td>
-        <td>
+return `<tr>
+        <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
+        <td data-label="วันที่จอง" style="font-size:12px;white-space:nowrap">${r.timestamp||'—'}</td>
+        <td data-label="วันที่ร่วมกิจกรรม" style="white-space:nowrap">${r.visitDate||'—'}</td>
+        <td data-label="ผู้เข้าร่วมกิจกรรม">
           <div style="font-weight:600">${r.visitorName}</div>
           <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
         </td>
-        <td class="hide-mobile">
+        <td data-label="ผู้ต้องขัง">
           <div style="font-weight:600">${r.prisonerName}</div>
           <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
         </td>
-        <td class="hide-mobile">${r.wing||'—'}</td>
-        <td class="hide-mobile">
+        <td data-label="แดน">${r.wing||'—'}</td>
+        <td data-label="จำนวน/ยอด">
           <div>${r.visitorCount} คน</div>
           <div style="font-weight:700;color:var(--blue)">${(r.total||0).toLocaleString()} บ.</div>
         </td>
-        <td><span class="badge ${badgeClass}">${r.status}</span></td>
-        <td>
+        <td data-label="สถานะ"><span class="badge ${badgeClass}">${r.status}</span></td>
+        <td data-label="ตรวจสอบ">
           <div style="display:flex;gap:8px;align-items:center;justify-content:center">
             <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
             <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
             <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
           </div>
         </td>
-        <td>
+        <td data-label="จัดการ">
            <div class="action-btns">
              ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
              ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}

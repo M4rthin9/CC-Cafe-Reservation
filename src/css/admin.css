@@ -145,28 +145,76 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
 .table-header h2 { font-size: 15px; font-weight: 700; }
 .table-count { font-size: 13px; color: var(--text2); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-th { background: var(--bg); padding: 10px 14px; text-align: left; font-weight: 600; color: var(--text2); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-td { 
-  padding: 12px 14px; 
-  border-bottom: 1px solid var(--border); 
-  vertical-align: top;
-  word-break: break-word;
-  hyphens: auto;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+th { background: var(--bg); padding: 10px 12px; text-align: left; font-weight: 600; color: var(--text2); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+thead th:nth-child(1) { width: 13%; }
+thead th:nth-child(2) { width: 11%; }
+thead th:nth-child(3) { width: 12%; }
+thead th:nth-child(4) { width: 22%; }
+thead th:nth-child(5) { width: 16%; }
+thead th:nth-child(6) { width: 8%; }
+thead th:nth-child(7) { width: 10%; }
+thead th:nth-child(8) { width: 10%; }
+thead th:nth-child(9) { width: 8%; }
+thead th:nth-child(10) { width: 12%; }
+tr:last-child td { border-bottom: none; }
+
+/* Reservations table - card layout on mobile */
 @media(max-width:700px) {
-  td, th { 
-    padding: 8px 10px; 
+  .table-wrap thead th.hide-mobile,
+  .table-wrap td.hide-mobile { display: none; }
+  .table-wrap table,
+  .table-wrap thead,
+  .table-wrap tbody,
+  .table-wrap th,
+  .table-wrap td,
+  .table-wrap tr {
+    display: block;
+  }
+  
+  .table-wrap thead {
+    display: none;
+  }
+  
+  .table-wrap tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  
+  .table-wrap td {
+    display: flex;
+    padding: 6px 0;
+    border: none;
+    font-size: 13px;
+  }
+  
+  .table-wrap td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text2);
+    min-width: 110px;
+    flex-shrink: 0;
+    font-size: 11px;
+  }
+  
+  .action-btns {
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+  
+  .action-btns button {
+    flex: 1 1 100%;
+    min-width: 0;
+    padding: 8px 10px;
     font-size: 12px;
   }
-  td {
-    white-space: normal;
-    max-width: 150px;
-  }
 }
-tr:last-child td { border-bottom: none; }
 tr:hover td { background: #f8f9fa; }
 .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
 
@@ -188,13 +236,6 @@ tr:hover td { background: #f8f9fa; }
 }
 .action-btns > * {
   flex-shrink: 0;
-}
-@media(max-width:700px) {
-  .action-btns { gap: 2px; }
-  .btn-approve, .btn-reject, .btn-cancel, .btn-confirm-pay, .btn-reject-pay, .btn-slip, .btn-refresh {
-    padding: 4px 8px;
-    font-size: 11px;
-  }
 }
 
 /* Eventlog container enhancements */
