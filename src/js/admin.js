@@ -302,10 +302,13 @@ const role = currentUser ? currentUser.role : 'User';
      
 return `<tr data-idx="${rowIdx}">
            <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
-           <td data-label="ผู้เข้าร่วม">
-             <div style="font-weight:600">${r.visitorName}</div>
-             <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
-           </td>
+<td data-label="ผู้เข้าร่วม">
+              <div style="font-weight:600">${r.visitorName}</div>
+              <div style="font-size:11px;color:var(--text2)">${r.visitorPhone||''}</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);display:none" class="mobile-show-prisoner">
+                <span style="font-weight:600;color:var(--text2)">👤 ผู้ต้องขัง:</span> ${r.prisonerName || ''} (#${r.prisonerId || ''})
+              </div>
+            </td>
            <td data-label="ผู้ต้องขัง" class="hide-mobile">
              <div style="font-weight:600">${r.prisonerName}</div>
              <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
