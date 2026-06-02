@@ -93,13 +93,37 @@ async function doSearch() {
     document.getElementById('searchBtn').disabled = false;
   }
 
-  // Filter
+  // Filter - find upcoming bookings (not cancelled and not past completed)
   let found = null;
+  const todayStr = toLocalDateStr(new Date());
+  const completedStatus = ['เสร็จสิ้น', 'done'];
+  const cancelledStatus = ['ยกเลิก', 'cancelled'];
+  
   if (mode === 'ref') {
     found = rows.find(r => (r.ref || '').toUpperCase() === query);
   } else {
     const matches = rows.filter(r => String(r.prisonerId || '').trim() === query);
-    if (matches.length > 0) found = matches[0];
+    if (matches.length > 0) {
+      // Sort by visit date (earliest first) - use visitDateISO for reliable sorting
+      const validMatches = matches
+        .filter(r => {
+          const rStatus = normalizeStatus(r.status);
+          // Never show cancelled bookings
+          if (cancelledStatus.includes(rStatus)) return false;
+          // Show upcoming bookings, and completed bookings only if date hasn't passed
+          if (completedStatus.includes(rStatus)) {
+            const rDate = r.visitDateISO || parseThaiDateToISO(r.visitDate) || '';
+            return String(rDate).trim() >= todayStr;
+          }
+          return true;
+        })
+        .sort((a, b) => {
+          const d1 = a.visitDateISO || parseThaiDateToISO(a.visitDate) || '';
+          const d2 = b.visitDateISO || parseThaiDateToISO(b.visitDate) || '';
+          return String(d1).localeCompare(String(d2));
+        });
+      if (validMatches.length > 0) found = validMatches[0];
+    }
   }
 
   if (!found) {
@@ -551,6 +575,28 @@ function setOverlay(show, msg) {
 }
 
 // ===== UTILS =====
+function toLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function parseThaiDateToISO(dateStr) {
+  if (!dateStr) return '';
+  const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                    'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const match = dateStr.match(/(\d+)\s*(?:วัน)?\s*([^\s]+)\s*(?:พ\.ศ\.|พศ\.|)\s*(\d+)/);
+  if (match) {
+    const day = String(match[1]).padStart(2, '0');
+    const monthName = match[2];
+    const year = parseInt(match[3]) - 543; // convert Buddhist era to AD
+    const month = String(thMonths.indexOf(monthName) + 1).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return String(dateStr).trim();
+}
+
 function maskPrisonerName(name) {
   if (!name || name === '—') return name;
   const trimmed = name.trim();
@@ -602,11 +648,45 @@ function getDemoRows() {
       visitorId: '9876543210987',
       visitorPhone: '089-876-5432',
       relation: 'บุตร / ธิดา',
-      prisonerName: 'วิชัย รักชาติ',
+      prisonerName: 'วิชัย รักชาตี',
       prisonerId: '11223344',
       wing: 'แดน 7',
       visitDate: 'วันอังคารที่ 26 พฤษภาคม พ.ศ. 2569',
       visitDateISO: '2026-05-26',
+      visitorCount: 1,
+      totalPersons: 2,
+      total: 2000,
+      status: 'รอตรวจสอบ'
+    },
+    {
+      ref: 'VIS-22222',
+      timestamp: '30/5/2569 09:00',
+      visitorName: 'สมศักดิ์ ทดสอบ',
+      visitorId: '1111111111111',
+      visitorPhone: '081-111-1111',
+      relation: 'บุตร / ธิดา',
+      prisonerName: 'สมศักดิ์ มั่นคง',
+      prisonerId: '56781234',
+      wing: 'แดน 3',
+      visitDate: 'วันจันทร์ที่ 2 มิถุนายน พ.ศ. 2569',
+      visitDateISO: '2026-06-02',
+      visitorCount: 1,
+      totalPersons: 2,
+      total: 2000,
+      status: 'เสร็จสิ้น'
+    },
+    {
+      ref: 'VIS-33333',
+      timestamp: '30/5/2569 10:00',
+      visitorName: 'สมหญิง ตรวจสอบ',
+      visitorId: '2222222222222',
+      visitorPhone: '081-222-2222',
+      relation: 'คู่สมรส',
+      prisonerName: 'สมศักดิ์ มั่นคง',
+      prisonerId: '56781234',
+      wing: 'แดน 3',
+      visitDate: 'วันพุธที่ 4 มิถุนายน พ.ศ. 2569',
+      visitDateISO: '2026-06-04',
       visitorCount: 1,
       totalPersons: 2,
       total: 2000,
