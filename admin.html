@@ -273,7 +273,6 @@
           </div>
         </div>
       </div>
-      
     </div>
   </div>
 </div>
@@ -301,7 +300,6 @@
 </div>
 
 <script src="src/js/admin.js" defer></script>
-  
   <!-- Bottom Navigation for Mobile -->
   <nav class="bottom-nav" id="bottomNav" style="display:none">
     <a href="#" class="bottom-nav-item active" data-view="home" onclick="switchView('home');return false">🏠<br><span>ภาพรวม</span></a>
@@ -309,10 +307,10 @@
     <a href="#" class="bottom-nav-item" data-view="reports" onclick="switchView('reports');return false">📊<br><span>รายงาน</span></a>
     <a href="#" class="bottom-nav-item" data-view="eventlog" onclick="switchView('eventlog');return false">📝<br><span>บันทึก</span></a>
   </nav>
-  
+
   <!-- Pull to refresh indicator (mobile) -->
   <div class="pull-refresh" id="pullRefresh">⟳ ปล่อยเพื่อรีเฟรช</div>
-  
+
   <script>
 // Show bottom nav on mobile
 if (window.innerWidth <= 768) {
@@ -323,7 +321,7 @@ window.addEventListener('resize', () => {
   if (bottomNav) bottomNav.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
 });
   </script>
-  
+
   <div style="text-align:center;padding:8px;font-size:10px;color:#6B7280;background:#FDFBF7;">
     กรมราชทัณฑ์ · <a href="https://main.correct.go.th" target="_blank" rel="noopener" style="color:#0B2545;">main.correct.go.th</a>
   </div>

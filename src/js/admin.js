@@ -1428,11 +1428,27 @@ async function updateVisitorApproval(idx, pidx, val) {
   const oldTotal = row.total;
 
   let approvedRel = ((row.visitorApproved || '') === 'yes' ? 1 : 0);
-  if (row.extraVisitorApproved) {
-    approvedRel += String(row.extraVisitorApproved).split(';;').filter(v => (v || '').trim().toLowerCase() === 'yes').length;
+  let total = 1000; // main visitor
+  if (row.extraVisitorApproved && row.extraVisitorNames) {
+    const extras = parseExtraVisitors(row);
+    const approvals = String(row.extraVisitorApproved).split(';;');
+    extras.forEach((v, idx) => {
+      if ((approvals[idx] || '').trim().toLowerCase() === 'yes') {
+        let fee = 1000;
+        if (v.relation === 'บุตร / ธิดา') {
+          const a = parseInt(v.age, 10);
+          if (!isNaN(a)) {
+            if (a < 5) fee = 0;
+            else if (a <= 8) fee = 500;
+          }
+        }
+        total += fee;
+        approvedRel++;
+      }
+    });
   }
   row.visitorCount = approvedRel;
-  row.total = (approvedRel + 1) * 1000;
+  row.total = total;
 
   try {
     const resp = await fetch(APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateVisitorApproval', username: currentUser.username, password: currentUser.password, ref: row.ref, visitorApproved: row.visitorApproved || '', extraVisitorApproved: row.extraVisitorApproved || '', visitorCount: row.visitorCount, total: row.total }) });
@@ -1807,10 +1823,22 @@ async function approveAllVisitorsInDetail(idx) {
     row.extraVisitorApproved = '';
   }
 
-  // Calculate visitor count and total
-  const approvedRel = 1 + (row.extraVisitorApproved ? row.extraVisitorApproved.split(';;').filter(v => (v || '').trim().toLowerCase() === 'yes').length : 0);
+  // Calculate visitor count and total with child pricing
+  let total = 1000; // main visitor
+  extras.forEach(v => {
+    let fee = 1000;
+    if (v.relation === 'บุตร / ธิดา') {
+      const a = parseInt(v.age, 10);
+      if (!isNaN(a)) {
+        if (a < 5) fee = 0;
+        else if (a <= 8) fee = 500;
+      }
+    }
+    total += fee;
+  });
+  const approvedRel = 1 + extras.length;
   row.visitorCount = approvedRel;
-  row.total = (approvedRel + 1) * 1000;
+  row.total = total;
 
   // Now approve to next status
   const newStatus = 'รอชำระเงิน';
