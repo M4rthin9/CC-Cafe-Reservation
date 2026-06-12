@@ -1,3 +1,70 @@
+// ===== i18n TRANSLATIONS =====
+const i18n = {
+  th: {
+    chatGreeting: '🤖 สวัสดี! ฉันเป็น M4RTHIN9 AI ผู้ช่วยตอบคำถามเกี่ยวกับการจองเข้ากิจกรรม ลองถามมาได้เลย',
+    chatPlaceholder: 'พิมพ์คำถาม...',
+    chatClose: 'ปิดแชท',
+    overlayLoading: 'กำลังส่งคำขอ...',
+    noBookingFound: '🔍 ไม่พบการจองสำหรับ <strong>{ref}</strong><br>กรุณาเช็คความถูกต้องหรือลองใหม่<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer">ลองใหม่</button>',
+    paymentCost: '💰 <strong>ค่าใช้จ่าย</strong> ผู้ใหญ่ 1,000 บาท / คน (คิดรวมผู้ต้องขัง)<br>👶 เด็ก 5-8 ขวบ 500 บาท / คน<br>👶 เด็ก <5 ขวบ ฟรี<br><br>เช่น ญาติ 2 คน + ผู้ต้องขัง 1 คน = 3,000 บาท',
+    bookingSteps: '📋 <strong>ขั้นตอบการจอง 4 ขั้นตอบ</strong>:<br>① กดปุ่ม "จองคิว" ด้านบน<br>② กรอกข้อมูลผู้เข้าร่วมกิจกรรม ข้อมูลผู้ต้องขัง และเลือกวันที่<br>③ รับเลขอ้างอิง (Ref No.) ทันที<br>④ รอเจ้าหน้าที่ตรวจสอบ (1-2 วัน)<br>⑤ ชำระเงินเมื่อได้รับการอนุมัติ',
+    checkStatus: '🔍 <strong>ตรวจสอบสถานะ</strong>:<br>ใช้ <strong>Ref No.</strong> หรือ <strong>เลขผู้ต้องขัง</strong> ที่หน้า "ตรวจสอบสถานะ"<br><br>สถานะที่อาจเจอ:<br>• รอตรวจสอบวินัย<br>• รอตรวจสอบผู้เข้าร่วม<br>• รอชำระเงิน<br>• ชำระแล้ว<br>• เสร็จสิ้น<br>• ไม่อนุมัติ',
+    daysTime: '📅 <strong>วันและเวลา</strong>:<br>เปิดรับจองเฉพาะ <strong>วันทำการ</strong><br>จันทร์ – ศุกร์ (ยกเว้นวันหยุดราชการ)<br><br>จำนวนโต๊ะจำกัด 20 โต๊ะ / วัน<br>เมื่อเต็มแล้วระบบจะปิดรับโดยอัตโนมัติ',
+    whatToBring: '📝 <strong>สิ่งที่ควรเตรียมในวันเยี่ยม</strong>:<br>• แสดงบัตรประชาชนตัวจริง<br>• ห้ามนำโทรศัพท์เข้าพื้นที่เยี่ยม<br><br>ในกิจกรรมจะมีอาหารเป็น <strong>Fine Dining 6 คอร์ส</strong>เสิร์ฟให้ผู้เข้าร่วม',
+    childAgePrice: '👶 <strong>อายุและค่าใช้จ่ายของเด็ก</strong>:<br>• อายุ <5 ขวบ: ฟรี<br>• อายุ 5-8 ขวบ: 500 บาท / คน<br>• อายุ >8 ขวบ: 1,000 บาท / คน (เท่าผู้ใหญ่)',
+    paymentMethod: '💳 <strong>การชำระเงิน</strong>:<br>ชำระเงินได้หลังจากได้รับการอนุมัติ<br>จะมีลิงก์ชำระค่าร่วมกิจกรรมให้ดำเนินการ<br><br>ใช้บริการโอนเงินผ่านธนาคาร',
+    approvalTime: '⏱️ <strong>ระยะเวลาการตรวจสอบ</strong>:<br>เจ้าหน้าที่จะตรวจสอบประวัติวินัยของผู้ต้องขัง<br>ใช้เวลาประมาณ 1-2 วันทำการ<br><br>หากสถานะยังคง "รอตรวจสอบ" เกิน 3 วัน กรุณาติดต่อเจ้าหน้าที่โดยตรง',
+    contactUs: '📞 <strong>ติดต่อเจ้าหน้าที่</strong>:<br>สอบถามเพิ่มเติมได้ที่ ทัณฑสถานบำบัดพิเศษกลาง<br><br>หรือเยี่ยมชม <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
+    greetingHello: '👋 สวัสดีครับ! ยินดีช่วยคุยเลขานุการ<br>ฉันเป็นผู้ช่วย AI ที่สามารถตอบคำถามเกี่ยวกับการจองเข้ากิจกรรมของทัณฑสถานบำบัดพิเศษกลาง<br><br>ลองถามมาได้เลย เช่น "ค่าใช้จ่ายเท่าไหร่" หรือ "จองยังไง"',
+    notUnderstand: '❓ ขออภัย ฉันไม่เข้าใจคำถามนี้<br>ลองถามในหัวข้ออื่น เช่น "ค่าใช้จ่าย", "จองยังไง", หรือ "ตรวจสอบสถานะ"'
+  },
+  en: {
+    chatGreeting: '🤖 Hello! I\'m the M4RTHIN9 AI assistant for the reservation system. Feel free to ask any questions.',
+    chatPlaceholder: 'Type your question...',
+    chatClose: 'Close chat',
+    overlayLoading: 'Submitting request...',
+    noBookingFound: '🔍 No booking found for <strong>{ref}</strong><br>Please check the reference number<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer">Try Again</button>',
+    paymentCost: '💰 <strong>Cost Details</strong> Adult: 1,000 THB per person (includes prisoner)<br>👶 Child 5-8 years: 500 THB<br>👶 Child under 5 years: Free<br><br>e.g., Family 2 + Prisoner 1 = 3,000 THB',
+    bookingSteps: '📋 <strong>4-Step Booking Process</strong>:<br>① Click "Book Slot" button above<br>② Fill in visitor info, prisoner info, and select date<br>③ Get reference number (Ref No.) instantly<br>④ Wait for officer verification (1-2 business days)<br>⑤ Pay when approved',
+    checkStatus: '🔍 <strong>Check Status</strong>:<br>Use <strong>Ref No.</strong> or <strong>Prisoner ID</strong> on the "Check Status" page<br><br>Possible statuses:<br>• Pending verification<br>• Pending visitor check<br>• Pending payment<br>• Paid<br>• Completed<br>• Rejected',
+    daysTime: '📅 <strong>Days and Hours</strong>:<br>Bookings accepted on <strong>working days</strong><br>Mon – Fri (except public holidays)<br><br>Limited to 20 seats / day<br>System closes automatically when full',
+    whatToBring: '📝 <strong>What to Bring</strong>:<br>• Present actual ID card<br>• No phones allowed in visit area<br><br>The activity includes Fine Dining 6-course meal',
+    childAgePrice: '👶 <strong>Child Age & Pricing</strong>:<br>• Under 5 years: Free<br>• 5-8 years: 500 THB<br>• Over 8 years: 1,000 THB (same as adult)',
+    paymentMethod: '💳 <strong>Payment Method</strong>:<br>Payment can be made after approval<br>Payment link will be provided<br><br>Bank transfer service available',
+    approvalTime: '⏱️ <strong>Processing Time</strong>:<br>Officers check prisoner disciplinary record<br>Takes approximately 1-2 business days<br><br>If still "Pending" after 3 days, contact officers directly',
+    contactUs: '📞 <strong>Contact Officers</strong>:<br>Inquiries can be made at the institution<br><br>Or visit <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
+    greetingHello: '👋 Hello! How can I assist you?<br>I\'m the AI assistant for Chance & Change Cafe reservation system<br><br>Feel free to ask about "cost", "how to book", or "check status"',
+    notUnderstand: '❓ Sorry, I don\'t understand this question<br>Try asking about "cost", "how to book", or "check status"'
+  },
+  zh: {
+    chatGreeting: '🤖 您好！我是 M4RTHIN9 AI 助手，可以回答关于本场地预约的任何问题。',
+    chatPlaceholder: '请输入问题...',
+    chatClose: '关闭聊天',
+    overlayLoading: '正在提交请求...',
+    noBookingFound: '🔍 未找到参考编号为 <strong>{ref}</strong> 的预约<br>请检查参考编号是否正确<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer">重试</button>',
+    paymentCost: '💰 <strong>费用详情</strong> 成人：1,000 泰铢/人（包含囚犯）<br>👶 5-8岁儿童：500 泰铢<br>👶 5岁以下儿童：免费<br><br>例如：家属2人 + 囚犯1人 = 3,000 泰铢',
+    bookingSteps: '📋 <strong>4步预约流程</strong>:<br>① 点击上方"预约名额"<br>② 填写家属信息、囚犯信息并选择日期<br>③ 立即获取参考编号（Ref No.）<br>④ 等待工作人员审核（1-2个工作日）<br>⑤ 审核通过后付款',
+    checkStatus: '🔍 <strong>查询状态</strong>:<br>在"查询状态"页面使用<strong>参考编号</strong>或<strong>囚犯编号</strong><br><br>可能的状态:<br>• 待审核<br>• 待访客确认<br>• 待付款<br>• 已付款<br>• 已完成<br>• 已拒绝',
+    daysTime: '📅 <strong>日期与时间</strong>:<br>仅限<strong>工作日</strong>预约<br>星期一 – 星期五（公假除外）<br><br>每天限20个席位<br>满额后系统自动关闭',
+    whatToBring: '📝 <strong>参观须知</strong>:<br>• 须出示真实身份证<br>• 访问区内禁止携带电话<br><br>活动包含6道菜Fine Dining',
+    childAgePrice: '👶 <strong>儿童年龄与收费</strong>:<br>• 5岁以下：免费<br>• 5-8岁：500 泰铢/人<br>• 8岁以上：1,000 泰铢/人（与成人同价）',
+    paymentMethod: '💳 <strong>付款方式</strong>:<br>审核通过后可以付款<br>系统将提供付款链接<br><br>支持银行转账',
+    approvalTime: '⏱️ <strong>处理时间</strong>:<br>工作人员将审核囚犯纪律记录<br>约需1-2个工作日<br><br>如3天后仍显示"待审核"，请直接联系工作人员',
+    contactUs: '📞 <strong>联系工作人员</strong>:<br>可到矫正院咨询<br><br>或访问 <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
+    greetingHello: '👋 您好！我能为您做些什么？<br>我是此活动预约系统的AI助手<br><br>随时可询问"费用"、"如何预约"或"查询状态"',
+    notUnderstand: '❓ 抱歉，我不理解您的问题<br>请尝试询问"费用"、"如何预约"或"查询状态"'
+  }
+};
+
+function getLang() {
+  return localStorage.getItem('lang') || 'th';
+}
+
+function getI18n(key) {
+  const lang = getLang();
+  return (i18n[lang] && i18n[lang][key]) || i18n.th[key] || key;
+}
+
 // ===== CONFIG =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4e8PcvNkodHjCa-QAHCkGEMz3ojubiBDQuYLu0uRTrJmemWLTUaxXUsx8ypZFX_j06A/exec';
 const STAFF_PASS = '10900';
@@ -15,7 +82,6 @@ async function appsScriptGet(params) {
   }
 }
 
-// ===== UTILS =====
 function normalizeStatus(s) {
   const v = (s || '').toString().trim().toLowerCase();
   if (['อนุมัติ', 'approved', 'รอชำระเงิน'].includes(v)) return 'รอชำระเงิน';
@@ -155,13 +221,20 @@ function initChatbot() {
 
   if (!chatButton) return;
 
+  // Update chatbot UI with i18n
+  const updateChatbotUI = () => {
+    if (chatClose) chatClose.setAttribute('aria-label', window.t ? window.t('chatClose') : 'ปิดแชท');
+    if (chatInput) chatInput.placeholder = window.t ? window.t('chatPlaceholder') : 'พิมพ์คำถาม...';
+  };
+
   chatButton.addEventListener('click', () => {
     chatModal.classList.add('show');
     chatButton.style.display = 'none';
     restoreChatHistory();
     if (chatMessages.children.length === 0) {
-      addMessage('🤖 สวัสดี! ฉันเป็น M4RTHIN9 AI ผู้ช่วยตอบคำถามเกี่ยวกับการจองเข้ากิจกรรม ลองถามมาได้เลย', 'bot');
+      addMessage(window.t ? window.t('chatGreeting') : '🤖 สวัสดี! ฉันเป็น M4RTHIN9 AI ผู้ช่วยตอบคำถามเกี่ยวกับการจองเข้ากิจกรรม ลองถามมาได้เลย', 'bot');
     }
+    updateChatbotUI();
   });
   
   window.retryStatusCheck = function() {
@@ -178,6 +251,9 @@ function initChatbot() {
   quickButtons.forEach(btn => {
     btn.addEventListener('click', () => askQuestion(btn.dataset.question));
   });
+  
+  // Listen for language changes
+  window.addEventListener('languageChanged', updateChatbotUI);
 }
 
 function closeChat() {

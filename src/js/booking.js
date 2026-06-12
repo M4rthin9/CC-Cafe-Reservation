@@ -115,8 +115,9 @@ function selectDate(dateStr, blocked) {
   if (blocked) return; // คลิกไม่ได้ถ้าโดนบล็อก
   selectedDate = dateStr;
   const d = parseLocalDate(dateStr);
+  const selectText = window.t ? window.t('step2') : 'เลือก:';
   document.getElementById('selectedDateDisplay').textContent =
-    '✓ เลือก: ' + d.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    '✓ ' + selectText + ' ' + d.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   renderCalendar();
 }
 
@@ -128,31 +129,61 @@ function updateExtraVisitors() {
   list.innerHTML = '';
   if (n <= 1) { container.style.display = 'none'; return; }
   container.style.display = 'block';
+  
+  // Get translated strings
+  const relOptsText = window.t ? {
+    placeholder: window.t('relationPlaceholder'),
+    father: window.t('relationFather'),
+    partner: window.t('relationPartner'),
+    child: window.t('relationChild'),
+    sibling: window.t('relationSibling'),
+    relative: window.t('relationRelative'),
+    friend: window.t('relationFriend'),
+    lawyer: window.t('relationLawyer'),
+    other: window.t('relationOther')
+  } : {
+    placeholder: '-- เลือก --',
+    father: 'บิดา / มารดา',
+    partner: 'แฟน/ภรรยา',
+    child: 'บุตร / ธิดา',
+    sibling: 'พี่ / น้อง',
+    relative: 'ญาติ',
+    friend: 'เพื่อน',
+    lawyer: 'ทนายความ',
+    other: 'อื่น ๆ'
+  };
+  
+  const relOpts = '<option value="">' + relOptsText.placeholder + '</option><option>' + relOptsText.father + '</option><option>' + relOptsText.partner + '</option><option>' + relOptsText.child + '</option><option>' + relOptsText.sibling + '</option><option>' + relOptsText.relative + '</option><option>' + relOptsText.friend + '</option><option>' + relOptsText.lawyer + '</option><option>' + relOptsText.other + '</option>';
+  
+  // Religion options (these are static in Thai as they are specific to Thai context)
   const religionOpts = '<option value="">-- เลือก --</option><option>พุทธ</option><option>อิสลาม</option><option>คริสต์</option><option>อื่น ๆ</option>';
+  
+  const allergyPh = window.t ? window.t('allergyPlaceholder') : "ระบุอาการแพ้ หรือ 'ไม่มี'";
+  const agePh = window.t ? window.t('ageChildRule') : "อายุ (ปี) · <5 ฟรี, 5-8=500, >8=1000";
+  
   for (let i = 2; i <= n; i++) {
     const div = document.createElement('div');
     div.className = 'form-group full';
     div.style.cssText = 'border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;';
-    const relOpts = '<option value="">-- เลือก --</option><option>บิดa / มารดา</option><option>แฟน/ภรรยา</option><option>บุตร / ธิดา</option><option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>';
     div.innerHTML =
       '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">ผู้เข้าร่วมกิจกรรม ' + i + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
-      '<div class="form-group"><label>ชื่อ-นามสกุล <span style=\"color:var(--red)\">*</span></label>' +
+      '<div class="form-group"><label>ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>' +
       '<input type="text" id="extraVisitorName' + i + '" placeholder="เช่น สมหญิง ใจดี"></div>' +
-      '<div class="form-group"><label>เลขบัตรประชาชน <span style=\"color:var(--red)\">*</span></label>' +
+      '<div class="form-group"><label>เลขบัตรประชาชน <span style="color:var(--red)">*</span></label>' +
       '<input type="text" id="extraVisitorId' + i + '" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17"></div>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
-      '<div class="form-group"><label>ศาสนา <span style=\"color:var(--red)\">*</span></label>' +
+      '<div class="form-group"><label>ศาสนา <span style="color:var(--red)">*</span></label>' +
       '<select id="extraVisitorReligion' + i + '">' + religionOpts + '</select></div>' +
-      '<div class="form-group"><label>การแพ้อาหาร <span style=\"color:var(--red)\">*</span></label>' +
-      '<input type="text" id="extraVisitorAllergy' + i + '" placeholder="ระบุอาการแพ้ หรือ \'ไม่มี\'"></div>' +
+      '<div class="form-group"><label>การแพ้อาหาร <span style="color:var(--red)">*</span></label>' +
+      '<input type="text" id="extraVisitorAllergy' + i + '" placeholder="' + allergyPh + '"></div>' +
       '</div>' +
-      '<div class="form-group"><label>ความสัมพันธ์ <span style=\"color:var(--red)\">*</span></label>' +
+      '<div class="form-group"><label>ความสัมพันธ์ <span style="color:var(--red)">*</span></label>' +
       '<select id="extraVisitorRelation' + i + '">' + relOpts + '</select></div>' +
       '<div class="form-group" id="ageGroup' + i + '" style="display:none;margin-top:6px;">' +
-      '<label>อายุ (ปี) <span style=\"color:var(--red)\">*</span></label>' +
-      '<input type="number" id="extraVisitorAge' + i + '" min="0" max="120" placeholder="อายุ (ปี) · <5 ฟรี, 5-8=500, >8=1000">' +
+      '<label>อายุ (ปี) <span style="color:var(--red)">*</span></label>' +
+      '<input type="number" id="extraVisitorAge' + i + '" min="0" max="120" placeholder="' + agePh + '">' +
       '</div>';
     list.appendChild(div);
     // attach conditional age field for บุตร/ธิดา
@@ -162,7 +193,9 @@ function updateExtraVisitors() {
         const ag = document.getElementById('ageGroup' + i);
         const ai = document.getElementById('extraVisitorAge' + i);
         if (!ag) return;
-        if (this.value === 'บุตร / ธิดา') {
+        // Check if this is child relationship (in any language)
+        const childValues = ['บุตร / ธิดา', 'Child', '子女', 'Son/Daughter'];
+        if (childValues.includes(this.value)) {
           ag.style.display = 'block';
         } else {
           ag.style.display = 'none';
