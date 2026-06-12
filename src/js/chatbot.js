@@ -15,8 +15,17 @@ const i18n = {
     paymentMethod: '💳 <strong>การชำระเงิน</strong>:<br>ชำระเงินได้หลังจากได้รับการอนุมัติ<br>จะมีลิงก์ชำระค่าร่วมกิจกรรมให้ดำเนินการ<br><br>ใช้บริการโอนเงินผ่านธนาคาร',
     approvalTime: '⏱️ <strong>ระยะเวลาการตรวจสอบ</strong>:<br>เจ้าหน้าที่จะตรวจสอบประวัติวินัยของผู้ต้องขัง<br>ใช้เวลาประมาณ 1-2 วันทำการ<br><br>หากสถานะยังคง "รอตรวจสอบ" เกิน 3 วัน กรุณาติดต่อเจ้าหน้าที่โดยตรง',
     contactUs: '📞 <strong>ติดต่อเจ้าหน้าที่</strong>:<br>สอบถามเพิ่มเติมได้ที่ ทัณฑสถานบำบัดพิเศษกลาง<br><br>หรือเยี่ยมชม <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
+    bookingDetails: '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 ผู้ร่วมกิจกรรม:</strong> {visitor}</div><div><strong>🔒 ผู้ต้องขัง:</strong> {prisoner}</div><div><strong>🏢 แดน:</strong> {wing}</div><div><strong>📅 วันที่เยี่ยม:</strong> {visitDate}</div><div><strong>💰 ค่าบริการ:</strong> {total}</div></div></div>',
+    statusPrompt: '📌 หากต้องการตรวจสอบสถานะ ให้พิมพ์ <strong>Ref No.</strong> ของคุณ (เช่น VIS-12345)',
     greetingHello: '👋 สวัสดีครับ! ยินดีช่วยคุยเลขานุการ<br>ฉันเป็นผู้ช่วย AI ที่สามารถตอบคำถามเกี่ยวกับการจองเข้ากิจกรรมของทัณฑสถานบำบัดพิเศษกลาง<br><br>ลองถามมาได้เลย เช่น "ค่าใช้จ่ายเท่าไหร่" หรือ "จองยังไง"',
-    notUnderstand: '❓ ขออภัย ฉันไม่เข้าใจคำถามนี้<br>ลองถามในหัวข้ออื่น เช่น "ค่าใช้จ่าย", "จองยังไง", หรือ "ตรวจสอบสถานะ"'
+    notUnderstand: '❓ ขออภัย ฉันไม่เข้าใจคำถามนี้<br>ลองถามในหัวข้ออื่น เช่น "ค่าใช้จ่าย", "จองยังไง", หรือ "ตรวจสอบสถานะ"',
+    statusApprovedPayment: '✅ อนุมัติ — รอชำระเงิน',
+    statusPending: '⏳ รอตรวจสอบ',
+    statusApproved: '✅ อนุมัติแล้ว',
+    statusRejected: '❌ ไม่อนุมัติ',
+    statusPaid: '💳 รอเจ้าหน้าที่ยืนยัน',
+    statusCompleted: '✅ เสร็จสิ้นแล้ว',
+    statusCancelled: '🚫 ยกเลิก'
   },
   en: {
     chatGreeting: '🤖 Hello! I\'m the M4RTHIN9 AI assistant for the reservation system. Feel free to ask any questions.',
@@ -33,8 +42,17 @@ const i18n = {
     paymentMethod: '💳 <strong>Payment Method</strong>:<br>Payment can be made after approval<br>Payment link will be provided<br><br>Bank transfer service available',
     approvalTime: '⏱️ <strong>Processing Time</strong>:<br>Officers check prisoner disciplinary record<br>Takes approximately 1-2 business days<br><br>If still "Pending" after 3 days, contact officers directly',
     contactUs: '📞 <strong>Contact Officers</strong>:<br>Inquiries can be made at the institution<br><br>Or visit <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
+    bookingDetails: '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 Visitor:</strong> {visitor}</div><div><strong>🔒 Prisoner:</strong> {prisoner}</div><div><strong>🏢 Wing:</strong> {wing}</div><div><strong>📅 Visit Date:</strong> {visitDate}</div><div><strong>💰 Service Fee:</strong> {total}</div></div></div>',
+    statusPrompt: '📌 To check status, type your <strong>Ref No.</strong> (e.g. VIS-12345)',
     greetingHello: '👋 Hello! How can I assist you?<br>I\'m the AI assistant for Chance & Change Cafe reservation system<br><br>Feel free to ask about "cost", "how to book", or "check status"',
-    notUnderstand: '❓ Sorry, I don\'t understand this question<br>Try asking about "cost", "how to book", or "check status"'
+    notUnderstand: '❓ Sorry, I don\'t understand this question<br>Try asking about "cost", "how to book", or "check status"',
+    statusApprovedPayment: '✅ Approved — waiting for payment',
+    statusPending: '⏳ Pending review',
+    statusApproved: '✅ Approved',
+    statusRejected: '❌ Rejected',
+    statusPaid: '💳 Awaiting officer confirmation',
+    statusCompleted: '✅ Completed',
+    statusCancelled: '🚫 Cancelled'
   },
   zh: {
     chatGreeting: '🤖 您好！我是 M4RTHIN9 AI 助手，可以回答关于本场地预约的任何问题。',
@@ -51,8 +69,17 @@ const i18n = {
     paymentMethod: '💳 <strong>付款方式</strong>:<br>审核通过后可以付款<br>系统将提供付款链接<br><br>支持银行转账',
     approvalTime: '⏱️ <strong>处理时间</strong>:<br>工作人员将审核囚犯纪律记录<br>约需1-2个工作日<br><br>如3天后仍显示"待审核"，请直接联系工作人员',
     contactUs: '📞 <strong>联系工作人员</strong>:<br>可到矫正院咨询<br><br>或访问 <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
+    bookingDetails: '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 参访者:</strong> {visitor}</div><div><strong>🔒 囚犯:</strong> {prisoner}</div><div><strong>🏢 区域:</strong> {wing}</div><div><strong>📅 参访日期:</strong> {visitDate}</div><div><strong>💰 服务费:</strong> {total}</div></div></div>',
+    statusPrompt: '📌 如需查询状态，请输入您的 <strong>Ref No.</strong>（例如 VIS-12345）',
     greetingHello: '👋 您好！我能为您做些什么？<br>我是此活动预约系统的AI助手<br><br>随时可询问"费用"、"如何预约"或"查询状态"',
-    notUnderstand: '❓ 抱歉，我不理解您的问题<br>请尝试询问"费用"、"如何预约"或"查询状态"'
+    notUnderstand: '❓ 抱歉，我不理解您的问题<br>请尝试询问"费用"、"如何预约"或"查询状态"',
+    statusApprovedPayment: '✅ 已批准 — 等待付款',
+    statusPending: '⏳ 待审核',
+    statusApproved: '✅ 已批准',
+    statusRejected: '❌ 已拒绝',
+    statusPaid: '💳 等待工作人员确认',
+    statusCompleted: '✅ 已完成',
+    statusCancelled: '🚫 已取消'
   }
 };
 
@@ -60,9 +87,16 @@ function getLang() {
   return localStorage.getItem('lang') || 'th';
 }
 
-function getI18n(key) {
-  const lang = getLang();
+function getI18n(key, lang = getLang()) {
   return (i18n[lang] && i18n[lang][key]) || i18n.th[key] || key;
+}
+
+function formatI18n(key, params = {}, lang = getLang()) {
+  let text = getI18n(key, lang);
+  Object.keys(params).forEach(param => {
+    text = text.replace(`{${param}}`, params[param]);
+  });
+  return text;
 }
 
 // ===== CONFIG =====
@@ -92,16 +126,16 @@ function normalizeStatus(s) {
   return s || 'รอตรวจสอบ';
 }
 
-function getStatusPill(status) {
+function getStatusPill(status, lang = getLang()) {
   const s = normalizeStatus(status);
-  if (s === 'รอชำระเงิน') return `<span class="status-pill status-approved">✅ อนุมัติ — รอชำระเงิน</span>`;
-  if (s === 'รอตรวจสอบ') return `<span class="status-pill status-pending">⏳ รอตรวจสอบ</span>`;
-  if (s.includes('อนุมัติ')) return `<span class="status-pill status-approved">✅ อนุมัติแล้ว</span>`;
-  if (s.includes('ไม่อนุมัติ')) return `<span class="status-pill status-rejected">❌ ไม่อนุมัติ</span>`;
-  if (s.includes('ชำระ')) return `<span class="status-pill status-paid">💳 รอเจ้าหน้าที่ยืนยัน</span>`;
-  if (s.includes('เสร็จสิ้น')) return `<span class="status-pill status-paid" style="background:#d1fae5;color:#065f46;border-color:rgba(6,95,70,0.3)">✅ เสร็จสิ้นแล้ว</span>`;
-  if (s.includes('ยกเลิก')) return `<span class="status-pill" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db">🚫 ยกเลิก</span>`;
-  return `<span class="status-pill status-pending">⏳ รอตรวจสอบ</span>`;
+  if (s === 'รอชำระเงิน') return `<span class="status-pill status-approved">${getI18n('statusApprovedPayment', lang)}</span>`;
+  if (s === 'รอตรวจสอบ') return `<span class="status-pill status-pending">${getI18n('statusPending', lang)}</span>`;
+  if (s.includes('ไม่อนุมัติ')) return `<span class="status-pill status-rejected">${getI18n('statusRejected', lang)}</span>`;
+  if (s.includes('อนุมัติ')) return `<span class="status-pill status-approved">${getI18n('statusApproved', lang)}</span>`;
+  if (s.includes('ชำระ')) return `<span class="status-pill status-paid">${getI18n('statusPaid', lang)}</span>`;
+  if (s.includes('เสร็จสิ้น')) return `<span class="status-pill status-paid" style="background:#d1fae5;color:#065f46;border-color:rgba(6,95,70,0.3)">${getI18n('statusCompleted', lang)}</span>`;
+  if (s.includes('ยกเลิก')) return `<span class="status-pill" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db">${getI18n('statusCancelled', lang)}</span>`;
+  return `<span class="status-pill status-pending">${getI18n('statusPending', lang)}</span>`;
 }
 
 function escHtml(str) {
@@ -169,46 +203,105 @@ async function fetchBookingByRef(ref) {
 
 const knowledgeBase = [
   {
-    keywords: ['ค่าใช้จ่าย', 'ค่าบริการ', 'ราคา', 'ราคาเท่าไหร่', 'ค่าสมัคร', 'ค่าจอง', 'บาท'],
-    response: '💰 <strong>ค่าใช้จ่าย</strong> ผู้ใหญ่ 1,000 บาท / คน (คิดรวมผู้ต้องขัง)<br>👶 เด็ก 5-8 ขวบ 500 บาท / คน<br>👶 เด็ก <5 ขวบ ฟรี<br><br>เช่น ญาติ 2 คน + ผู้ต้องขัง 1 คน = 3,000 บาท'
+    keywords: {
+      th: ['ค่าใช้จ่าย', 'ค่าบริการ', 'ราคา', 'ราคาเท่าไหร่', 'ค่าสมัคร', 'ค่าจอง', 'บาท'],
+      en: ['cost', 'price', 'fee', 'how much', 'payment amount', 'adult price', 'child price', 'charge'],
+      zh: ['费用', '价格', '多少钱', '收费', '成人', '儿童', '价格']
+    },
+    responseKey: 'paymentCost'
   },
   {
-    keywords: ['จอง', 'จองคิว', 'ทำอย่างไร', 'ขั้นตอน', 'ขั้นตอนการจอง', 'เริ่มต้น', 'เริ่มจอง'],
-    response: '📋 <strong>ขั้นตอนการจอง 4 ขั้นตอน</strong>:<br>① กดปุ่ม "จองคิว" ด้านบน<br>② กรอกข้อมูลผู้เข้าร่วมกิจกรรม ข้อมูลผู้ต้องขัง และเลือกวันที่<br>③ รับเลขอ้างอิง (Ref No.) ทันที<br>④ รอเจ้าหน้าที่ตรวจสอบ (1-2 วัน)<br>⑤ ชำระเงินเมื่อได้รับการอนุมัติ'
+    keywords: {
+      th: ['จอง', 'จองคิว', 'ทำอย่างไร', 'ขั้นตอน', 'ขั้นตอนการจอง', 'เริ่มต้น', 'เริ่มจอง'],
+      en: ['book', 'booking', 'reserve', 'reservation', 'how to book', 'steps', 'start booking', 'process'],
+      zh: ['预约', '预订', '怎么预约', '步骤', '流程', '开始预约', '报名']
+    },
+    responseKey: 'bookingSteps'
   },
   {
-    keywords: ['เช็คสถานะ', 'ตรวจสอบสถานะ', 'สถานะ', 'ค้นหา', 'ref', 'เลขอ้างอิง', 'ผู้ต้องขัง'],
-    response: '🔍 <strong>ตรวจสอบสถานะ</strong>:<br>ใช้ <strong>Ref No.</strong> หรือ <strong>เลขผู้ต้องขัง</strong> ที่หน้า "ตรวจสอบสถานะ"<br><br>สถานะที่อาจเจอ:<br>• รอตรวจสอบวินัย<br>• รอตรวจสอบผู้เข้าร่วม<br>• รอชำระเงิน<br>• ชำระแล้ว<br>• เสร็จสิ้น<br>• ไม่อนุมัติ'
+    keywords: {
+      th: ['เช็คสถานะ', 'ตรวจสอบสถานะ', 'สถานะ', 'ค้นหา', 'ref', 'เลขอ้างอิง', 'ผู้ต้องขัง'],
+      en: ['check status', 'status', 'search', 'ref', 'reference number', 'prisoner id', 'prisoner number'],
+      zh: ['查询状态', '状态', '搜索', '参考编号', '囚犯编号', '编号']
+    },
+    responseKey: 'checkStatus'
   },
   {
-    keywords: ['วัน', 'วันไหน', 'เวลา', 'เวลาเปิด', 'เปิด', 'ปิด', 'วันทำการ', 'กะ', 'เวลาจอง'],
-    response: '📅 <strong>วันและเวลา</strong>:<br>เปิดรับจองเฉพาะ <strong>วันทำการ</strong><br>จันทร์ – ศุกร์ (ยกเว้นวันหยุดราชการ)<br><br>จำนวนโต๊ะจำกัด 20 โต๊ะ / วัน<br>เมื่อเต็มแล้วระบบจะปิดรับโดยอัตโนมัติ'
+    keywords: {
+      th: ['วัน', 'วันไหน', 'เวลา', 'เวลาเปิด', 'เปิด', 'ปิด', 'วันทำการ', 'กะ', 'เวลาจอง'],
+      en: ['day', 'days', 'time', 'hours', 'open', 'closed', 'working days', 'schedule', 'hours'],
+      zh: ['日期', '时间', '开放', '关闭', '工作日', '营业时间', '预约时间', '星期']
+    },
+    responseKey: 'daysTime'
   },
   {
-    keywords: ['นำอะไรไป', 'สิ่งที่ต้องเตรียม', 'อะไรบ้าง', 'ของที่ต้องใช้', 'ต้องเตรียม', 'อุปกรณ์', 'เอกสาร'],
-    response: '📝 <strong>สิ่งที่ควรเตรียมในวันเยี่ยม</strong>:<br>• แสดงบัตรประชาชนตัวจริง<br>• ห้ามนำโทรศัพท์เข้าพื้นที่เยี่ยม<br><br>ในกิจกรรมจะมีอาหารเป็น <strong>Fine Dining 6 คอร์ส</strong>เสิร์ฟให้ผู้เข้าร่วม'
+    keywords: {
+      th: ['นำอะไรไป', 'สิ่งที่ต้องเตรียม', 'อะไรบ้าง', 'ของที่ต้องใช้', 'ต้องเตรียม', 'อุปกรณ์', 'เอกสาร'],
+      en: ['bring', 'prepare', 'document', 'id', 'phone', 'what to bring', 'rules'],
+      zh: ['携带', '准备', '文件', '证件', '电话', '参观须知', '规则']
+    },
+    responseKey: 'whatToBring'
   },
   {
-    keywords: ['เด็ก', 'เด็กอายุ', 'ฟรี', 'เด็กไม่มีค่าใช้จ่าย', 'ฟรีค่าใช้จ่าย'],
-    response: '👶 <strong>อายุและค่าใช้จ่ายของเด็ก</strong>:<br>• อายุ <5 ขวบ: ฟรี<br>• อายุ 5-8 ขวบ: 500 บาท / คน<br>• อายุ >8 ขวบ: 1,000 บาท / คน (เท่าผู้ใหญ่)'
+    keywords: {
+      th: ['เด็ก', 'เด็กอายุ', 'ฟรี', 'เด็กไม่มีค่าใช้จ่าย', 'ฟรีค่าใช้จ่าย'],
+      en: ['child', 'children', 'kid', 'age', 'free', 'under 5', '5-8'],
+      zh: ['儿童', '小孩', '孩子', '年龄', '免费', '5岁以下', '5到8岁']
+    },
+    responseKey: 'childAgePrice'
   },
   {
-    keywords: ['ชำระเงิน', 'ชำระ', 'โอน', 'การชำระ', 'ชำระยังไง', 'วิธีชำระ'],
-    response: '💳 <strong>การชำระเงิน</strong>:<br>ชำระเงินได้หลังจากได้รับการอนุมัติ<br>จะมีลิงก์ชำระค่าร่วมกิจกรรมให้ดำเนินการ<br><br>ใช้บริการโอนเงินผ่านธนาคาร'
+    keywords: {
+      th: ['ชำระเงิน', 'ชำระ', 'โอน', 'การชำระ', 'ชำระยังไง', 'วิธีชำระ'],
+      en: ['pay', 'payment', 'payment method', 'transfer', 'bank', 'how to pay'],
+      zh: ['付款', '支付', '转账', '银行', '付款方式', '怎么付款']
+    },
+    responseKey: 'paymentMethod'
   },
   {
-    keywords: ['อนุมัติ', 'ไม่อนุมัติ', 'ผลการตรวจสอบ', 'รอนาน', 'เช็คแล้ว', 'ดำเนินการ', 'เวลา', 'ใช้เวลานาน', 'นานแค่ไหน'],
-    response: '⏱️ <strong>ระยะเวลาการตรวจสอบ</strong>:<br>เจ้าหน้าที่จะตรวจสอบประวัติวินัยของผู้ต้องขัง<br>ใช้เวลาประมาณ 1-2 วันทำการ<br><br>หากสถานะยังคง "รอตรวจสอบ" เกิน 3 วัน กรุณาติดต่อเจ้าหน้าที่โดยตรง'
+    keywords: {
+      th: ['อนุมัติ', 'ไม่อนุมัติ', 'ผลการตรวจสอบ', 'รอนาน', 'เช็คแล้ว', 'ดำเนินการ', 'เวลา', 'ใช้เวลานาน', 'นานแค่ไหน'],
+      en: ['approval', 'approved', 'reject', 'rejected', 'pending', 'review', 'verify', 'verification', 'how long', 'processing time', 'long'],
+      zh: ['批准', '审核', '审批', '拒绝', '待审核', '处理时间', '多久', '等待', '结果']
+    },
+    responseKey: 'approvalTime'
   },
   {
-    keywords: ['ติดต่อ', 'ติดต่อเจ้าหน้าที่', 'เบอร์', 'โทร', 'สาย', 'ช่วยเหลือ'],
-    response: '📞 <strong>ติดต่อเจ้าหน้าที่</strong>:<br>สอบถามเพิ่มเติมได้ที่ ทัณฑสถานบำบัดพิเศษกลาง<br><br>หรือเยี่ยมชม <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>'
+    keywords: {
+      th: ['ติดต่อ', 'ติดต่อเจ้าหน้าที่', 'เบอร์', 'โทร', 'สาย', 'ช่วยเหลือ'],
+      en: ['contact', 'officer', 'phone', 'call', 'help', 'support', 'number'],
+      zh: ['联系', '工作人员', '电话', '帮助', '咨询', '号码']
+    },
+    responseKey: 'contactUs'
   },
   {
-    keywords: ['สวัสดี', 'hello', 'hi', 'หวัดดี', 'ครับ', 'ค่ะ'],
-    response: '👋 สวัสดีครับ! ยินดีช่วยคุยเลขานุการ<br>ฉันเป็นผู้ช่วย AI ที่สามารถตอบคำถามเกี่ยวกับการจองเข้ากิจกรรมของทัณฑสถานบำบัดพิเศษกลาง<br><br>ลองถามมาได้เลย เช่น "ค่าใช้จ่ายเท่าไหร่" หรือ "จองยังไง"'
+    keywords: {
+      th: ['สวัสดี', 'หวัดดี', 'ครับ', 'ค่ะ'],
+      en: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'start'],
+      zh: ['你好', '您好', '哈喽', '嗨', '早上好', '下午好']
+    },
+    responseKey: 'greetingHello'
   }
 ];
+
+const languageSignals = {
+  th: ['ค่าใช้จ่าย', 'จอง', 'สถานะ', 'วัน', 'เวลา', 'ชำระเงิน', 'อนุมัติ', 'ติดต่อ', 'สวัสดี'],
+  en: ['cost', 'price', 'fee', 'book', 'booking', 'status', 'payment', 'pay', 'approval', 'approved', 'contact', 'hello', 'hi', 'days', 'hours', 'child', 'children', 'bring', 'ref'],
+  zh: ['费用', '预约', '状态', '付款', '审核', '联系', '你好', '您好', '参考编号', '囚犯', '儿童', '携带', '工作日']
+};
+
+function detectLanguage(message) {
+  const lower = message.toLowerCase();
+  const hasChinese = /[\u4e00-\u9fff]/.test(message);
+  const hasThai = /[ก-๙]/.test(message);
+  const hasEnglishLetters = /[a-z]/i.test(message);
+
+  if (hasChinese || languageSignals.zh.some(kw => lower.includes(kw.toLowerCase()))) return 'zh';
+  if (languageSignals.en.some(kw => lower.includes(kw)) || (hasEnglishLetters && !hasThai && !hasChinese)) return 'en';
+  if (hasThai || languageSignals.th.some(kw => lower.includes(kw))) return 'th';
+
+  return getLang();
+}
 
 function initChatbot() {
   const chatButton = document.getElementById('chatButton');
@@ -336,45 +429,44 @@ function restoreChatHistory() {
 }
 
 async function getBotResponse(message) {
-  const thNormalized = message.replace(/[ก-๙]/g, c => c);
-  
+  const activeLang = detectLanguage(message);
+  const lower = message.toLowerCase();
+
   // Check for Ref No. pattern (VIS-XXXXX)
   const refMatch = message.match(/([Vv][Ii][Ss]-[0-9]{5})/i);
   if (refMatch) {
     const ref = refMatch[1].toUpperCase();
     const booking = await fetchBookingByRef(ref);
     if (!booking) {
-      return `🔍 ไม่พบการจองสำหรับ <strong>${escHtml(ref)}</strong><br>กรุณาเช็คความถูกต้องหรือลองใหม่<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer">ลองใหม่</button>`;
+      return formatI18n('noBookingFound', { ref: escHtml(ref) }, activeLang);
     }
-    const statusPill = getStatusPill(booking.status);
-    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div><strong>Ref No.</strong> ${escHtml(booking.ref)}</div>
-        ${statusPill}
-      </div>
-      <div style="font-size:13px;line-height:1.8;">
-        <div><strong>👤 ผู้ร่วมกิจกรรม:</strong> ${escHtml(booking.visitorName || '—')}</div>
-        <div><strong>🔒 ผู้ต้องขัง:</strong> ${escHtml(booking.prisonerName || '—')} (#${escHtml(booking.prisonerId || '—')})</div>
-        <div><strong>🏢 แดน:</strong> ${escHtml(booking.wing || '—')}</div>
-        <div><strong>📅 วันที่เยี่ยม:</strong> ${escHtml(booking.visitDate || '—')}</div>
-        <div><strong>💰 ค่าบริการ:</strong> ${(booking.total || 0).toLocaleString()} บาท</div>
-      </div>
-    </div>`;
+
+    const statusPill = getStatusPill(booking.status, activeLang);
+    const currency = activeLang === 'th' ? 'บาท' : activeLang === 'zh' ? '泰铢' : 'THB';
+    return formatI18n('bookingDetails', {
+      ref: escHtml(booking.ref),
+      status: statusPill,
+      visitor: escHtml(booking.visitorName || '—'),
+      prisoner: `${escHtml(booking.prisonerName || '—')} (#${escHtml(booking.prisonerId || '—')})`,
+      wing: escHtml(booking.wing || '—'),
+      visitDate: escHtml(booking.visitDate || '—'),
+      total: `${(booking.total || 0).toLocaleString()} ${currency}`
+    }, activeLang);
   }
 
   // Handle intents from knowledgeBase
   for (const item of knowledgeBase) {
-    if (item.keywords.some(kw => thNormalized.includes(kw.toLowerCase()))) {
-      // Handle multi-turn for status check intent
-      if (item.keywords.includes('เช็คสถานะ') || item.keywords.includes('ตรวจสอบสถานะ') || item.keywords.includes('สถานะ')) {
+    const keywords = item.keywords[activeLang] || item.keywords.th || [];
+    if (keywords.some(kw => lower.includes(kw.toLowerCase()))) {
+      if (item.responseKey === 'checkStatus') {
         setChatContext({ intent: 'checkStatus', step: 1 });
-        return `${item.response}<br><br>📌 หากต้องการตรวจสอบสถานะ ให้พิมพ์ <strong>Ref No.</strong> ของคุณ (เช่น VIS-12345)`;
+        return `${getI18n(item.responseKey, activeLang)}<br><br>${getI18n('statusPrompt', activeLang)}`;
       }
-      return item.response;
+      return getI18n(item.responseKey, activeLang);
     }
   }
-  
-  return '❓ ขออภัย ฉันไม่เข้าใจคำถามนี้<br>ลองถามในหัวข้ออื่น เช่น "ค่าใช้จ่าย", "จองยังไง", หรือ "ตรวจสอบสถานะ"';
+
+  return getI18n('notUnderstand', activeLang);
 }
 
 document.addEventListener('DOMContentLoaded', initChatbot);
