@@ -3227,6 +3227,231 @@ function printSingleReport(type, date) {
   setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
 }
 
+// ===== Monthly Report Functions =====
+function generateMonthlyReport() {
+  const startDateEl = document.getElementById('monthlyStartDate');
+  const endDateEl = document.getElementById('monthlyEndDate');
+  const contentEl = document.getElementById('monthlyReportContent');
+  const outputEl = document.getElementById('monthlyReportOutput');
+  
+  if (!startDateEl || !endDateEl || !contentEl || !outputEl) return;
+  
+  const startDate = startDateEl.value;
+  const endDate = endDateEl.value;
+  
+  if (!startDate || !endDate) {
+    alert('กรุณาเลือกวันที่ทั้งสองช่อง');
+    return;
+  }
+  
+  if (startDate > endDate) {
+    alert('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด');
+    return;
+  }
+  
+  const filtered = allRows.filter(r => {
+    if (!r.ref || String(r.ref).trim() === '') return false;
+    const key = getRowVisitDateKey(r);
+    if (!key) return false;
+    return key >= startDate && key <= endDate;
+  });
+  
+  if (filtered.length === 0) {
+    contentEl.style.display = 'block';
+    outputEl.innerHTML = '<div style="color:var(--text2);padding:20px;text-align:center;">ไม่มีข้อมูลในช่วงวันที่ที่เลือก</div>';
+    return;
+  }
+  
+  const stats = computeFinanceStats(filtered);
+  
+  // Count cancelled and not approved separately
+  let cancelledCount = 0;
+  let notApprovedCount = 0;
+  filtered.forEach(r => {
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก') cancelledCount++;
+    else if (s === 'ไม่อนุมัติ') notApprovedCount++;
+  });
+  
+  let totalAdults = 0, totalKids5_8 = 0, totalKidsUnder5 = 0;
+  const prisoners = new Set();
+  const wingCounts = {};
+  
+  filtered.forEach(r => {
+    const d = computeDeptReportData(r);
+    totalAdults += d.adults;
+    totalKids5_8 += d.kids5_8;
+    totalKidsUnder5 += d.kidsUnder5;
+    if (r.prisonerName) prisoners.add(r.prisonerName);
+    if (r.wing) {
+      wingCounts[r.wing] = (wingCounts[r.wing] || 0) + 1;
+    }
+  });
+  
+  const totalVisitors = totalAdults + totalKids5_8 + totalKidsUnder5;
+  
+  // Build wing statistics
+  const wingStats = Object.entries(wingCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([wing, count]) => `• แดน ${wing}: <strong>${count} คน</strong>`)
+    .join('\n');
+  
+  const startFmt = startDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
+  const endFmt = endDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
+  
+  const outputHtml = `
+    <div style="font-size:13px;line-height:1.8;">
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">📊 รายงานรายเดือน</div>
+        <div style="color:var(--text2);">จากวันที่: ${startFmt} ถึงวันที่: ${endFmt}</div>
+      </div>
+      
+      <div style="background:#fff5f5;border:1px solid #c62828;border-radius:6px;padding:12px;margin-bottom:12px;">
+        <div style="font-weight:600;color:#c62828;margin-bottom:6px;">💰 สรุปยอดเงิน</div>
+        <div>• ยอดจองทั้งหมด: <strong>${formatBaht(stats.totalBooked)}</strong></div>
+        <div>• ยกเลิก: <strong>${cancelledCount} รายการ</strong></div>
+        <div>• ไม่อนุมัติ: <strong>${notApprovedCount} รายการ</strong></div>
+        <div>• จ่ายแล้ว: <strong>${stats.bookingCount - cancelledCount - notApprovedCount} รายการ</strong></div>
+        <div>• ยอดชำระแล้ว: <strong>${formatBaht(stats.paid)}</strong></div>
+        <div>• ยอดค้างชำระ: <strong>${formatBaht(stats.unpaid)}</strong></div>
+      </div>
+      
+      <div style="background:#f0f8ff;border:1px solid var(--blue);border-radius:6px;padding:12px;margin-bottom:12px;">
+        <div style="font-weight:600;color:var(--blue);margin-bottom:6px;">🏢 สรุปผู้ต้องขัง (แยกแดน)</div>
+        <div>• จำนวนผู้ต้องขังที่เข้าร่วม: <strong>${prisoners.size} คน</strong></div>
+        ${wingStats || '<div>• ไม่มีข้อมูลแดน</div>'}
+      </div>
+      
+      <div style="background:#f5fff0;border:1px solid var(--green);border-radius:6px;padding:12px;">
+        <div style="font-weight:600;color:var(--green);margin-bottom:6px;">👥 สรุปญาติผู้เยี่ยม</div>
+        <div>• ผู้ใหญ่: <strong>${totalAdults} คน</strong></div>
+        <div>• เด็ก 5-8 ปี: <strong>${totalKids5_8} คน</strong></div>
+        <div>• เด็กต่ำกว่า 5 ปี: <strong>${totalKidsUnder5} คน</strong></div>
+        <div>• รวมญาติผู้เยี่ยม: <strong>${totalVisitors} คน</strong></div>
+      </div>
+    </div>
+  `;
+  
+  outputEl.innerHTML = outputHtml;
+  contentEl.style.display = 'block';
+}
+
+function printMonthlyReport() {
+  const outputEl = document.getElementById('monthlyReportOutput');
+  if (!outputEl) return;
+  
+  const startDateEl = document.getElementById('monthlyStartDate');
+  const endDateEl = document.getElementById('monthlyEndDate');
+  const startDate = startDateEl?.value || '';
+  const endDate = endDateEl?.value || '';
+  
+  if (!startDate || !endDate) {
+    alert('กรุณาสร้างรายงานก่อนพิมพ์');
+    return;
+  }
+  
+  const now = new Date().toLocaleString('th-TH');
+  const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
+  
+  const startFmt = startDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
+  const endFmt = endDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
+  
+  const filtered = allRows.filter(r => {
+    if (!r.ref || String(r.ref).trim() === '') return false;
+    const key = getRowVisitDateKey(r);
+    if (!key) return false;
+    return key >= startDate && key <= endDate;
+  });
+  
+  const stats = computeFinanceStats(filtered);
+  
+  // Count cancelled and not approved separately
+  let cancelledCount = 0;
+  let notApprovedCount = 0;
+  filtered.forEach(r => {
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก') cancelledCount++;
+    else if (s === 'ไม่อนุมัติ') notApprovedCount++;
+  });
+  
+  let totalAdults = 0, totalKids5_8 = 0, totalKidsUnder5 = 0;
+  const prisoners = new Set();
+  const wingCounts = {};
+  
+  filtered.forEach(r => {
+    const d = computeDeptReportData(r);
+    totalAdults += d.adults;
+    totalKids5_8 += d.kids5_8;
+    totalKidsUnder5 += d.kidsUnder5;
+    if (r.prisonerName) prisoners.add(r.prisonerName);
+    if (r.wing) {
+      wingCounts[r.wing] = (wingCounts[r.wing] || 0) + 1;
+    }
+  });
+  
+  // Build wing statistics
+  const wingStats = Object.entries(wingCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([wing, count]) => `<div>• แดน ${wing}: <strong>${count} คน</strong></div>`)
+    .join('\n');
+  
+  const printWin = window.open('', '_blank', 'width=800,height=600');
+  printWin.document.write(`
+    <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
+    <title>รายงานรายเดือน</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
+      body { font-family: 'Sarabun', system-ui, sans-serif; padding: 20px 24px; margin: 0; color: #000; background: #fff; line-height: 1.6; font-size: 14px; }
+      .report-section { padding: 12px; border-radius: 6px; margin-bottom: 12px; }
+      .section-title { font-weight: 600; margin-bottom: 6px; }
+      .finance-section { background: #fff5f5; border: 1px solid #c62828; }
+      .finance-section .section-title { color: #c62828; }
+      .prisoner-section { background: #f0f8ff; border: 1px solid #0B2545; }
+      .prisoner-section .section-title { color: #0B2545; }
+      .visitor-section { background: #f5fff0; border: 1px solid #2E5238; }
+      .visitor-section .section-title { color: #2E5238; }
+      .footer-note { text-align: center; font-size: 11px; color: #888; margin-top: 20px; }
+    </style>
+    </head><body>
+    <h1 style="font-size:20px;margin:0 0 8px;font-weight:700;text-align:center;color:#0B2545;">📊 รายงานรายเดือน</h1>
+    <div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">จากวันที่: ${startFmt} ถึงวันที่: ${endFmt}<br>ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ: ${now}</div>
+    <div style="font-size:13px;line-height:1.8;">
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">📊 รายงานรายเดือน</div>
+        <div style="color:#666;">จากวันที่: ${startFmt} ถึงวันที่: ${endFmt}</div>
+      </div>
+      
+      <div class="report-section finance-section">
+        <div class="section-title">💰 สรุปยอดเงิน</div>
+        <div>• ยอดจองทั้งหมด: <strong>${formatBaht(stats.totalBooked)}</strong></div>
+        <div>• ยกเลิก: <strong>${cancelledCount} รายการ</strong></div>
+        <div>• ไม่อนุมัติ: <strong>${notApprovedCount} รายการ</strong></div>
+        <div>• จ่ายแล้ว: <strong>${stats.bookingCount - cancelledCount - notApprovedCount} รายการ</strong></div>
+        <div>• ยอดชำระแล้ว: <strong>${formatBaht(stats.paid)}</strong></div>
+        <div>• ยอดค้างชำระ: <strong>${formatBaht(stats.unpaid)}</strong></div>
+      </div>
+      
+      <div class="report-section prisoner-section">
+        <div class="section-title">🏢 สรุปผู้ต้องขัง (แยกแดน)</div>
+        <div>• จำนวนผู้ต้องขังที่เข้าร่วม: <strong>${prisoners.size} คน</strong></div>
+        ${wingStats || '<div>• ไม่มีข้อมูลแดน</div>'}
+      </div>
+      
+      <div class="report-section visitor-section">
+        <div class="section-title">👥 สรุปญาติผู้เยี่ยม</div>
+        <div>• ผู้ใหญ่: <strong>${totalAdults} คน</strong></div>
+        <div>• เด็ก 5-8 ปี: <strong>${totalKids5_8} คน</strong></div>
+        <div>• เด็กต่ำกว่า 5 ปี: <strong>${totalKidsUnder5} คน</strong></div>
+        <div>• รวมญาติผู้เยี่ยม: <strong>${totalAdults + totalKids5_8 + totalKidsUnder5} คน</strong></div>
+      </div>
+    </div>
+    <div class="footer-note">ทัณฑสถานบำบัดพิเศษกลาง</div>
+    </body></html>
+  `);
+  printWin.document.close();
+  setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
+}
+
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); } });
 document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('userInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });

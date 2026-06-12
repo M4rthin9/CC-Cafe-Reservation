@@ -1127,16 +1127,28 @@ tr:hover td { background: #f8f9fa; }
 
 /* ===== MOBILE CHART OPTIMIZATIONS ===== */
 @media (max-width: 768px) {
-  #financeChart, #trendChart {
-    height: 180px !important;
-  }
-  
-  .finance-kpi {
-    grid-template-columns: 1fr !important;
-    gap: 8px;
-  }
-  
-  .finance-kpi-item {
-    padding: 10px 12px;
-  }
+   #financeChart, #trendChart {
+     height: 180px !important;
+   }
+   
+   .finance-kpi {
+     grid-template-columns: 1fr !important;
+     gap: 8px;
+   }
+   
+   .finance-kpi-item {
+     padding: 10px 12px;
+   }
+}
+
+/* Date picker styling for monthly report */
+#monthlyStartDate, #monthlyEndDate {
+  width: 140px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+#monthlyReportSection .refresh-btn {
+  padding: 6px 14px;
+  font-size: 13px;
 }

@@ -219,6 +219,26 @@
           <button class="refresh-btn" onclick="renderReportsView()">🔄 ดึงข้อมูลรายงาน</button>
         </div>
 
+        <!-- Monthly Report Section -->
+        <div id="monthlyReportSection" style="margin-bottom:24px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg2);">
+          <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:var(--blue);">📈 รายงานรายเดือน</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label for="monthlyStartDate" style="font-size:13px;color:var(--text2);">จากวันที่:</label>
+              <input type="date" id="monthlyStartDate" class="search-box" style="width:auto;padding:8px 10px;font-size:13px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label for="monthlyEndDate" style="font-size:13px;color:var(--text2);">ถึงวันที่:</label>
+              <input type="date" id="monthlyEndDate" class="search-box" style="width:auto;padding:8px 10px;font-size:13px;">
+            </div>
+            <button class="refresh-btn" onclick="generateMonthlyReport()" style="background:#2E5238;">📊 สร้างรายงานรายเดือน</button>
+          </div>
+          <div id="monthlyReportContent" style="display:none;">
+            <div id="monthlyReportOutput" style="margin-bottom:16px;"></div>
+            <button class="refresh-btn" onclick="printMonthlyReport()" style="background:#0B2545;margin-top:8px;">🖨️ พิมพ์รายงาน</button>
+          </div>
+        </div>
+
         <div id="reportsContent">
           <!-- Populated dynamically by JS -->
         </div>
