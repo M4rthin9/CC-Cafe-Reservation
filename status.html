@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link rel="stylesheet" href="src/css/status.css">
+<link rel="stylesheet" href="src/css/chatbot.css">
 </head>
 <body>
 <div class="app">
@@ -83,8 +84,30 @@
 
   <script src="src/js/status.js" defer></script>
  
-  <div style="text-align:center;padding:12px 8px 24px;font-size:11px;color:#6B7280;">
-    กรมราชทัณฑ์ · <a href="https://main.correct.go.th" target="_blank" rel="noopener" style="color:#0B2545;text-decoration:underline;">main.correct.go.th</a>
+<div style="text-align:center;padding:12px 8px 24px;font-size:11px;color:#6B7280;">
+     กรมราชทัณฑ์ · <a href="https://main.correct.go.th" target="_blank" rel="noopener" style="color:#0B2545;text-decoration:underline;">main.correct.go.th</a>
+   </div>
+
+<a href="#" class="chat-button" id="chatButton" aria-label="เปิดแชทบอท">💬</a>
+
+<div class="chat-modal" id="chatModal">
+  <div class="chat-header">
+    <h3>M4RTHIN9 AI</h3>
+    <button class="chat-close" id="chatClose" aria-label="ปิดแชท">×</button>
   </div>
+  <div class="chat-messages" id="chatMessages"></div>
+<div class="chat-quick">
+    <button class="quick-q-btn" data-question="เช็คสถานะยังไง">🔍 เช็คสถานะ</button>
+    <button class="quick-q-btn" data-question="จองยังไิ">📋 จองยังไิ</button>
+    <button class="quick-q-btn" data-question="รอนาน">⏳ เวลาอนุมัติ</button>
+  </div>
+  <div class="chat-input-area">
+    <input type="text" class="chat-input" id="chatInput" placeholder="พิมพ์คำถาม..." autocomplete="off">
+    <button class="chat-send" id="chatSend" aria-label="ส่ง">➤</button>
+  </div>
+</div>
+
+<script src="src/js/chatbot.js" defer></script>
 </body>
 </html>
+

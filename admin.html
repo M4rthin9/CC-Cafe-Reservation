@@ -6,6 +6,7 @@
 <title>หน้าเจ้าหน้าที่ — ตรวจสอบการจอง</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/css/admin.css">
+<link rel="stylesheet" href="src/css/chatbot.css">
 </head>
 <body>
 
@@ -299,8 +300,29 @@
   </div>
 </div>
 
+<a href="#" class="chat-button" id="chatButton" aria-label="เปิดแชทบอท">💬</a>
+
+<div class="chat-modal" id="chatModal">
+  <div class="chat-header">
+    <h3>M4RTHIN9 AI</h3>
+    <button class="chat-close" id="chatClose" aria-label="ปิดแชท">×</button>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+<div class="chat-quick">
+    <button class="quick-q-btn" data-question="ค่าใช้จ่ายเท่าไหร่">💰 ค่าใช้จ่าย</button>
+    <button class="quick-q-btn" data-question="จองยังไง">📋 จองยังไง</button>
+    <button class="quick-q-btn" data-question="เช็คสถานะยังไง">🔍 เช็คสถานะ</button>
+  </div>
+  <div class="chat-input-area">
+    <input type="text" class="chat-input" id="chatInput" placeholder="พิมพ์คำถาม..." autocomplete="off">
+    <button class="chat-send" id="chatSend" aria-label="ส่ง">➤</button>
+  </div>
+</div>
+
 <script src="src/js/admin.js" defer></script>
-  <!-- Bottom Navigation for Mobile -->
+<script src="src/js/chatbot.js" defer></script>
+
+<!-- Bottom Navigation for Mobile -->
   <nav class="bottom-nav" id="bottomNav" style="display:none">
     <a href="#" class="bottom-nav-item active" data-view="home" onclick="switchView('home');return false">🏠<br><span>ภาพรวม</span></a>
     <a href="#" class="bottom-nav-item" data-view="reservations" onclick="switchView('reservations');return false">📋<br><span>รายการ</span></a>

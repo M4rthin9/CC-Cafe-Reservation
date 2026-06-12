@@ -7,6 +7,7 @@
 การฝึกวิชาชีพด้านอาหารและงานบริการฯ — ทัณฑสถานบำบัดพิเศษกลาง ร้าน Chance & Change Cafe</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/css/index.css">
+<link rel="stylesheet" href="src/css/chatbot.css">
 </head>
 <body>
  
@@ -124,10 +125,32 @@
 </section>
 
 <footer class="footer">
-  ทัณฑสถานบำบัดพิเศษกลาง · กรมราชทัณฑ์<br>
-  สอบถามเพิ่มเติมติดต่อเจ้าหน้าที่ ณ ทัณฑสถาน<br>
-  <a href="https://main.correct.go.th" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;">ข้อมูลกรมราชทัณฑ์</a>
+   ทัณฑสถานบำบัดพิเศษกลาง · กรมราชทัณฑ์<br>
+   สอบถามเพิ่มเติมติดต่อเจ้าหน้าที่ ณ ทัณฑสถาน<br>
+   <a href="https://main.correct.go.th" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;">ข้อมูลกรมราชทัณฑ์</a>
 </footer>
+
+<a href="#" class="chat-button" id="chatButton" aria-label="เปิดแชทบอท">💬</a>
+
+<div class="chat-modal" id="chatModal">
+  <div class="chat-header">
+    <h3>NEXUS AI</h3>
+    <button class="chat-close" id="chatClose" aria-label="ปิดแชท">×</button>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-quick">
+    <button class="quick-q-btn" data-question="ค่าใช้จ่ายเท่าไหร่">💰 ค่าใช้จ่าย</button>
+    <button class="quick-q-btn" data-question="จองยังไง">📋 จองยังไง</button>
+    <button class="quick-q-btn" data-question="เช็คสถานะยังไง">🔍 เช็คสถานะ</button>
+    <button class="quick-q-btn" data-question="ติดต่อเจ้าหน้าที่">📞 ติดต่อเรา</button>
+  </div>
+  <div class="chat-input-area">
+    <input type="text" class="chat-input" id="chatInput" placeholder="พิมพ์คำถาม..." autocomplete="off">
+    <button class="chat-send" id="chatSend" aria-label="ส่ง">➤</button>
+  </div>
+</div>
+
+<script src="src/js/chatbot.js" defer></script>
 
 
 </body>
