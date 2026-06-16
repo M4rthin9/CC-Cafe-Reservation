@@ -2,6 +2,8 @@ const SHEET_NAME = 'การจอง';
 const EVENTLOG_SHEET = 'EventLog';
 const PRISONER_SHEET = 'ผู้ต้องขัง';
 const USERS_SHEET = 'Users';
+const PRICING_SHEET = 'PricingConfig';
+const PROMPTPAY_NUMBER = '0994000160208';
 
 const LEGACY_STAFF_PASS = '10900';
 
@@ -14,17 +16,21 @@ const ROLES = {
   USER: 'user'
 };
 
+const PERMISSIONS_VERSION = '2.0';
+
 const AVAILABLE_PERMISSIONS = [
-  'approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 
-  'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 
-  'manage_users', 'view_eventlog'
+  'approve', 'approve_discipline', 'approve_participant', 'reject_discipline',
+  'confirm_payment', 'reject_payment', 'cancel',
+  'visitor_approval', 'view_slip', 'view_detail', 'export', 'print',
+  'manage_users', 'view_eventlog', 'add_visitor', 'edit_booking',
+  'edit_price', 'delete_booking', 'manage_pricing', 'view_audit'
 ];
 
 const PERMISSIONS = {
-  Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
-  Admin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
+  Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog', 'add_visitor', 'edit_booking', 'edit_price', 'delete_booking', 'manage_pricing', 'view_audit'],
+  Admin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
-  Vinai: ['approve', 'view_slip', 'view_detail'],
+  Vinai: ['approve_discipline', 'reject_discipline', 'view_slip', 'view_detail'],
   Tadtel: ['approve_participant', 'visitor_approval', 'view_slip', 'view_detail'],
   User: ['print']
 };
@@ -33,7 +39,7 @@ const PERMISSIONS = {
 function doGet(e) {
   const params = e.parameter;
   const action = params.action || '';
-  const pass   = params.pass  || '';
+  const pass = params.pass || '';
   const username = params.username || '';
 
   // Legacy support for old getAll calls
@@ -43,11 +49,11 @@ function doGet(e) {
       return jsonResp({ status: 'error', message: 'Unauthorized' });
     }
     const sheet = getMainSheet();
-    const data  = sheet.getDataRange().getValues();
+    const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
 
     const headers = data[0];
-    const refIdx  = headers.indexOf('ref');
+    const refIdx = headers.indexOf('ref');
     const rows = data.slice(1)
       .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
       .map(row => {
@@ -89,16 +95,20 @@ function doGet(e) {
 
     const headers = data[0];
     const nameIdx = headers.indexOf('prisonerName');
-    const idIdx   = headers.indexOf('prisonerId');
+    const idIdx = headers.indexOf('prisonerId');
     const wingIdx = headers.indexOf('wing');
+    const statusIdx = headers.indexOf('status');
+    const noteIdx = headers.indexOf('note');
 
     const prisoners = [];
     const seen = new Set();
 
     for (let i = 1; i < data.length; i++) {
       const name = String(data[i][nameIdx] || '').trim();
-      const id   = String(data[i][idIdx] || '').trim();
+      const id = String(data[i][idIdx] || '').trim();
       const wing = String(data[i][wingIdx] || '').trim();
+      const status = statusIdx >= 0 ? String(data[i][statusIdx] || '').trim() : '';
+      const note = noteIdx >= 0 ? String(data[i][noteIdx] || '').trim() : '';
 
       if (!name || !id) continue;
 
@@ -109,11 +119,13 @@ function doGet(e) {
       prisoners.push({
         prisonerName: name,
         prisonerId: id,
-        wing: wing
+        wing: wing,
+        status: status,
+        note: note
       });
     }
 
-// Sort by name (Thai friendly)
+    // Sort by name (Thai friendly)
     prisoners.sort((a, b) => a.prisonerName.localeCompare(b.prisonerName, 'th'));
 
     return jsonResp({ status: 'ok', prisoners: prisoners });
@@ -181,7 +193,7 @@ function doGet(e) {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       const allSheets = listAllSheets();
       const mainSheet = getMainSheet();
-      
+
       // Get detailed header info
       let headers = [];
       let sampleData = [];
@@ -192,7 +204,7 @@ function doGet(e) {
           sampleData = mainSheet.getRange(2, 1, 1, mainSheet.getLastColumn()).getValues()[0];
         }
       }
-      
+
       return jsonResp({
         status: 'ok',
         spreadsheetName: ss.getName(),
@@ -214,6 +226,61 @@ function doGet(e) {
     }
   }
 
+  // ===== GET PRICING CONFIG (requires auth) =====
+  if (action === 'getPricing') {
+    if (!isAuthorized(username, pass)) {
+      return jsonResp({ status: 'error', message: 'Unauthorized' });
+    }
+    const sheet = getPricingSheet();
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return jsonResp({ status: 'ok', pricing: [] });
+
+    const headers = data[0];
+    const pricing = [];
+    for (let i = 1; i < data.length; i++) {
+      const obj = {};
+      headers.forEach((h, idx) => { obj[h] = data[i][idx]; });
+      pricing.push(obj);
+    }
+    return jsonResp({ status: 'ok', pricing: pricing });
+  }
+
+  // ===== GENERATE DYNAMIC PROMPTPAY QR =====
+  if (action === 'generateQR') {
+    const ref = params.ref || '';
+    const promptpayPhone = PROMPTPAY_NUMBER;
+
+    if (!ref) return jsonResp({ status: 'error', message: 'Missing ref' });
+
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const refIdx = headers.indexOf('ref');
+    const totalIdx = headers.indexOf('total');
+
+    let amount = 0;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][refIdx] || '').trim() === String(ref).trim()) {
+        amount = Number(data[i][totalIdx]) || 0;
+        break;
+      }
+    }
+
+    if (amount <= 0) return jsonResp({ status: 'error', message: 'Amount not found or zero' });
+
+    const payload = generatePromptPayPayload(promptpayPhone, amount);
+    const qrBase64 = generateQRBase64(payload);
+
+    return jsonResp({
+      status: 'ok',
+      qrImage: qrBase64,
+      amount: amount,
+      payload: payload,
+      accountName: 'ร้านสงเคราะห์ผู้ต้องขัง',
+      phone: promptpayPhone
+    });
+  }
+
   return jsonResp({ status: 'error', message: 'Unknown action' });
 }
 
@@ -221,7 +288,7 @@ function doGet(e) {
 function doPost(e) {
   let body;
   try { body = JSON.parse(e.postData.contents); }
-  catch(err) { return jsonResp({ status: 'error', message: 'Invalid JSON' }); }
+  catch (err) { return jsonResp({ status: 'error', message: 'Invalid JSON' }); }
 
   const action = body.action || 'saveReservation';
   const username = body.username || body.user || 'public';
@@ -246,14 +313,14 @@ function doPost(e) {
   if (action === 'changePassword') {
     const newPassword = body.newPassword || '';
     const confirmPassword = body.confirmPassword || '';
-    
+
     if (!newPassword || newPassword.length < 6) {
       return jsonResp({ status: 'error', message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร' });
     }
     if (newPassword !== confirmPassword) {
       return jsonResp({ status: 'error', message: 'รหัสผ่านไม่ตรงกัน' });
     }
-    
+
     const success = updatePassword(username, newPassword);
     if (success) {
       logEvent(username, 'password_changed', '', { method: 'first_time_login' }, 'success');
@@ -262,7 +329,7 @@ function doPost(e) {
     return jsonResp({ status: 'error', message: 'ไม่สามารถเปลี่ยนรหัดผ่านได้' });
   }
 
-// ===== CREATE NEW USER (SUPERADMIN ONLY) =====
+  // ===== CREATE NEW USER (SUPERADMIN ONLY) =====
   if (action === 'createUser') {
     if (username.toLowerCase() !== 'superadmin' && !hasPermission(username, 'manage_users')) {
       return jsonResp({ status: 'error', message: 'Only superadmin can create users' });
@@ -298,7 +365,74 @@ function doPost(e) {
     return jsonResp({ status: 'ok', message: 'ผู้ใช้ถูกสร้างสำเร็จ', user: { username: newUsername, role: newRole } });
   }
 
-// ===== CREATE CUSTOM ROLE (SUPERADMIN ONLY) =====
+  // ===== EDIT USER (SUPERADMIN ONLY) =====
+  if (action === 'editUser') {
+    if (!hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะผู้ดูแลสูงสุดเท่านั้นที่สามารถแก้ไขผู้ใช้' });
+    }
+
+    const targetUser = body.targetUser?.trim();
+    const newRole = body.newRole?.trim();
+    const newDisplayName = body.newDisplayName?.trim();
+
+    if (!targetUser) {
+      return jsonResp({ status: 'error', message: 'กรุณาระบุชื่อผู้ใช้' });
+    }
+
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const usernameIdx = headers.indexOf('username');
+    const roleIdx = headers.indexOf('role');
+    const displayNameIdx = headers.indexOf('displayName');
+
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][usernameIdx]).toLowerCase() === targetUser.toLowerCase()) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    if (rowIndex === -1) return jsonResp({ status: 'error', message: 'ไม่พบผู้ใช้' });
+
+    if (newRole) sheet.getRange(rowIndex, roleIdx + 1).setValue(newRole);
+    if (newDisplayName) sheet.getRange(rowIndex, displayNameIdx + 1).setValue(newDisplayName);
+
+    logEvent(username, 'edit_user', targetUser, { newRole, newDisplayName });
+    return jsonResp({ status: 'ok', message: 'แก้ไขผู้ใช้สำเร็จ' });
+  }
+
+  // ===== DELETE USER (SUPERADMIN ONLY) =====
+  if (action === 'deleteUser') {
+    if (!hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะผู้ดูแลสูงสุดเท่านั้นที่สามารถลบผู้ใช้' });
+    }
+
+    const targetUser = body.targetUser?.trim();
+    if (!targetUser) {
+      return jsonResp({ status: 'error', message: 'กรุณาระบุชื่อผู้ใช้' });
+    }
+
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const usernameIdx = headers.indexOf('username');
+
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][usernameIdx]).toLowerCase() === targetUser.toLowerCase()) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    if (rowIndex === -1) return jsonResp({ status: 'error', message: 'ไม่พบผู้ใช้' });
+
+    sheet.deleteRow(rowIndex);
+    logEvent(username, 'delete_user', targetUser, {});
+    return jsonResp({ status: 'ok', message: 'ลบผู้ใช้สำเร็จ' });
+  }
+
+  // ===== CREATE CUSTOM ROLE (SUPERADMIN ONLY) =====
   if (action === 'createRole') {
     if (!hasPermission(username, 'manage_users')) {
       return jsonResp({ status: 'error', message: 'เฉพาะผู้ดูแลสูงสุดเท่านั้นที่สามารถสร้างบทบาทใหม่ได้' });
@@ -345,7 +479,7 @@ function doPost(e) {
 
     rolesSheet.appendRow(rowValues);
 
-logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
+    logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     return jsonResp({
       status: 'ok',
       message: 'สร้างบทบาทสำเร็จ',
@@ -358,13 +492,69 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     return jsonResp({ status: 'ok' });
   }
 
+  // ===== IMPORT PRISONERS (SUPERADMIN ONLY) =====
+  if (action === 'importPrisoners') {
+    if (!hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะ Superadmin เท่านั้นที่สามารถนำเข้าข้อมูลผู้ต้องขัง' });
+    }
+
+    const prisoners = body.prisoners || [];
+    if (!Array.isArray(prisoners) || prisoners.length === 0) {
+      return jsonResp({ status: 'error', message: 'ไม่มีข้อมูลที่จะนำเข้า' });
+    }
+
+    const sheet = getPrisonerSheet();
+    ensurePrisonerHeaders(sheet);
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIdx = headers.indexOf('prisonerId');
+    const nameIdx = headers.indexOf('prisonerName');
+    const wingIdx = headers.indexOf('wing');
+    const statusIdx = headers.indexOf('status');
+    const noteIdx = headers.indexOf('note');
+
+    let imported = 0;
+    let updated = 0;
+
+    prisoners.forEach(p => {
+      const id = String(p.prisonerId || '').trim();
+      const name = String(p.prisonerName || '').trim();
+      const wing = String(p.wing || '').trim();
+      const status = String(p.status || '').trim();
+      const note = String(p.note || '').trim();
+
+      if (!id || !name || !wing) return;
+
+      let rowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][idIdx] || '').trim() === id && String(data[i][nameIdx] || '').trim() === name) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+
+      if (rowIndex > 0) {
+        sheet.getRange(rowIndex, wingIdx + 1).setValue(wing);
+        if (statusIdx >= 0) sheet.getRange(rowIndex, statusIdx + 1).setValue(status);
+        if (noteIdx >= 0) sheet.getRange(rowIndex, noteIdx + 1).setValue(note);
+        updated++;
+      } else {
+        sheet.appendRow([id, name, wing, status, note]);
+        imported++;
+      }
+    });
+
+    logEvent(username, 'import_prisoners', prisoners.length + ' รายการ', { imported: imported, updated: updated });
+    return jsonResp({ status: 'ok', imported: imported, updated: updated });
+  }
+
   // ===== PUBLIC: New reservation (from booking form) =====
   if (action === 'saveReservation' || !action) {
     const sheet = getMainSheet();
     ensureHeaders(sheet);
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const newRow  = headers.map(h => body[h] !== undefined ? body[h] : '');
+    const newRow = headers.map(h => body[h] !== undefined ? body[h] : '');
     sheet.appendRow(newRow);
 
     logEvent('public', 'booking_submitted', body.ref || '', { visitorName: body.visitorName, prisonerName: body.prisonerName, visitDate: body.visitDate }, 'success');
@@ -377,100 +567,100 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
           to: adminEmail,
           subject: `[จองใหม่ — รอตรวจสอบวินัย] ${body.ref} — ${body.visitorName}`,
           body: `มีคำขอจองเยี่ยมใหม่ที่รอตรวจสอบประวัติวินัย\n\n` +
-                `เลขอ้างอิง : ${body.ref}\n` +
-                `ผู้เยี่ยม  : ${body.visitorName} (${body.visitorPhone})\n` +
-                `ความสัมพันธ์: ${body.relation}\n` +
-                `ผู้ต้องขัง : ${body.prisonerName} (#${body.prisonerId})\n` +
-                `แดน        : ${body.wing}\n` +
-                `วันที่เยี่ยม: ${body.visitDate}\n` +
-                `จำนวน      : ญาติ ${body.visitorCount} คน + ผู้ต้องขัง 1 = ${body.totalPersons} คน\n` +
-                `ค่าบริการ  : ${body.total} บาท\n\n` +
-                `กรุณาเข้าระบบเพื่อตรวจสอบและอนุมัติ/ไม่อนุมัติ`
+            `เลขอ้างอิง : ${body.ref}\n` +
+            `ผู้เยี่ยม  : ${body.visitorName} (${body.visitorPhone})\n` +
+            `ความสัมพันธ์: ${body.relation}\n` +
+            `ผู้ต้องขัง : ${body.prisonerName} (#${body.prisonerId})\n` +
+            `แดน        : ${body.wing}\n` +
+            `วันที่เยี่ยม: ${body.visitDate}\n` +
+            `จำนวน      : ญาติ ${body.visitorCount} คน + ผู้ต้องขัง 1 = ${body.totalPersons} คน\n` +
+            `ค่าบริการ  : ${body.total} บาท\n\n` +
+            `กรุณาเข้าระบบเพื่อตรวจสอบและอนุมัติ/ไม่อนุมัติ`
         });
       }
-    } catch(mailErr) { /* ignore */ }
+    } catch (mailErr) { /* ignore */ }
 
     return jsonResp({ status: 'ok', ref: body.ref });
   }
 
   // ===== Public actions (no login required) =====
- const publicActions = ['uploadSlip', 'updateSlipAndStatus'];
- if (publicActions.includes(action) && (username === 'public' || !username)) {
-   // allow public slip upload / payment confirmation
- } else if (!publicActions.includes(action) && !isAuthorized(username, pass)) {
-   logEvent(username || 'unknown', action, body.ref || '', { reason: 'unauthorized' }, 'denied');
-   return jsonResp({ status: 'error', message: 'Unauthorized' });
- }
+  const publicActions = ['uploadSlip', 'updateSlipAndStatus'];
+  if (publicActions.includes(action) && (username === 'public' || !username)) {
+    // allow public slip upload / payment confirmation
+  } else if (!publicActions.includes(action) && !isAuthorized(username, pass)) {
+    logEvent(username || 'unknown', action, body.ref || '', { reason: 'unauthorized' }, 'denied');
+    return jsonResp({ status: 'error', message: 'Unauthorized' });
+  }
 
- // ── get all reservations (POST) ──
- if (action === 'getAll') {
-   const sheet = getMainSheet();
-   const data = sheet.getDataRange().getValues();
-   if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
+  // ── get all reservations (POST) ──
+  if (action === 'getAll') {
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
 
-   const headers = data[0];
-   const rows = data.slice(1)
-     .filter(row => row[headers.indexOf('ref')] && String(row[headers.indexOf('ref')]).trim() !== '')
-     .map(row => {
-       const obj = {};
-       headers.forEach((h, i) => {
-         let val = row[i];
-         if (val instanceof Date) {
-           if (h === 'visitDateISO') {
-             const y = val.getFullYear();
-             const m = String(val.getMonth() + 1).padStart(2, '0');
-             const d = String(val.getDate()).padStart(2, '0');
-             val = y + '-' + m + '-' + d;
-           } else {
-             val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
-           }
-         }
-         obj[h] = val;
-       });
-       return obj;
-     });
-   return jsonResp({ status: 'ok', rows: rows.reverse() });
- }
+    const headers = data[0];
+    const rows = data.slice(1)
+      .filter(row => row[headers.indexOf('ref')] && String(row[headers.indexOf('ref')]).trim() !== '')
+      .map(row => {
+        const obj = {};
+        headers.forEach((h, i) => {
+          let val = row[i];
+          if (val instanceof Date) {
+            if (h === 'visitDateISO') {
+              const y = val.getFullYear();
+              const m = String(val.getMonth() + 1).padStart(2, '0');
+              const d = String(val.getDate()).padStart(2, '0');
+              val = y + '-' + m + '-' + d;
+            } else {
+              val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+            }
+          }
+          obj[h] = val;
+        });
+        return obj;
+      });
+    return jsonResp({ status: 'ok', rows: rows.reverse() });
+  }
 
-   // ── CANCEL BOOKING ──
-   if (action === 'cancelBooking') {
-     const sheet = getMainSheet();
-     const data  = sheet.getDataRange().getValues();
-     const refIdx    = data[0].indexOf('ref');
-     const statusIdx = data[0].indexOf('status');
-     for (let i = 1; i < data.length; i++) {
-       if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
-         sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
-         logEvent(username, 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
-         return jsonResp({ status: 'ok' });
-       }
-     }
-     return jsonResp({ status: 'error', message: 'Ref not found' });
-   }
+  // ── CANCEL BOOKING ──
+  if (action === 'cancelBooking') {
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    const refIdx = data[0].indexOf('ref');
+    const statusIdx = data[0].indexOf('status');
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+        sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
+        logEvent(username, 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
+        return jsonResp({ status: 'ok' });
+      }
+    }
+    return jsonResp({ status: 'error', message: 'Ref not found' });
+  }
 
-   // ── UPDATE STATUS (approve / reject / mark paid etc.) ──
-   if (action === 'updateStatus') {
-     const sheet = getMainSheet();
-     const data  = sheet.getDataRange().getValues();
-     const refIdx    = data[0].indexOf('ref');
-     const statusIdx = data[0].indexOf('status');
-     for (let i = 1; i < data.length; i++) {
-       if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
-         const oldStatus = data[i][statusIdx];
-         sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
-         logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
-         return jsonResp({ status: 'ok' });
-       }
-     }
-     return jsonResp({ status: 'error', message: 'Ref not found' });
-   }
+  // ── UPDATE STATUS (approve / reject / mark paid etc.) ──
+  if (action === 'updateStatus') {
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    const refIdx = data[0].indexOf('ref');
+    const statusIdx = data[0].indexOf('status');
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+        const oldStatus = data[i][statusIdx];
+        sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
+        logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
+        return jsonResp({ status: 'ok' });
+      }
+    }
+    return jsonResp({ status: 'error', message: 'Ref not found' });
+  }
 
   // ── UPDATE VISITOR APPROVAL (per person) ──
   if (action === 'updateVisitorApproval') {
     if (!body.ref) return jsonResp({ status: 'error', message: 'Missing ref' });
 
     const sheet = getMainSheet();
-    let data  = sheet.getDataRange().getValues();
+    let data = sheet.getDataRange().getValues();
     let headers = data[0];
     const refIdx = headers.indexOf('ref');
 
@@ -498,7 +688,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     if (body.visitorApproved !== undefined) sheet.getRange(row, vaIdx + 1).setValue(body.visitorApproved);
     if (body.extraVisitorApproved !== undefined) sheet.getRange(row, evaIdx + 1).setValue(body.extraVisitorApproved);
 
-    // Recalc price
+    // Recalc price using dynamic pricing
     const mainApproved = (body.visitorApproved || '').toString().trim().toLowerCase() === 'yes' ? 1 : 0;
     let extraYesCount = 0;
     if (body.extraVisitorApproved) {
@@ -506,12 +696,25 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     }
     const approvedRelatives = mainApproved + extraYesCount;
     const correctVisitorCount = approvedRelatives;
-    const correctTotal = (approvedRelatives + 1) * 1000;
+
+    // Fetch pricing from PricingConfig
+    let basePrice = 1000;
+    let prisonerPrice = 1000;
+    try {
+      const pSheet = getPricingSheet();
+      const pData = pSheet.getDataRange().getValues();
+      for (let j = 1; j < pData.length; j++) {
+        if (String(pData[j][0]).trim() === 'basePrice') basePrice = Number(pData[j][1]) || 1000;
+        if (String(pData[j][0]).trim() === 'prisonerPrice') prisonerPrice = Number(pData[j][1]) || 1000;
+      }
+    } catch (e) { }
+
+    const correctTotal = (approvedRelatives * basePrice) + prisonerPrice;
 
     const vcIdx = headers.indexOf('visitorCount');
-    const tIdx  = headers.indexOf('total');
+    const tIdx = headers.indexOf('total');
     if (vcIdx > -1) sheet.getRange(row, vcIdx + 1).setValue(correctVisitorCount);
-    if (tIdx  > -1) sheet.getRange(row, tIdx  + 1).setValue(correctTotal);
+    if (tIdx > -1) sheet.getRange(row, tIdx + 1).setValue(correctTotal);
 
     logEvent(username, 'visitor_approval_updated', body.ref, { visitorApproved: body.visitorApproved, extraVisitorApproved: body.extraVisitorApproved, visitorCount: correctVisitorCount, total: correctTotal }, 'success');
     return jsonResp({ status: 'ok', visitorCount: correctVisitorCount, total: correctTotal });
@@ -525,7 +728,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
       const url = saveSlipToDrive(body.ref, body.base64Data, body.mimeType || '', body.fileName || '');
       logEvent(username || 'public', 'slip_uploaded', body.ref, {}, 'success');
       return jsonResp({ status: 'ok', url: url });
-    } catch(e) {
+    } catch (e) {
       Logger.log('uploadSlip error: ' + e.toString());
       logEvent(username || 'public', 'slip_upload_failed', body.ref, { error: e.toString() }, 'error');
       return jsonResp({ status: 'error', message: e.toString() });
@@ -535,18 +738,18 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
   // ── UPDATE SLIP + STATUS ──
   if (action === 'updateSlipAndStatus') {
     const sheet = getMainSheet();
-    const data  = sheet.getDataRange().getValues();
-    const headers    = data[0];
-    const refIdx     = headers.indexOf('ref');
-    const statusIdx  = headers.indexOf('status');
-    const slipIdx    = headers.indexOf('slipImage');
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const refIdx = headers.indexOf('ref');
+    const statusIdx = headers.indexOf('status');
+    const slipIdx = headers.indexOf('slipImage');
     for (let i = 1; i < data.length; i++) {
       if (data[i][refIdx] === body.ref) {
         sheet.getRange(i + 1, statusIdx + 1).setValue(body.status || 'ชำระแล้ว');
         if (slipIdx >= 0 && body.slipImage) {
           let slipVal = body.slipImage;
           if (slipVal.startsWith('data:image')) {
-            try { slipVal = saveSlipToDrive(body.ref, slipVal); } catch(e) { slipVal = 'SLIP_UPLOADED:' + new Date().toISOString(); }
+            try { slipVal = saveSlipToDrive(body.ref, slipVal); } catch (e) { slipVal = 'SLIP_UPLOADED:' + new Date().toISOString(); }
           }
           sheet.getRange(i + 1, slipIdx + 1).setValue(slipVal);
         }
@@ -555,6 +758,163 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
       }
     }
     return jsonResp({ status: 'error', message: 'Ref not found' });
+  }
+
+  // ===== ADD VISITOR TO BOOKING (SUPERADMIN ONLY) =====
+  if (action === 'addVisitor') {
+    if (!hasPermission(username, 'add_visitor')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะ Superadmin เท่านั้นที่สามารถเพิ่มผู้เข้าเยี่ยม' });
+    }
+
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const refIdx = headers.indexOf('ref');
+    const extraNamesIdx = headers.indexOf('extraVisitorNames');
+    const extraReligionsIdx = headers.indexOf('extraVisitorReligions');
+    const extraAllergiesIdx = headers.indexOf('extraVisitorAllergies');
+    const extraApprovedIdx = headers.indexOf('extraVisitorApproved');
+
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][refIdx] || '').trim() === String(body.ref || '').trim()) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    if (rowIndex === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
+
+    const row = data[rowIndex - 1];
+    const newVisitor = body.visitorName || '';
+    const newReligion = body.religion || '';
+    const newAllergy = body.allergy || '';
+
+    let existingNames = String(row[extraNamesIdx] || '').trim();
+    let existingReligions = String(row[extraReligionsIdx] || '').trim();
+    let existingAllergies = String(row[extraAllergiesIdx] || '').trim();
+    let existingApproved = String(row[extraApprovedIdx] || '').trim();
+
+    if (existingNames) {
+      existingNames += ';;' + newVisitor;
+      existingReligions += ';;' + newReligion;
+      existingAllergies += ';;' + newAllergy;
+      existingApproved += ';;';
+    } else {
+      existingNames = newVisitor;
+      existingReligions = newReligion;
+      existingAllergies = newAllergy;
+      existingApproved = '';
+    }
+
+    sheet.getRange(rowIndex, extraNamesIdx + 1).setValue(existingNames);
+    sheet.getRange(rowIndex, extraReligionsIdx + 1).setValue(existingReligions);
+    sheet.getRange(rowIndex, extraAllergiesIdx + 1).setValue(existingAllergies);
+    sheet.getRange(rowIndex, extraApprovedIdx + 1).setValue(existingApproved);
+
+    logEvent(username, 'visitor_added', body.ref, { visitorName: newVisitor });
+    return jsonResp({ status: 'ok', extraVisitorNames: existingNames });
+  }
+
+  // ===== DELETE BOOKING (SUPERADMIN ONLY - SOFT DELETE) =====
+  if (action === 'deleteBooking') {
+    if (!hasPermission(username, 'delete_booking')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะ Superadmin เท่านั้นที่สามารถลบการจอง' });
+    }
+
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const refIdx = headers.indexOf('ref');
+    const statusIdx = headers.indexOf('status');
+
+    let rowIndex = -1;
+    let currentStatus = '';
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][refIdx] || '').trim() === String(body.ref || '').trim()) {
+        rowIndex = i + 1;
+        currentStatus = String(data[i][statusIdx] || '');
+        break;
+      }
+    }
+    if (rowIndex === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
+
+    const blockedStatuses = ['ชำระแล้ว', 'เสร็จสิ้น'];
+    if (blockedStatuses.includes(currentStatus)) {
+      return jsonResp({ status: 'error', message: 'ไม่สามารถลบการจองที่มีสถานะ ' + currentStatus + ' ได้ (ต้องคืนเงินก่อน)' });
+    }
+
+    sheet.getRange(rowIndex, statusIdx + 1).setValue('ยกเลิก');
+    logEvent(username, 'booking_deleted', body.ref, { previousStatus: currentStatus, reason: body.reason || '' });
+    return jsonResp({ status: 'ok' });
+  }
+
+  // ===== UPDATE PRICING (SUPERADMIN ONLY) =====
+  if (action === 'updatePricing') {
+    if (!hasPermission(username, 'manage_pricing') && !hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะ Superadmin เท่านั้นที่สามารถจัดการราคา' });
+    }
+
+    const pricingUpdates = body.pricing || [];
+    if (!Array.isArray(pricingUpdates) || pricingUpdates.length === 0) {
+      return jsonResp({ status: 'error', message: 'ไม่มีข้อมูลราคาที่จะบันทึก' });
+    }
+
+    const sheet = getPricingSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const keyIdx = headers.indexOf('key');
+    const now = new Date().toISOString();
+
+    pricingUpdates.forEach(update => {
+      let rowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][keyIdx] || '').trim() === update.key) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+
+      if (rowIndex > 0) {
+        sheet.getRange(rowIndex, headers.indexOf('value') + 1).setValue(update.value);
+        sheet.getRange(rowIndex, headers.indexOf('description') + 1).setValue(update.description || '');
+        sheet.getRange(rowIndex, headers.indexOf('updatedAt') + 1).setValue(now);
+        sheet.getRange(rowIndex, headers.indexOf('updatedBy') + 1).setValue(username);
+      } else {
+        sheet.appendRow([update.key, update.value, update.description || '', now, username]);
+      }
+    });
+
+    logEvent(username, 'pricing_updated', pricingUpdates.length + ' รายการ', { keys: pricingUpdates.map(u => u.key) });
+    return jsonResp({ status: 'ok' });
+  }
+
+  // ===== OVERRIDE BOOKING PRICE (SUPERADMIN ONLY) =====
+  if (action === 'overrideBookingPrice') {
+    if (!hasPermission(username, 'edit_price')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะ Superadmin เท่านั้นที่สามารถกำหนดราคาเองได้' });
+    }
+
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const refIdx = headers.indexOf('ref');
+    const totalIdx = headers.indexOf('total');
+
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][refIdx] || '').trim() === String(body.ref || '').trim()) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+
+    if (rowIndex === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
+
+    const oldTotal = data[rowIndex - 1][totalIdx];
+    sheet.getRange(rowIndex, totalIdx + 1).setValue(body.newTotal);
+
+    logEvent(username, 'price_override', body.ref, { oldTotal: oldTotal, newTotal: body.newTotal, reason: body.reason || '' });
+    return jsonResp({ status: 'ok', oldTotal: oldTotal, newTotal: body.newTotal });
   }
 
   return jsonResp({ status: 'error', message: 'Unknown action' });
@@ -638,11 +998,11 @@ function getMainSheet() {
 function ensureHeaders(sheet) {
   if (sheet.getLastRow() > 0) return;
   const headers = [
-    'ref','timestamp','visitorName','visitorId','visitorPhone','relation',
-    'religion','allergy','extraVisitorReligions','extraVisitorAllergies',
-    'extraVisitorNames','visitorApproved','extraVisitorApproved',
-    'prisonerName','prisonerId','wing','visitDate','visitDateISO',
-    'visitorCount','totalPersons','total','adultCount','child5to8Count','childUnder5Count','status','slipImage'
+    'ref', 'timestamp', 'visitorName', 'visitorId', 'visitorPhone', 'relation',
+    'religion', 'allergy', 'extraVisitorReligions', 'extraVisitorAllergies',
+    'extraVisitorNames', 'visitorApproved', 'extraVisitorApproved',
+    'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitDateISO',
+    'visitorCount', 'totalPersons', 'total', 'adultCount', 'child5to8Count', 'childUnder5Count', 'status', 'slipImage'
   ];
   sheet.appendRow(headers);
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
@@ -668,12 +1028,12 @@ function saveSlipToDrive(ref, base64Data, mimeTypeOverride, fileNameOverride) {
     throw new Error('Invalid base64 format');
   }
 
-  const ext = mimeType.split('/')[1].replace('jpeg','jpg').replace('jpg','jpg');
+  const ext = mimeType.split('/')[1].replace('jpeg', 'jpg').replace('jpg', 'jpg');
   const fileName = fileNameOverride || ('slip_' + ref + '_' + new Date().getTime() + '.' + ext);
   let blob;
   try {
     blob = Utilities.newBlob(Utilities.base64Decode(rawBase64), mimeType, fileName);
-  } catch(decodeErr) {
+  } catch (decodeErr) {
     throw new Error('base64 decode failed: ' + decodeErr.message);
   }
 
@@ -709,6 +1069,68 @@ function ensurePrisonerHeaders(sheet) {
   sheet.setFrozenRows(1);
 }
 
+function getPricingSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(PRICING_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(PRICING_SHEET);
+    ensurePricingHeaders(sheet);
+  }
+  return sheet;
+}
+
+function ensurePricingHeaders(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  const headers = ['key', 'value', 'description', 'updatedAt', 'updatedBy'];
+  sheet.appendRow(headers);
+  const range = sheet.getRange(1, 1, 1, headers.length);
+  range.setFontWeight('bold');
+  range.setBackground('#185FA5');
+  range.setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
+}
+
+// ===== PROMPTPAY QR GENERATION =====
+const PROMPTPAY_TEMPLATE_ID = '29'; // EMVCo Merchant Account Information Template
+
+function generatePromptPayPayload(mobileNumber, amount) {
+  var tel = String(mobileNumber).replace(/[^0-9]/g, '');
+  var phone13 = '0066' + tel.substring(1);
+  var telLen = phone13.length;
+  // Correct EMVCo structure: AID (tag 00) + Merchant Account (tag 01)
+  var aidBlock = '0010A000000677';
+  var merchantAccountBlock = '01' + String(telLen).padStart(2, '0') + phone13;
+  var merchantAccountInfo = aidBlock + merchantAccountBlock;
+  var amountStr = amount > 0 ? amount.toFixed(2) : '';
+  var payload = '000201010212';
+  payload += PROMPTPAY_TEMPLATE_ID + String(merchantAccountInfo.length).padStart(2, '0') + merchantAccountInfo;
+  payload += '5303764';
+  if (amountStr) {
+    payload += '54' + String(amountStr.length).padStart(2, '0') + amountStr;
+  }
+  payload += '5802TH6304';
+  var crc = computeCRC16(payload);
+  return payload + crc;
+}
+
+function computeCRC16(str) {
+  var crc = 0xFFFF;
+  for (var i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (var j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : (crc << 1);
+    }
+  }
+  return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+}
+
+function generateQRBase64(payload) {
+  const qrUrl = 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=' + encodeURIComponent(payload);
+  const response = UrlFetchApp.fetch(qrUrl, { muteHttpExceptions: true });
+  const blob = response.getBlob();
+  return 'data:image/png;base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
 // ===== USER MANAGEMENT =====
 function getUsersSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -731,13 +1153,13 @@ function ensureUserHeadersAndUsers(sheet) {
     range.setFontColor('#ffffff');
     sheet.setFrozenRows(1);
   }
-  
+
   // Seed default users only if no users exist AND not in production mode
   // Check script property: set DISABLE_SEED_USERS=true in production
   const scriptProps = PropertiesService.getScriptProperties();
   const disableSeed = scriptProps.getProperty('DISABLE_SEED_USERS');
   const data = sheet.getDataRange().getValues();
-  
+
   if (data.length <= 1 && disableSeed !== 'true') {
     seedDefaultUsers(sheet);
   }
@@ -833,28 +1255,28 @@ function getRole(username) {
 function hasPermission(username, perm) {
   const user = getUserByUsername(username);
   if (!user) return false;
-  
+
   const permissions = PERMISSIONS[user.role];
   if (!permissions) return false;
-  
+
   return permissions.includes(perm);
 }
 
 function isAuthorized(username, pass) {
   // Legacy password-only auth for backward compatibility
   if (String(pass) === String(LEGACY_STAFF_PASS)) return true;
-  
+
   // RBAC auth
   const user = getUserByUsername(username);
   if (!user) return false;
-  
+
   return String(user.password) === String(pass);
 }
 
 function isFirstTimeLogin(username) {
   const user = getUserByUsername(username);
   if (!user) return false;
-  
+
   // Check if user has default password (indicating first time login)
   const defaultPasswords = ['SuperAdmin@10900', 'Finance@10900', 'Vinai@10900', 'Tadtel@10900'];
   return defaultPasswords.includes(String(user.password));
@@ -865,7 +1287,7 @@ function updatePassword(username, newPassword) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const usernameIdx = headers.indexOf('username');
-  
+
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][usernameIdx]).toLowerCase() === String(username).toLowerCase()) {
       sheet.getRange(i + 1, headers.indexOf('password') + 1).setValue(newPassword);

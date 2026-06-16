@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4e8PcvNkodHjCa-QAHCkGEMz3ojubiBDQuYLu0uRTrJmemWLTUaxXUsx8ypZFX_j06A/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyhbQziLGRBLEgdhSTSmpYazR__we7gcqjcZp1kuDl-OY49a6cHSAVBa8Q-Ldtcxm4Dgg/exec';
 const QUOTA = 20;
 
 // ===== CALENDAR =====
@@ -129,7 +129,7 @@ function updateExtraVisitors() {
   list.innerHTML = '';
   if (n <= 1) { container.style.display = 'none'; return; }
   container.style.display = 'block';
-  
+
   // Get translated strings
   const relOptsText = window.t ? {
     placeholder: window.t('relationPlaceholder'),
@@ -152,15 +152,15 @@ function updateExtraVisitors() {
     lawyer: 'ทนายความ',
     other: 'อื่น ๆ'
   };
-  
+
   const relOpts = '<option value="">' + relOptsText.placeholder + '</option><option>' + relOptsText.father + '</option><option>' + relOptsText.partner + '</option><option>' + relOptsText.child + '</option><option>' + relOptsText.sibling + '</option><option>' + relOptsText.relative + '</option><option>' + relOptsText.friend + '</option><option>' + relOptsText.lawyer + '</option><option>' + relOptsText.other + '</option>';
-  
+
   // Religion options (these are static in Thai as they are specific to Thai context)
   const religionOpts = '<option value="">-- เลือก --</option><option>พุทธ</option><option>อิสลาม</option><option>คริสต์</option><option>อื่น ๆ</option>';
-  
+
   const allergyPh = window.t ? window.t('allergyPlaceholder') : "ระบุอาการแพ้ หรือ 'ไม่มี'";
   const agePh = window.t ? window.t('ageChildRule') : "อายุ (ปี) · <5 ฟรี, 5-8=500, >8=1000";
-  
+
   for (let i = 2; i <= n; i++) {
     const div = document.createElement('div');
     div.className = 'form-group full';

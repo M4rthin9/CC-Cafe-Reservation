@@ -1,6 +1,6 @@
 // ===== CONFIG =====
 const PERMISSIONS = {
-  Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
+  Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'reject_discipline', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog', 'add_visitor', 'edit_booking', 'edit_price', 'delete_booking', 'manage_pricing', 'view_audit'],
   Admin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
   Vinai: ['approve_discipline', 'reject_discipline', 'view_slip', 'view_detail'],
@@ -8,9 +8,11 @@ const PERMISSIONS = {
   User: ['print']
 };
 
+const AVAILABLE_PERMISSIONS = ['approve', 'approve_discipline', 'approve_participant', 'reject_discipline', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog', 'add_visitor', 'edit_booking', 'edit_price', 'delete_booking', 'manage_pricing', 'view_audit'];
+
 // Sidebar menu visibility by role
 const SIDEBAR_MENU = {
-  Superadmin: ['home', 'reservations', 'reports', 'eventlog'],
+  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'settings'],
   Admin: ['home', 'reservations', 'reports', 'eventlog'],
   Finance: ['reservations', 'reports'],
   Vinai: ['reservations', 'reports'],
@@ -18,7 +20,7 @@ const SIDEBAR_MENU = {
   User: ['home']
 };
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4e8PcvNkodHjCa-QAHCkGEMz3ojubiBDQuYLu0uRTrJmemWLTUaxXUsx8ypZFX_j06A/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyhbQziLGRBLEgdhSTSmpYazR__we7gcqjcZp1kuDl-OY49a6cHSAVBa8Q-Ldtcxm4Dgg/exec';
 
 // ===== STATE =====
 let allRows = [];
@@ -83,6 +85,16 @@ async function doLogin() {
       }
     });
 
+    // Also filter bottom nav items
+    document.querySelectorAll('.bottom-nav-item').forEach(item => {
+      const view = item.getAttribute('data-view');
+      if (view && !visibleMenu.includes(view)) {
+        item.style.display = 'none';
+      } else {
+        item.style.display = '';
+      }
+    });
+
     // Show/hide UI elements based on role (filter status, export/print buttons)
     const isAdminOrSuper = currentUser.role === 'Superadmin' || currentUser.role === 'Admin';
     const filterStatusEl = document.getElementById('filterStatus');
@@ -97,6 +109,7 @@ async function doLogin() {
     switchView(visibleMenu.includes('home') ? 'home' : visibleMenu[0] || 'reservations');
     renderDashboardHome();
     loadData();
+    logClientEvent('login', `เข้าสู่ระบบ ${currentUser.username}`);
 
   } catch (e) {
     console.error('Login error:', e);
@@ -170,6 +183,7 @@ async function loadData() {
   buildDateFilter();
   renderTable();
   logEvent('load_data', 'โหลดข้อมูลการจอง');
+  logClientEvent('load_data', 'โหลดข้อมูลการจอง');
 }
 
 // ===== DEMO DATA =====
@@ -328,6 +342,7 @@ function renderTable() {
 <td data-label="จัดการ">
               <div class="action-btns">
                 <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
+                ${(s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-slip" style="background:#03b3c0;color:#fff;border-color:#03b3c0" onclick="openQrModal('${row.ref}','${row.total}','${String(row.visitorName).replace(/'/g, "\\'")}')">📱 QR</button>` : ''}
                 <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
               </div>
               <div class="mobile-actions-expanded" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:${s === 'รอตรวจสอบวินัย' || s === 'รอตรวจสอบผู้เข้าร่วม' || s === 'รอชำระเงิน' || s === 'ชำระแล้ว' ? 'flex' : 'none'};flex-wrap:wrap;gap:6px">
@@ -434,6 +449,8 @@ function switchView(v) {
     renderEventlog();
   } else if (v === 'addUser') {
     renderAddUser();
+  } else if (v === 'settings') {
+    renderSettings();
   }
 
   // Dashboard home view - only for Admin/Superadmin who have access
@@ -1264,6 +1281,7 @@ async function updateStatus(idx, newStatus) {
 
     // Success
     logEvent('update_status', `เปลี่ยนสถานะ ${row.ref} เป็น ${newStatus}`);
+    logClientEvent('update_status', `เปลี่ยนสถานะ ${row.ref} เป็น ${newStatus}`);
     updateStats();
     renderTable();
     renderDashboardHome();
@@ -1309,6 +1327,7 @@ async function confirmPayment(idx) {
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
 
     logEvent(s === 'รอชำระเงิน' ? 'confirm_payment_pending' : 'confirm_payment', `${s === 'รอชำระเงิน' ? 'ยืนยันชำระเงิน' : 'เสร็จสิ้น'} ${row.ref}`);
+    logClientEvent(s === 'รอชำระเงิน' ? 'confirm_payment' : 'complete_booking', `${row.ref}`);
     updateStats();
     renderTable();
     renderDashboardHome();
@@ -1349,6 +1368,7 @@ async function rejectPayment(idx) {
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
 
     logEvent('reject_payment', `ปฏิเสธการชำระเงิน ${row.ref} เหตุผล: ${reason}`);
+    logClientEvent('reject_payment', `ปฏิเสธการชำระเงิน ${row.ref} เหตุผล: ${reason}`);
     alert('ปฏิเสธการชำระเงินแล้ว (สถานะกลับไปเป็น "รอชำระเงิน")');
     updateStats();
     renderTable();
@@ -1394,6 +1414,7 @@ async function cancelBooking(idx) {
   }
 
   logEvent('cancel_booking', `ยกเลิกการจอง ${row.ref}`);
+  logClientEvent('cancel_booking', `ยกเลิกการจอง ${row.ref}`);
   updateStats();
   renderTable();
   renderDashboardHome();
@@ -1458,6 +1479,7 @@ async function updateVisitorApproval(idx, pidx, val) {
 
     // Success
     logEvent('visitor_approval', `อัปเดตการอนุมัติ ${row.ref} ให้ ${val}`);
+    logClientEvent('visitor_approval', `อัปเดตการอนุมัติ ${row.ref} ให้ ${val}`);
     viewDetail(idx);
     renderTable();
   } catch (e) {
@@ -1738,6 +1760,7 @@ async function approveParticipantInDetail(idx) {
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
 
     logEvent('approve_participant', `อนุมัติผู้เข้าร่วม ${row.ref}`);
+    logClientEvent('approve_participant', `อนุมัติผู้เข้าร่วม ${row.ref}`);
     updateStats();
     renderTable();
     renderDashboardHome();
@@ -1781,6 +1804,7 @@ async function rejectParticipantInDetail(idx) {
 
     // Success
     logEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
+    logClientEvent('reject_participant', `ปฏิเสธผู้เข้าร่วม ${row.ref}`);
     updateStats();
     renderTable();
     renderDashboardHome();
@@ -1878,6 +1902,7 @@ async function approveAllVisitorsInDetail(idx) {
     });
 
     logEvent('approve_all_visitors', `อนุมัติผู้เข้าร่วมทั้งหมด ${row.ref}`);
+    logClientEvent('approve_all_visitors', `อนุมัติผู้เข้าร่วมทั้งหมด ${row.ref}`);
     updateStats();
     renderTable();
     renderDashboardHome();
@@ -1940,6 +1965,7 @@ function exportFilteredCSV() {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
   logEvent('export_csv', 'ส่งออกข้อมูลเป็น CSV');
+  logClientEvent('export_csv', 'ส่งออกข้อมูลเป็น CSV');
 }
 
 // ===== HELPER: Parse extra visitors (same logic as detail view) =====
@@ -2707,12 +2733,8 @@ function renderAddUser() {
 }
 
 function fetchRolesList() {
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    redirect: 'follow',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'getRoles', username: currentUser.username, password: currentUser.password })
-  })
+  const url = APPS_SCRIPT_URL + '?action=getRoles&username=' + encodeURIComponent(currentUser.username) + '&pass=' + encodeURIComponent(currentUser.password);
+  fetch(url, { method: 'GET', redirect: 'follow' })
     .then(resp => resp.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -2767,6 +2789,7 @@ function createAddUser() {
     .then(data => {
       if (data.status === 'ok') {
         alert('สร้างผู้ใช้สำเร็จ');
+        logClientEvent('create_user', 'สร้างผู้ใช้ ' + username + ' (' + role + ')');
         // Clear form
         document.getElementById('addUserUsername').value = '';
         document.getElementById('addUserPassword').value = '';
@@ -2785,12 +2808,8 @@ function createAddUser() {
 }
 
 function loadAddUserTable() {
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    redirect: 'follow',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'getUsers', username: currentUser.username, password: currentUser.password })
-  })
+  const url = APPS_SCRIPT_URL + '?action=getUsers&username=' + encodeURIComponent(currentUser.username) + '&pass=' + encodeURIComponent(currentUser.password);
+  fetch(url, { method: 'GET', redirect: 'follow' })
     .then(resp => resp.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -2827,14 +2846,54 @@ function renderAddUserTable(users) {
   }).join('');
 }
 
-// Placeholder functions for edit/delete (optional)
 function editUser(username) {
-  alert('ฟังก์ชันแก้ไขผู้ใช้ยังไม่ได้ทำการติดตั้ง');
+  const newRole = prompt(`แก้ไขบทบาทของผู้ใช้ "${username}" (ปล่อยว่างถ้าไม่เปลี่ยน):`, '');
+  if (newRole === null) return;
+  const newDisplayName = prompt(`แก้ไขชื่อแสดงของผู้ใช้ "${username}" (ปล่อยว่างถ้าไม่เปลี่ยน):`, '');
+  if (newDisplayName === null) return;
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'editUser', targetUser: username, newRole: newRole, newDisplayName: newDisplayName, username: currentUser.username, password: currentUser.password })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('แก้ไขผู้ใช้สำเร็จ');
+        loadAddUserTable();
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + data.message);
+      }
+    })
+    .catch(err => {
+      console.error('Error editing user:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
 }
+
 function deleteUser(username) {
-  if (confirm(`คุณต้องการลบผู้ใช้ "${username}" จริงหรือไม่?`)) {
-    alert('ฟังก์ชันลบผู้ใช้ยังไม่ได้ทำการติดตั้ง');
-  }
+  if (!confirm(`คุณต้องการลบผู้ใช้ "${username}" จริงหรือไม่?`)) return;
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'deleteUser', targetUser: username, username: currentUser.username, password: currentUser.password })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('ลบผู้ใช้สำเร็จ');
+        loadAddUserTable();
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + data.message);
+      }
+    })
+    .catch(err => {
+      console.error('Error deleting user:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
 }
 
 function printDailyDeptReports() {
@@ -3261,37 +3320,37 @@ function generateMonthlyReport() {
   const endDateEl = document.getElementById('monthlyEndDate');
   const contentEl = document.getElementById('monthlyReportContent');
   const outputEl = document.getElementById('monthlyReportOutput');
-  
+
   if (!startDateEl || !endDateEl || !contentEl || !outputEl) return;
-  
+
   const startDate = startDateEl.value;
   const endDate = endDateEl.value;
-  
+
   if (!startDate || !endDate) {
     alert('กรุณาเลือกวันที่ทั้งสองช่อง');
     return;
   }
-  
+
   if (startDate > endDate) {
     alert('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด');
     return;
   }
-  
+
   const filtered = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
     const key = getRowVisitDateKey(r);
     if (!key) return false;
     return key >= startDate && key <= endDate;
   });
-  
+
   if (filtered.length === 0) {
     contentEl.style.display = 'block';
     outputEl.innerHTML = '<div style="color:var(--text2);padding:20px;text-align:center;">ไม่มีข้อมูลในช่วงวันที่ที่เลือก</div>';
     return;
   }
-  
+
   const stats = computeFinanceStats(filtered);
-  
+
   // Count cancelled and not approved separately
   let cancelledCount = 0;
   let notApprovedCount = 0;
@@ -3300,11 +3359,11 @@ function generateMonthlyReport() {
     if (s === 'ยกเลิก') cancelledCount++;
     else if (s === 'ไม่อนุมัติ') notApprovedCount++;
   });
-  
+
   let totalAdults = 0, totalKids5_8 = 0, totalKidsUnder5 = 0;
   const prisoners = new Set();
   const wingCounts = {};
-  
+
   filtered.forEach(r => {
     const d = computeDeptReportData(r);
     totalAdults += d.adults;
@@ -3315,18 +3374,18 @@ function generateMonthlyReport() {
       wingCounts[r.wing] = (wingCounts[r.wing] || 0) + 1;
     }
   });
-  
+
   const totalVisitors = totalAdults + totalKids5_8 + totalKidsUnder5;
-  
+
   // Build wing statistics
   const wingStats = Object.entries(wingCounts)
     .sort((a, b) => b[1] - a[1])
     .map(([wing, count]) => `• แดน ${wing}: <strong>${count} คน</strong>`)
     .join('\n');
-  
+
   const startFmt = startDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
   const endFmt = endDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
-  
+
   const outputHtml = `
     <div style="font-size:13px;line-height:1.8;">
       <div style="margin-bottom:12px;">
@@ -3359,7 +3418,7 @@ function generateMonthlyReport() {
       </div>
     </div>
   `;
-  
+
   outputEl.innerHTML = outputHtml;
   contentEl.style.display = 'block';
 }
@@ -3367,32 +3426,32 @@ function generateMonthlyReport() {
 function printMonthlyReport() {
   const outputEl = document.getElementById('monthlyReportOutput');
   if (!outputEl) return;
-  
+
   const startDateEl = document.getElementById('monthlyStartDate');
   const endDateEl = document.getElementById('monthlyEndDate');
   const startDate = startDateEl?.value || '';
   const endDate = endDateEl?.value || '';
-  
+
   if (!startDate || !endDate) {
     alert('กรุณาสร้างรายงานก่อนพิมพ์');
     return;
   }
-  
+
   const now = new Date().toLocaleString('th-TH');
   const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
-  
+
   const startFmt = startDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
   const endFmt = endDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
-  
+
   const filtered = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
     const key = getRowVisitDateKey(r);
     if (!key) return false;
     return key >= startDate && key <= endDate;
   });
-  
+
   const stats = computeFinanceStats(filtered);
-  
+
   // Count cancelled and not approved separately
   let cancelledCount = 0;
   let notApprovedCount = 0;
@@ -3401,11 +3460,11 @@ function printMonthlyReport() {
     if (s === 'ยกเลิก') cancelledCount++;
     else if (s === 'ไม่อนุมัติ') notApprovedCount++;
   });
-  
+
   let totalAdults = 0, totalKids5_8 = 0, totalKidsUnder5 = 0;
   const prisoners = new Set();
   const wingCounts = {};
-  
+
   filtered.forEach(r => {
     const d = computeDeptReportData(r);
     totalAdults += d.adults;
@@ -3416,13 +3475,13 @@ function printMonthlyReport() {
       wingCounts[r.wing] = (wingCounts[r.wing] || 0) + 1;
     }
   });
-  
+
   // Build wing statistics
   const wingStats = Object.entries(wingCounts)
     .sort((a, b) => b[1] - a[1])
     .map(([wing, count]) => `<div>• แดน ${wing}: <strong>${count} คน</strong></div>`)
     .join('\n');
-  
+
   const printWin = window.open('', '_blank', 'width=800,height=600');
   printWin.document.write(`
     <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
@@ -3480,6 +3539,369 @@ function printMonthlyReport() {
   setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); } });
+// ===== SETTINGS VIEW =====
+function renderSettings() {
+  loadPricingForm();
+  renderSettingsPermissions();
+  if (currentUser && currentUser.role !== 'Superadmin') {
+    document.querySelectorAll('#view-settings .settings-tab').forEach(tab => {
+      if (tab.textContent.includes('จัดการผู้ใช้') || tab.textContent.includes('บทบาท') || tab.textContent.includes('ผู้ต้องขัง')) {
+        tab.style.display = 'none';
+      }
+    });
+  }
+}
+
+function renderSettingsPermissions() {
+  const container = document.getElementById('settingsPermissionsList');
+  if (!container) return;
+  container.innerHTML = AVAILABLE_PERMISSIONS.map(p =>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
+      <input type="checkbox" value="${p}" class="perm-check"> ${p}
+    </label>`
+  ).join('');
+}
+
+function loadPricingForm() {
+  const container = document.getElementById('pricingForm');
+  if (!container) return;
+  container.innerHTML = '<div class="loading-state"><span class="spinner-sm"></span> กำลังโหลดข้อมูลราคา...</div>';
+
+  if (!currentUser) return;
+  const url = APPS_SCRIPT_URL + '?action=getPricing&username=' + encodeURIComponent(currentUser.username) + '&pass=' + encodeURIComponent(currentUser.password);
+  fetch(url, { method: 'GET', redirect: 'follow' })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok' && data.pricing && data.pricing.length > 0) {
+        container.innerHTML = data.pricing.map((item, i) =>
+          `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;padding:8px;background:var(--bg2);border-radius:6px;">
+            <div style="flex:1;min-width:120px;font-size:13px;font-weight:600;color:var(--text);">${item.key}</div>
+            <input type="text" class="search-box" id="pricingVal_${i}" value="${item.value || ''}" placeholder="มูลค่า" style="flex:0 0 100px;font-size:12px;padding:6px 8px;">
+            <input type="text" class="search-box" id="pricingDesc_${i}" value="${item.description || ''}" placeholder="คำอธิบาย" style="flex:2;min-width:150px;font-size:12px;padding:6px 8px;">
+            <input type="hidden" id="pricingKey_${i}" value="${item.key}">
+          </div>`
+        ).join('');
+        window.__pricingCount = data.pricing.length;
+      } else {
+        container.innerHTML = '<div style="font-size:13px;color:var(--text2);">ไม่มีข้อมูลราคา หรือไม่สามารถโหลดได้</div>';
+        window.__pricingCount = 0;
+      }
+    })
+    .catch(err => {
+      console.error('Error loading pricing:', err);
+      container.innerHTML = '<div style="font-size:13px;color:var(--red);">ไม่สามารถโหลดข้อมูลราคาได้</div>';
+    });
+}
+
+function updatePricing() {
+  const count = window.__pricingCount || 0;
+  if (count === 0) {
+    alert('กรุณาโหลดข้อมูลราคาก่อน');
+    return;
+  }
+
+  const pricing = [];
+  for (let i = 0; i < count; i++) {
+    const keyEl = document.getElementById('pricingKey_' + i);
+    const valEl = document.getElementById('pricingVal_' + i);
+    const descEl = document.getElementById('pricingDesc_' + i);
+    if (keyEl && valEl) {
+      pricing.push({ key: keyEl.value, value: valEl.value, description: descEl ? descEl.value : '' });
+    }
+  }
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'updatePricing', pricing: pricing, username: currentUser.username, password: currentUser.password })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('บันทึกราคาเรียบร้อย');
+        logClientEvent('pricing_updated', 'อัปเดตราคา ' + pricing.length + ' รายการ');
+        loadPricingForm();
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่สามารถบันทึกได้'));
+      }
+    })
+    .catch(err => {
+      console.error('Error updating pricing:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
+}
+
+function changePassword() {
+  const newPass = document.getElementById('settingsNewPass').value;
+  const confirmPass = document.getElementById('settingsConfirmPass').value;
+
+  if (!newPass || newPass.length < 6) {
+    alert('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+    return;
+  }
+  if (newPass !== confirmPass) {
+    alert('รหัสผ่านไม่ตรงกัน');
+    return;
+  }
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'changePassword', username: currentUser.username, password: currentUser.password, newPassword: newPass, confirmPassword: confirmPass })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าระบบใหม่');
+        doLogout();
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่สามารถเปลี่ยนรหัสผ่านได้'));
+      }
+    })
+    .catch(err => {
+      console.error('Error changing password:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
+}
+
+function createRole() {
+  const roleName = document.getElementById('settingsRoleName').value.trim();
+  if (!roleName) {
+    alert('กรุณากรอกชื่อบทบาท');
+    return;
+  }
+
+  const checkboxes = document.querySelectorAll('#settingsPermissionsList .perm-check:checked');
+  const permissions = Array.from(checkboxes).map(cb => cb.value);
+
+  if (permissions.length === 0) {
+    alert('กรุณาเลือกอย่างน้อยหนึ่งสิทธิ์');
+    return;
+  }
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'createRole', roleName: roleName, permissions: permissions, username: currentUser.username, password: currentUser.password })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('สร้างบทบาทสำเร็จ');
+        document.getElementById('settingsRoleName').value = '';
+        logClientEvent('create_role', 'สร้างบทบาท ' + roleName);
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่สามารถสร้างบทบาทได้'));
+      }
+    })
+    .catch(err => {
+      console.error('Error creating role:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
+}
+
+function importPrisoners() {
+  const raw = document.getElementById('settingsPrisonerData').value.trim();
+  if (!raw) {
+    alert('กรุณาป้อนข้อมูลผู้ต้องขัง');
+    return;
+  }
+
+  let prisoners;
+  try {
+    prisoners = JSON.parse(raw);
+  } catch (e) {
+    // Try CSV format: id, name, wing, status, note
+    const lines = raw.split('\n').filter(l => l.trim());
+    prisoners = lines.map(line => {
+      const parts = line.split(',').map(s => s.trim());
+      return { prisonerId: parts[0] || '', prisonerName: parts[1] || '', wing: parts[2] || '', status: parts[3] || '', note: parts[4] || '' };
+    }).filter(p => p.prisonerId && p.prisonerName);
+  }
+
+  if (!Array.isArray(prisoners) || prisoners.length === 0) {
+    alert('ไม่มีข้อมูลที่ถูกต้อง');
+    return;
+  }
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'importPrisoners', prisoners: prisoners, username: currentUser.username, password: currentUser.password })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('นำเข้าสำเร็จ: นำเข้า ' + (data.imported || 0) + ' รายการ, อัปเดต ' + (data.updated || 0) + ' รายการ');
+        document.getElementById('settingsPrisonerData').value = '';
+        logClientEvent('import_prisoners', 'นำเข้าผู้ต้องขัง ' + prisoners.length + ' รายการ');
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่สามารถนำเข้าได้'));
+      }
+    })
+    .catch(err => {
+      console.error('Error importing prisoners:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
+}
+
+function addVisitor() {
+  const ref = document.getElementById('settingsBookingRef').value.trim();
+  const name = document.getElementById('settingsVisitorName').value.trim();
+  const religion = document.getElementById('settingsVisitorReligion').value.trim();
+  const allergy = document.getElementById('settingsVisitorAllergy').value.trim();
+
+  if (!ref || !name) {
+    alert('กรุณากรอกเลขอ้างอิงและชื่อผู้เข้าเยี่ยม');
+    return;
+  }
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'addVisitor', ref: ref, visitorName: name, religion: religion, allergy: allergy, username: currentUser.username, password: currentUser.password })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('เพิ่มผู้เข้าเยี่ยมสำเร็จ');
+        document.getElementById('settingsBookingRef').value = '';
+        document.getElementById('settingsVisitorName').value = '';
+        document.getElementById('settingsVisitorReligion').value = '';
+        document.getElementById('settingsVisitorAllergy').value = '';
+        logClientEvent('add_visitor', 'เพิ่มผู้เข้าเยี่ยม ' + name + ' ในการจอง ' + ref);
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่สามารถเพิ่มผู้เข้าเยี่ยมได้'));
+      }
+    })
+    .catch(err => {
+      console.error('Error adding visitor:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
+}
+
+function deleteBooking() {
+  const ref = document.getElementById('settingsDeleteRef').value.trim();
+  if (!ref) {
+    alert('กรุณากรอกเลขอ้างอิง');
+    return;
+  }
+  if (!confirm('คุณต้องการลบการจอง "' + ref + '" จริงหรือไม่?')) return;
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'deleteBooking', ref: ref, reason: 'ลบโดยผู้ดูแลระบบ', username: currentUser.username, password: currentUser.password })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('ลบการจองสำเร็จ');
+        document.getElementById('settingsDeleteRef').value = '';
+        logClientEvent('delete_booking', 'ลบการจอง ' + ref);
+        loadData();
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่สามารถลบการจองได้'));
+      }
+    })
+    .catch(err => {
+      console.error('Error deleting booking:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
+}
+
+function overrideBookingPrice() {
+  const ref = document.getElementById('settingsPriceRef').value.trim();
+  const newTotal = parseInt(document.getElementById('settingsPriceNew').value);
+  const reason = document.getElementById('settingsPriceReason').value.trim();
+
+  if (!ref || isNaN(newTotal) || newTotal < 0) {
+    alert('กรุณากรอกเลขอ้างอิงและราคาใหม่ให้ถูกต้อง');
+    return;
+  }
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'overrideBookingPrice', ref: ref, newTotal: newTotal, reason: reason, username: currentUser.username, password: currentUser.password })
+  })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        alert('ปรับราคาสำเร็จ: จาก ' + (data.oldTotal || '?') + ' เป็น ' + data.newTotal + ' บาท');
+        document.getElementById('settingsPriceRef').value = '';
+        document.getElementById('settingsPriceNew').value = '';
+        document.getElementById('settingsPriceReason').value = '';
+        logClientEvent('override_price', 'ปรับราคา ' + ref + ' จาก ' + data.oldTotal + ' เป็น ' + data.newTotal);
+        loadData();
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่สามารถปรับราคาได้'));
+      }
+    })
+    .catch(err => {
+      console.error('Error overriding price:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    });
+}
+
+// ===== STATIC QR PAYMENT MODAL =====
+function openQrModal(ref, total, visitorName) {
+  const modal = document.getElementById('qrModalBg');
+  const body = document.getElementById('qrModalBody');
+  if (!modal || !body) return;
+
+  body.innerHTML =
+    '<div style="text-align:center;padding:8px;">' +
+    '<div style="background:linear-gradient(135deg,#e8f4f8,#d0eaf3);border:2px solid #03b3c0;border-radius:10px;padding:1.5rem;text-align:center;">' +
+    '<div style="display:inline-flex;align-items:center;gap:8px;background:#03b3c0;color:#fff;font-size:13px;font-weight:700;padding:6px 18px;border-radius:20px;margin-bottom:14px;">📱 PromptPay QR Code</div>' +
+    '<div style="margin:10px auto 15px;width:200px;height:200px;background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);">' +
+    '<img src="src/asset/promptpay-qr.png" alt="PromptPay QR Code" style="width:100%;height:100%;object-fit:contain;">' +
+    '</div>' +
+    '<div style="font-size:16px;font-weight:700;color:#0a4a55;margin-bottom:4px;">ทัณฑสถานบำบัดพิเศษกลาง</div>' +
+    '<div style="font-size:14px;font-weight:600;color:#1a5a65;margin-bottom:12px;">ชื่อบัญชี: ร้านสงเคราะห์ผู้ต้องขัง</div>' +
+    '<div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 14px;font-size:13px;color:#1a5a65;line-height:1.8;">' +
+    '💰 ยอดที่ต้องชำระ: <strong style="font-size:18px;color:#0a4a55;">' + (parseInt(total) || 0).toLocaleString() + ' บาท</strong><br>' +
+    '<span style="font-size:12px;color:#2a6a75;">' + (visitorName || '') + '</span>' +
+    '</div>' +
+    '<div style="margin-top:10px;background:rgba(255,255,255,0.8);border-radius:8px;padding:8px 14px;font-size:13px;color:#7a4a10;">' +
+    '📝 กรุณาระบุเลขอ้างอิง <strong>' + (ref || '') + '</strong> ในช่องหมายเหตุเมื่อโอน' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+
+  modal.classList.add('show');
+}
+
+function closeQrModal(e) {
+  const modal = document.getElementById('qrModalBg');
+  if (!modal) return;
+  if (!e || e.target === modal) {
+    modal.classList.remove('show');
+  }
+}
+
+// ===== SERVER-SIDE LOGGING =====
+function logClientEvent(action, details) {
+  if (!currentUser) return;
+  try {
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'logClientEvent', clientAction: action, targetRef: details || '', details: {}, username: currentUser.username, password: currentUser.password })
+    }).catch(() => { });
+  } catch (e) {
+    console.error('logClientEvent error:', e);
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeQrModal(); } });
 document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('userInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
