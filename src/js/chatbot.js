@@ -5,7 +5,7 @@ const i18n = {
     chatPlaceholder: 'พิมพ์คำถาม...',
     chatClose: 'ปิดแชท',
     overlayLoading: 'กำลังส่งคำขอ...',
-    noBookingFound: '🔍 ไม่พบการจองสำหรับ <strong>{ref}</strong><br>กรุณาเช็คความถูกต้องหรือลองใหม่<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer">ลองใหม่</button>',
+    noBookingFound: '🔍 ไม่พบการจองสำหรับ <strong>{ref}</strong><br>กรุณาเช็คความถูกต้องหรือลองใหม่<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:#fff;color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;">ลองใหม่</button>',
     paymentCost: '💰 <strong>ค่าใช้จ่าย</strong> ผู้ใหญ่ 1,000 บาท / คน (คิดรวมผู้ต้องขัง)<br>👶 เด็ก 5-8 ขวบ 500 บาท / คน<br>👶 เด็ก &lt;5 ขวบ ฟรี<br><br>เช่น ญาติ 2 คน + ผู้ต้องขัง 1 คน = 3,000 บาท',
     bookingSteps: '📋 <strong>ขั้นตอนการจอง 5 ขั้นตอน</strong>:<br>① กดปุ่ม "จองคิว" ด้านบน<br>② กรอกข้อมูลผู้เข้าร่วมกิจกรรม ข้อมูลผู้ต้องขัง และเลือกวันที่<br>③ รับเลขอ้างอิง (Ref No.) ทันที<br>④ รอเจ้าหน้าที่ตรวจสอบ (1-2 วัน)<br>⑤ ชำระเงินเมื่อได้รับการอนุมัติ',
     checkStatus: '🔍 <strong>ตรวจสอบสถานะ</strong>:<br>ใช้ <strong>Ref No.</strong> หรือ <strong>เลขผู้ต้องขัง</strong> ที่หน้า "ตรวจสอบสถานะ"<br><br>สถานะที่อาจเจอ:<br>• รอตรวจสอบวินัย<br>• รอตรวจสอบผู้เข้าร่วม<br>• รอชำระเงิน<br>• ชำระแล้ว<br>• เสร็จสิ้น<br>• ไม่อนุมัติ',
@@ -15,7 +15,7 @@ const i18n = {
     paymentMethod: '💳 <strong>การชำระเงิน</strong>:<br>ชำระเงินได้หลังจากได้รับการอนุมัติ<br>จะมีลิงก์ชำระค่าร่วมกิจกรรมให้ดำเนินการ<br><br>ใช้บริการโอนเงินผ่านธนาคาร',
     approvalTime: '⏱️ <strong>ระยะเวลาการตรวจสอบ</strong>:<br>เจ้าหน้าที่จะตรวจสอบประวัติวินัยของผู้ต้องขัง<br>ใช้เวลาประมาณ 1-2 วันทำการ<br><br>หากสถานะยังคง "รอตรวจสอบ" เกิน 3 วัน กรุณาติดต่อเจ้าหน้าที่โดยตรง',
     contactUs: '📞 <strong>ติดต่อเจ้าหน้าที่</strong>:<br>สอบถามเพิ่มเติมได้ที่ ทัณฑสถานบำบัดพิเศษกลาง<br><br>หรือเยี่ยมชม <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
-    bookingDetails: '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 ผู้ร่วมกิจกรรม:</strong> {visitor}</div><div><strong>🔒 ผู้ต้องขัง:</strong> {prisoner}</div><div><strong>🏢 แดน:</strong> {wing}</div><div><strong>📅 วันที่เยี่ยม:</strong> {visitDate}</div><div><strong>💰 ค่าบริการ:</strong> {total}</div></div></div>',
+    bookingDetails: '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:1rem;color:#FAFAFA;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 ผู้ร่วมกิจกรรม:</strong> {visitor}</div><div><strong>🔒 ผู้ต้องขัง:</strong> {prisoner}</div><div><strong>🏢 แดน:</strong> {wing}</div><div><strong>📅 วันที่เยี่ยม:</strong> {visitDate}</div><div><strong>💰 ค่าบริการ:</strong> {total}</div></div></div>',
     statusPrompt: '📌 หากต้องการตรวจสอบสถานะ ให้พิมพ์ <strong>Ref No.</strong> ของคุณ (เช่น VIS-12345)',
     greetingHello: '👋 สวัสดีครับ! ยินดีช่วยคุยเลขานุการ<br>ฉันเป็นผู้ช่วย AI ที่สามารถตอบคำถามเกี่ยวกับการจองเข้ากิจกรรมของทัณฑสถานบำบัดพิเศษกลาง<br><br>ลองถามมาได้เลย เช่น "ค่าใช้จ่ายเท่าไหร่" หรือ "จองยังไง"',
     notUnderstand: '❓ ขออภัย ฉันไม่เข้าใจคำถามนี้<br>ลองถามในหัวข้ออื่น เช่น "ค่าใช้จ่าย", "จองยังไง", หรือ "ตรวจสอบสถานะ"',
@@ -32,7 +32,7 @@ const i18n = {
     chatPlaceholder: 'Type your question...',
     chatClose: 'Close chat',
     overlayLoading: 'Submitting request...',
-    noBookingFound: '🔍 No booking found for <strong>{ref}</strong><br>Please check the reference number<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer">Try Again</button>',
+    noBookingFound: '🔍 No booking found for <strong>{ref}</strong><br>Please check the reference number<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:#fff;color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Try Again</button>',
     paymentCost: '💰 <strong>Cost Details</strong> Adult: 1,000 THB per person (includes prisoner)<br>👶 Child 5-8 years: 500 THB<br>👶 Child under 5 years: Free<br><br>e.g. Family 2 + Prisoner 1 = 3,000 THB',
     bookingSteps: '📋 <strong>5-Step Booking Process</strong>:<br>① Click "Book Slot" button above<br>② Fill in visitor info, prisoner info, and select date<br>③ Get reference number (Ref No.) instantly<br>④ Wait for officer verification (1-2 business days)<br>⑤ Pay when approved',
     checkStatus: '🔍 <strong>Check Status</strong>:<br>Use <strong>Ref No.</strong> or <strong>Prisoner ID</strong> on the "Check Status" page<br><br>Possible statuses:<br>• Pending verification<br>• Pending visitor check<br>• Pending payment<br>• Paid<br>• Completed<br>• Rejected',
@@ -42,7 +42,7 @@ const i18n = {
     paymentMethod: '💳 <strong>Payment Method</strong>:<br>Payment can be made after approval<br>Payment link will be provided<br><br>Bank transfer service available',
     approvalTime: '⏱️ <strong>Processing Time</strong>:<br>Officers check prisoner disciplinary record<br>Takes approximately 1-2 business days<br><br>If still "Pending" after 3 days, contact officers directly',
     contactUs: '📞 <strong>Contact Officers</strong>:<br>Inquiries can be made at the institution<br><br>Or visit <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
-    bookingDetails: '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 Visitor:</strong> {visitor}</div><div><strong>🔒 Prisoner:</strong> {prisoner}</div><div><strong>🏢 Wing:</strong> {wing}</div><div><strong>📅 Visit Date:</strong> {visitDate}</div><div><strong>💰 Service Fee:</strong> {total}</div></div></div>',
+    bookingDetails: '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:1rem;color:#FAFAFA;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 Visitor:</strong> {visitor}</div><div><strong>🔒 Prisoner:</strong> {prisoner}</div><div><strong>🏢 Wing:</strong> {wing}</div><div><strong>📅 Visit Date:</strong> {visitDate}</div><div><strong>💰 Service Fee:</strong> {total}</div></div></div>',
     statusPrompt: '📌 To check status, type your <strong>Ref No.</strong> (e.g. VIS-12345)',
     greetingHello: '👋 Hello! How can I assist you?<br>I\'m the AI assistant for Chance & Change Cafe reservation system<br><br>Feel free to ask about "cost", "how to book", or "check status"',
     notUnderstand: '❓ Sorry, I don\'t understand this question<br>Try asking about "cost", "how to book", or "check status"',
@@ -59,7 +59,7 @@ const i18n = {
     chatPlaceholder: '请输入问题...',
     chatClose: '关闭聊天',
     overlayLoading: '正在提交请求...',
-    noBookingFound: '🔍 未找到参考编号为 <strong>{ref}</strong> 的预约<br>请检查参考编号是否正确<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:4px;cursor:pointer">重试</button>',
+    noBookingFound: '🔍 未找到参考编号为 <strong>{ref}</strong> 的预约<br>请检查参考编号是否正确<br><br><button onclick="window.retryStatusCheck&&window.retryStatusCheck()" style="margin-top:8px;padding:6px 12px;background:#fff;color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;">重试</button>',
     paymentCost: '💰 <strong>费用详情</strong> 成人：1,000 泰铢/人（包含囚犯）<br>👶 5-8岁儿童：500 泰铢<br>👶 5岁以下儿童：免费<br><br>例如：家属2人 + 囚犯1人 = 3,000 泰铢',
     bookingSteps: '📋 <strong>5步预约流程</strong>:<br>① 点击上方"预约名额"<br>② 填写家属信息、囚犯信息并选择日期<br>③ 立即获取参考编号（Ref No.）<br>④ 等待工作人员审核（1-2个工作日）<br>⑤ 审核通过后付款',
     checkStatus: '🔍 <strong>查询状态</strong>:<br>在"查询状态"页面使用<strong>参考编号</strong>或<strong>囚犯编号</strong><br><br>可能的状态:<br>• 待审核<br>• 待访客确认<br>• 待付款<br>• 已付款<br>• 已完成<br>• 已拒绝',
@@ -69,7 +69,7 @@ const i18n = {
     paymentMethod: '💳 <strong>付款方式</strong>:<br>审核通过后可以付款<br>系统将提供付款链接<br><br>支持银行转账',
     approvalTime: '⏱️ <strong>处理时间</strong>:<br>工作人员将审核囚犯纪律记录<br>约需1-2个工作日<br><br>如3天后仍显示"待审核"，请直接联系工作人员',
     contactUs: '📞 <strong>联系工作人员</strong>:<br>可到矫正院咨询<br><br>或访问 <a href="https://main.correct.go.th" target="_blank" style="color:var(--blue);">main.correct.go.th</a>',
-    bookingDetails: '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 参访者:</strong> {visitor}</div><div><strong>🔒 囚犯:</strong> {prisoner}</div><div><strong>🏢 区域:</strong> {wing}</div><div><strong>📅 参访日期:</strong> {visitDate}</div><div><strong>💰 服务费:</strong> {total}</div></div></div>',
+    bookingDetails: '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:1rem;color:#FAFAFA;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><strong>Ref No.</strong> {ref}</div><div>{status}</div></div><div style="font-size:13px;line-height:1.8;"><div><strong>👤 参访者:</strong> {visitor}</div><div><strong>🔒 囚犯:</strong> {prisoner}</div><div><strong>🏢 区域:</strong> {wing}</div><div><strong>📅 参访日期:</strong> {visitDate}</div><div><strong>💰 服务费:</strong> {total}</div></div></div>',
     statusPrompt: '📌 如需查询状态，请输入您的 <strong>Ref No.</strong>（例如 VIS-12345）',
     greetingHello: '👋 您好！我能为您做些什么？<br>我是此活动预约系统的AI助手<br><br>随时可询问"费用"、"如何预约"或"查询状态"',
     notUnderstand: '❓ 抱歉，我不理解您的问题<br>请尝试询问"费用"、"如何预约"或"查询状态"',
@@ -133,8 +133,8 @@ function getStatusPill(status, lang = getLang()) {
   if (s.includes('ไม่อนุมัติ')) return `<span class="status-pill status-rejected">${getI18n('statusRejected', lang)}</span>`;
   if (s.includes('อนุมัติ')) return `<span class="status-pill status-approved">${getI18n('statusApproved', lang)}</span>`;
   if (s.includes('ชำระ')) return `<span class="status-pill status-paid">${getI18n('statusPaid', lang)}</span>`;
-  if (s.includes('เสร็จสิ้น')) return `<span class="status-pill status-paid" style="background:#d1fae5;color:#065f46;border-color:rgba(6,95,70,0.3)">${getI18n('statusCompleted', lang)}</span>`;
-  if (s.includes('ยกเลิก')) return `<span class="status-pill" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db">${getI18n('statusCancelled', lang)}</span>`;
+  if (s.includes('เสร็จสิ้น')) return `<span class="status-pill" style="background:rgba(74,222,128,0.15);color:#4ADE80;border:1px solid rgba(74,222,128,0.3)">${getI18n('statusCompleted', lang)}</span>`;
+  if (s.includes('ยกเลิก')) return `<span class="status-pill" style="background:rgba(255,255,255,0.06);color:#A3A3A3;border:1px solid rgba(255,255,255,0.1)">${getI18n('statusCancelled', lang)}</span>`;
   return `<span class="status-pill status-pending">${getI18n('statusPending', lang)}</span>`;
 }
 
@@ -321,11 +321,20 @@ function initChatbot() {
   };
 
   chatButton.addEventListener('click', () => {
+    chatButton.style.transform = 'scale(0.9)';
+    chatButton.style.opacity = '0.5';
+    setTimeout(() => {
+      chatButton.style.display = 'none';
+      chatButton.style.transform = '';
+      chatButton.style.opacity = '';
+    }, 200);
+    chatModal.classList.remove('hiding');
     chatModal.classList.add('show');
-    chatButton.style.display = 'none';
     restoreChatHistory();
     if (chatMessages.children.length === 0) {
-      addMessage(window.t ? window.t('chatGreeting') : '🤖 สวัสดี! ฉันเป็น M4RTHIN9 AI ผู้ช่วยตอบคำถามเกี่ยวกับการจองเข้ากิจกรรม ลองถามมาได้เลย', 'bot');
+      setTimeout(() => {
+        addMessage(window.t ? window.t('chatGreeting') : '🤖 สวัสดี! ฉันเป็น M4RTHIN9 AI ผู้ช่วยตอบคำถามเกี่ยวกับการจองเข้ากิจกรรม ลองถามมาได้เลย', 'bot');
+      }, 300);
     }
     updateChatbotUI();
   });
@@ -352,8 +361,29 @@ function initChatbot() {
 function closeChat() {
   const chatModal = document.getElementById('chatModal');
   const chatButton = document.getElementById('chatButton');
+  chatModal.classList.add('hiding');
   chatModal.classList.remove('show');
-  setTimeout(() => { chatButton.style.display = 'flex'; }, 300);
+  setTimeout(() => {
+    chatModal.classList.remove('hiding');
+    chatButton.style.display = 'flex';
+  }, 250);
+}
+
+function showTypingIndicator() {
+  const chatMessages = document.getElementById('chatMessages');
+  const existing = chatMessages.querySelector('.chat-typing');
+  if (existing) return;
+  const typing = document.createElement('div');
+  typing.className = 'chat-typing';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  chatMessages.appendChild(typing);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const chatMessages = document.getElementById('chatMessages');
+  const typing = chatMessages.querySelector('.chat-typing');
+  if (typing) typing.remove();
 }
 
 function getChatContext() {
@@ -381,15 +411,19 @@ function sendMessage() {
   addMessage(message, 'user');
   chatInput.value = '';
 
+  showTypingIndicator();
   getBotResponse(message).then(botReply => {
-    setTimeout(() => addMessage(botReply, 'bot'), 300);
+    removeTypingIndicator();
+    setTimeout(() => addMessage(botReply, 'bot'), 200);
   });
 }
 
 function askQuestion(question) {
   addMessage(question, 'user');
+  showTypingIndicator();
   getBotResponse(question).then(botReply => {
-    setTimeout(() => addMessage(botReply, 'bot'), 300);
+    removeTypingIndicator();
+    setTimeout(() => addMessage(botReply, 'bot'), 200);
   });
 }
 
@@ -403,12 +437,16 @@ function addMessage(text, sender) {
   saveChatHistory();
 }
 
+let restoreDelay = 0;
+
 function saveChatHistory() {
   const chatMessages = document.getElementById('chatMessages');
-  const history = Array.from(chatMessages.children).map(el => ({
-    text: el.innerHTML,
-    sender: el.classList.contains('user') ? 'user' : 'bot'
-  }));
+  const history = Array.from(chatMessages.children)
+    .filter(el => !el.classList.contains('chat-typing'))
+    .map(el => ({
+      text: el.innerHTML,
+      sender: el.classList.contains('user') ? 'user' : 'bot'
+    }));
   sessionStorage.setItem('chatHistory', JSON.stringify(history));
 }
 
@@ -417,11 +455,14 @@ function restoreChatHistory() {
   const history = sessionStorage.getItem('chatHistory');
   if (history) {
     try {
+      restoreDelay = 0;
       JSON.parse(history).forEach(item => {
         const msgDiv = document.createElement('div');
         msgDiv.className = `chat-msg ${item.sender}`;
         msgDiv.innerHTML = item.text;
+        msgDiv.style.animationDelay = `${restoreDelay}ms`;
         chatMessages.appendChild(msgDiv);
+        restoreDelay += 50;
       });
       chatMessages.scrollTop = chatMessages.scrollHeight;
     } catch {}
