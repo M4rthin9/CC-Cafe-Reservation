@@ -164,23 +164,7 @@ body:not(.hero) .lang-switcher button:hover,
   font-weight: 600;
 }
 
-/* ===== STATUS PILLS ===== */
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.status-pending {
-  background: var(--gray-200);
-  color: var(--gray-700);
-  border: 1px solid var(--border);
-}
-
+/* ===== STATUS PILLS (override for chatbot) ===== */
 .status-approved {
   background: var(--gray-800);
   color: var(--white);

@@ -137,10 +137,10 @@ function renderError(msg) {
   const area = document.getElementById('resultArea');
   area.style.display = 'block';
   area.innerHTML = `
-    <div style="background:var(--red-light);border:1px solid rgba(226,75,74,0.3);border-radius:var(--radius);padding:1.25rem;text-align:center;">
-      <div style="font-size:32px;margin-bottom:8px">⚠️</div>
-      <div style="font-weight:600;color:var(--red);margin-bottom:4px">เกิดข้อผิดพลาด</div>
-      <div style="font-size:13px;color:#7a2020">${msg}</div>
+    <div class="error-card">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title">เกิดข้อผิดพลาด</div>
+      <div class="error-message">${msg}</div>
     </div>`;
 }
 
@@ -149,12 +149,10 @@ function renderNotFound(query) {
   const area = document.getElementById('resultArea');
   area.style.display = 'block';
   area.innerHTML = `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-      <div class="not-found">
-        <div class="not-found-icon">🔍</div>
-        <h3>ไม่พบข้อมูลการจอง</h3>
-        <p>ไม่พบการจองสำหรับ <strong>"${escHtml(query)}"</strong><br>กรุณาตรวจสอบความถูกต้องของข้อมูลที่กรอก</p>
-      </div>
+    <div class="not-found show">
+      <div class="not-found-icon">🔍</div>
+      <h3>ไม่พบข้อมูลการจอง</h3>
+      <p>ไม่พบการจองสำหรับ <strong>"${escHtml(query)}"</strong><br>กรุณาตรวจสอบความถูกต้องของข้อมูลที่กรอก</p>
     </div>
     <div style="margin-top:12px">
       <a href="booking.html" class="btn-primary" style="text-decoration:none">
@@ -212,9 +210,9 @@ function renderResult(row) {
         <h3>✅ อนุมัติผู้เข้าร่วมแล้ว — กรุณาชำระเงิน</h3>
         <p>ฝ่ายวินัยอนุมัติผู้เข้าร่วมแล้ว กรุณาชำระเงินค่าบริการเพื่อยืนยันการเข้าร่วมกิจกรรม</p>
         <div style="text-align:center;margin-bottom:1rem">
-          <div style="font-size:13px;color:var(--text2)">ยอดที่ต้องชำระ</div>
-          <div style="font-size:28px;font-weight:700;color:var(--blue);margin:8px 0">${total.toLocaleString()} บาท</div>
-          <div style="font-size:12px;color:var(--text2)">${totalPersons} คน × 1,000 บาท</div>
+          <div style="font-size:13px;color:var(--text-tertiary)">ยอดที่ต้องชำระ</div>
+          <div style="font-size:28px;font-weight:700;color:var(--text);margin:8px 0">${total.toLocaleString()} บาท</div>
+          <div style="font-size:12px;color:var(--text-tertiary)">${totalPersons} คน × 1,000 บาท</div>
         </div>
         <button class="btn-primary" onclick="showPayment()">
           <i class="ti ti-credit-card"></i> ดำเนินการชำระเงิน
@@ -240,16 +238,16 @@ function renderResult(row) {
     `;
   } else if (sLower === 'เสร็จสิ้น') {
     paymentBlock = `
-      <div style="background:#d1fae5;border:1px solid rgba(6,95,70,0.25);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
-        <h3 style="color:#065f46;font-size:15px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;">🎉 การจองเสร็จสมบูรณ์</h3>
-        <p style="font-size:13px;color:#064e3b;line-height:1.7;">เจ้าหน้าที่ยืนยันการชำระเงินเรียบร้อยแล้ว กรุณานำเลขอ้างอิงมาแสดงในวันเข้าร่วมกิจกรรม</p>
+      <div class="paid-notice" style="background:var(--gray-100);border-color:var(--gray-600);">
+        <h3>🎉 การจองเสร็จสมบูรณ์</h3>
+        <p>เจ้าหน้าที่ยืนยันการชำระเงินเรียบร้อยแล้ว กรุณานำเลขอ้างอิงมาแสดงในวันเข้าร่วมกิจกรรม</p>
       </div>
     `;
   } else if (sLower === 'ยกเลิก') {
     paymentBlock = `
-      <div style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
-        <h3 style="color:#374151;font-size:15px;font-weight:700;margin-bottom:6px;">🚫 การจองถูกยกเลิก</h3>
-        <p style="font-size:13px;color:#6b7280;line-height:1.7;">การจองนี้ถูกยกเลิกแล้ว หากต้องการจองใหม่กรุณากดปุ่มด้านล่าง</p>
+      <div class="rejected-notice">
+        <h3>🚫 การจองถูกยกเลิก</h3>
+        <p>การจองนี้ถูกยกเลิกแล้ว หากต้องการจองใหม่กรุณากดปุ่มด้านล่าง</p>
       </div>
       <a href="booking.html" class="btn-secondary" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1rem">
         <i class="ti ti-plus"></i> จองใหม่
@@ -257,9 +255,9 @@ function renderResult(row) {
     `;
   } else {
     paymentBlock = `
-      <div style="background:var(--gold-light);border:1px solid rgba(200,146,42,0.3);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
-        <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:4px;display:flex;align-items:center;gap:8px;">⏳ รอเจ้าหน้าที่ตรวจสอบ</div>
-        <div style="font-size:13px;color:#7a5a10;line-height:1.7;">เจ้าหน้าที่กำลังตรวจสอบประวัติวินัยของผู้ต้องขัง (1–2 วันทำการ) กรุณาตรวจสอบสถานะอีกครั้งในภายหลัง</div>
+      <div class="pay-section">
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px;">⏳ รอเจ้าหน้าที่ตรวจสอบ</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">เจ้าหน้าที่กำลังตรวจสอบประวัติวินัยของผู้ต้องขัง (1–2 วันทำการ) กรุณาตรวจสอบสถานะอีกครั้งในภายหลัง</div>
       </div>
     `;
   }
@@ -269,7 +267,7 @@ function renderResult(row) {
       <div class="result-header">
         <div>
           <div class="result-ref">เลขอ้างอิง · <strong>${escHtml(row.ref || '—')}</strong></div>
-          <div style="font-size:12px;color:var(--text2)">จองเมื่อ ${escHtml(row.timestamp || '—')}</div>
+          <div style="font-size:12px;color:var(--text-tertiary)">จองเมื่อ ${escHtml(row.timestamp || '—')}</div>
         </div>
         <div>${statusPill}</div>
       </div>
@@ -288,38 +286,38 @@ function renderResult(row) {
     <div id="paymentArea">${paymentBlock}</div>
 
     <div id="paymentForm" style="display:none">
-      <div class="section-title" style="margin-top:1rem;font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;">
+      <div class="section-title" style="margin-top:1rem;">
         <i class="ti ti-credit-card"></i> รายละเอียดการชำระเงิน
       </div>
 
-      <div style="background:linear-gradient(135deg,#e8f4f8,#d0eaf3);border:2px solid #03b3c0;border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem;text-align:center;">
-        <div style="display:inline-flex;align-items:center;gap:8px;background:#03b3c0;color:#fff;font-size:13px;font-weight:700;padding:6px 18px;border-radius:20px;margin-bottom:14px;">
+      <div style="background:linear-gradient(135deg,var(--gray-100),var(--gray-200));border:2px solid var(--gray-600);border-radius:var(--radius-md);padding:1.5rem;margin-bottom:1.25rem;text-align:center;">
+        <div style="display:inline-flex;align-items:center;gap:8px;background:var(--gray-700);color:var(--white);font-size:13px;font-weight:700;padding:6px 18px;border-radius:20px;margin-bottom:14px;">
           📱 PromptPay QR Code
         </div>
         
-        <div style="margin: 10px auto 15px; width: 200px; height: 200px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+        <div style="margin: 10px auto 15px; width: 200px; height: 200px; background: var(--white); padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
           <img src="src/asset/promptpay-qr.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;">
         </div>
 
-        <div style="font-size:16px;font-weight:700;color:#0a4a55;margin-bottom:4px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
-        <div style="font-size:14px;font-weight:600;color:#1a5a65;margin-bottom:12px;">ชื่อบัญชี: ร้านสงเคราะห์ผู้ต้องขัง</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;">ชื่อบัญชี: ร้านสงเคราะห์ผู้ต้องขัง</div>
 
-        <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 14px;font-size:13px;color:#1a5a65;line-height:1.8;">
-          💰 ยอดที่ต้องชำระ: <strong style="font-size:18px;color:#0a4a55;">${total.toLocaleString()} บาท</strong><br>
-          <span style="font-size:12px;color:#2a6a75;">${totalPersons} คน × 1,000 บาท</span>
+        <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text-secondary);line-height:1.8;">
+          💰 ยอดที่ต้องชำระ: <strong style="font-size:18px;color:var(--text);">${total.toLocaleString()} บาท</strong><br>
+          <span style="font-size:12px;color:var(--text-tertiary);">${totalPersons} คน × 1,000 บาท</span>
         </div>
-        <div style="margin-top:10px;background:rgba(255,255,255,0.8);border-radius:8px;padding:8px 14px;font-size:13px;color:#7a4a10;">
+        <div style="margin-top:10px;background:rgba(255,255,255,0.8);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text-secondary);">
           📝 กรุณาระบุเลขอ้างอิง <strong>${escHtml(row.ref)}</strong> ในช่องหมายเหตุเมื่อโอน
         </div>
       </div>
 
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
-<div class="section-title" style="font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;">
-           <i class="ti ti-upload"></i> อัปโหลดสลิปการโอนเงิน
-         </div>
-         <div style="background:#fff7ed;border:1px solid #fdba7a;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px;color:#9a3412;line-height:1.6;">
-           📋 หลังแนบสลิปแล้ว กรุณามาทำการลงทะเบียนในวันที่จอง ก่อนเวลาเข้าเยี่ยมในเวลา 9.00 ตามมาที่รับแขก
-         </div>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:1.25rem;margin-bottom:1rem;">
+        <div class="section-title" style="margin-top:0;">
+          <i class="ti ti-upload"></i> อัปโหลดสลิปการโอนเงิน
+        </div>
+        <div style="background:var(--gray-100);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--text-secondary);line-height:1.6;">
+          📋 หลังแนบสลิปแล้ว กรุณามาทำการลงทะเบียนในวันที่จอง ก่อนเวลาเข้าเยี่ยมในเวลา 9.00 ตามมาที่รับแขก
+        </div>
         <div class="upload-area" id="uploadArea"
           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
           <input type="file" accept="image/*,application/pdf" id="slipFileInput" onchange="handleUpload(event)">
@@ -333,7 +331,7 @@ function renderResult(row) {
         <div class="upload-progress" id="uploadProgress">
           <div class="upload-progress-bar" id="uploadProgressBar"></div>
         </div>
-        <div id="uploadStatus" style="font-size:12px;color:var(--text2);margin-top:6px;min-height:16px"></div>
+        <div id="uploadStatus" style="font-size:12px;color:var(--text-tertiary);margin-top:6px;min-height:16px"></div>
         <div class="alert-strip" id="uploadAlert"></div>
       </div>
 
