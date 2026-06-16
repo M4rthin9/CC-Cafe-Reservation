@@ -48,6 +48,17 @@ function doGet(e) {
     if (!isPublicAccess && !isAuthorized(username, pass)) {
       return jsonResp({ status: 'error', message: 'Unauthorized' });
     }
+
+    // Check cache first (30 seconds TTL)
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'getAll_data';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      try {
+        return jsonResp(JSON.parse(cached));
+      } catch (e) { /* cache corrupted, refetch */ }
+    }
+
     const sheet = getMainSheet();
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
@@ -74,7 +85,14 @@ function doGet(e) {
         });
         return obj;
       });
-    return jsonResp({ status: 'ok', rows: rows.reverse() });
+    const result = { status: 'ok', rows: rows.reverse() };
+
+    // Cache for 30 seconds
+    try {
+      cache.put(cacheKey, JSON.stringify(result), 30);
+    } catch (e) { /* ignore cache errors */ }
+
+    return jsonResp(result);
   }
 
   // New: get event logs (can be called with username)
@@ -559,6 +577,8 @@ function doPost(e) {
 
     logEvent('public', 'booking_submitted', body.ref || '', { visitorName: body.visitorName, prisonerName: body.prisonerName, visitDate: body.visitDate }, 'success');
 
+    invalidateGetAllCache();
+
     // Optional email notification (kept from original)
     try {
       const adminEmail = Session.getActiveUser().getEmail();
@@ -594,6 +614,16 @@ function doPost(e) {
 
   // ── get all reservations (POST) ──
   if (action === 'getAll') {
+    // Check cache first (30 seconds TTL) to avoid re-reading sheet on rapid requests
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'getAll_data';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      try {
+        return jsonResp(JSON.parse(cached));
+      } catch (e) { /* cache corrupted, refetch */ }
+    }
+
     const sheet = getMainSheet();
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
@@ -619,7 +649,14 @@ function doPost(e) {
         });
         return obj;
       });
-    return jsonResp({ status: 'ok', rows: rows.reverse() });
+    const result = { status: 'ok', rows: rows.reverse() };
+
+    // Cache for 30 seconds
+    try {
+      cache.put(cacheKey, JSON.stringify(result), 30);
+    } catch (e) { /* ignore cache errors */ }
+
+    return jsonResp(result);
   }
 
   // ── CANCEL BOOKING ──
@@ -632,6 +669,7 @@ function doPost(e) {
       if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
         sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
         logEvent(username, 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
+        invalidateGetAllCache();
         return jsonResp({ status: 'ok' });
       }
     }
@@ -649,6 +687,7 @@ function doPost(e) {
         const oldStatus = data[i][statusIdx];
         sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
         logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
+        invalidateGetAllCache();
         return jsonResp({ status: 'ok' });
       }
     }
@@ -717,6 +756,7 @@ function doPost(e) {
     if (tIdx > -1) sheet.getRange(row, tIdx + 1).setValue(correctTotal);
 
     logEvent(username, 'visitor_approval_updated', body.ref, { visitorApproved: body.visitorApproved, extraVisitorApproved: body.extraVisitorApproved, visitorCount: correctVisitorCount, total: correctTotal }, 'success');
+    invalidateGetAllCache();
     return jsonResp({ status: 'ok', visitorCount: correctVisitorCount, total: correctTotal });
   }
 
@@ -727,6 +767,7 @@ function doPost(e) {
     try {
       const url = saveSlipToDrive(body.ref, body.base64Data, body.mimeType || '', body.fileName || '');
       logEvent(username || 'public', 'slip_uploaded', body.ref, {}, 'success');
+      invalidateGetAllCache();
       return jsonResp({ status: 'ok', url: url });
     } catch (e) {
       Logger.log('uploadSlip error: ' + e.toString());
@@ -754,6 +795,7 @@ function doPost(e) {
           sheet.getRange(i + 1, slipIdx + 1).setValue(slipVal);
         }
         logEvent(username, 'slip_and_status_updated', body.ref, { status: body.status }, 'success');
+        invalidateGetAllCache();
         return jsonResp({ status: 'ok' });
       }
     }
@@ -812,6 +854,7 @@ function doPost(e) {
     sheet.getRange(rowIndex, extraApprovedIdx + 1).setValue(existingApproved);
 
     logEvent(username, 'visitor_added', body.ref, { visitorName: newVisitor });
+    invalidateGetAllCache();
     return jsonResp({ status: 'ok', extraVisitorNames: existingNames });
   }
 
@@ -845,6 +888,7 @@ function doPost(e) {
 
     sheet.getRange(rowIndex, statusIdx + 1).setValue('ยกเลิก');
     logEvent(username, 'booking_deleted', body.ref, { previousStatus: currentStatus, reason: body.reason || '' });
+    invalidateGetAllCache();
     return jsonResp({ status: 'ok' });
   }
 
@@ -914,6 +958,7 @@ function doPost(e) {
     sheet.getRange(rowIndex, totalIdx + 1).setValue(body.newTotal);
 
     logEvent(username, 'price_override', body.ref, { oldTotal: oldTotal, newTotal: body.newTotal, reason: body.reason || '' });
+    invalidateGetAllCache();
     return jsonResp({ status: 'ok', oldTotal: oldTotal, newTotal: body.newTotal });
   }
 
@@ -1305,4 +1350,11 @@ function requirePermission(username, perm) {
 
 function jsonResp(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ===== CACHE INVALIDATION =====
+function invalidateGetAllCache() {
+  try {
+    CacheService.getScriptCache().remove('getAll_data');
+  } catch (e) { /* ignore */ }
 }

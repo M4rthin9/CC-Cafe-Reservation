@@ -153,15 +153,26 @@ function doLogout() {
 }
 
 // ===== LOAD DATA =====
-async function loadData() {
-  document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
+async function loadData(retryCount) {
+  retryCount = retryCount || 0;
+  const MAX_RETRIES = 2;
+  const TIMEOUT_MS = 30000;
+
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล' + (retryCount > 0 ? ' (ครั้งที่ ' + (retryCount + 1) + ')' : '') + '...</td></tr>';
+
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
+
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getAll', username: currentUser.username, password: currentUser.password })
+      body: JSON.stringify({ action: 'getAll', username: currentUser.username, pass: currentUser.password }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
+
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const data = JSON.parse(text);
@@ -170,12 +181,19 @@ async function loadData() {
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
   } catch (e) {
     console.error('Load data error:', e);
+    // Retry on abort/timeout/network error
+    if (retryCount < MAX_RETRIES && (e.name === 'AbortError' || e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))) {
+      console.log('Retrying loadData... attempt ' + (retryCount + 2));
+      await new Promise(function(r) { setTimeout(r, 2000 * (retryCount + 1)); });
+      return loadData(retryCount + 1);
+    }
     // Demo mode: use sample data if no Apps Script configured and DEMO_MODE is not explicitly disabled
     if (window.DEMO_MODE !== false && (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE')) {
       allRows = getDemoData();
       document.getElementById('lastUpdated').textContent = 'โหมด Demo (ยังไม่ได้เชื่อม Google Sheet)';
     } else {
-      document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
+      var errMsg = e.name === 'AbortError' ? '⏱️ หมดเวลาเชื่อมต่อ (server ใช้เวลาเกิน 30 วินาที) กรุณาลองใหม่' : e.message;
+      document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ' + errMsg + '</td></tr>';
       return;
     }
   }
@@ -3887,18 +3905,21 @@ function closeQrModal(e) {
   }
 }
 
-// ===== SERVER-SIDE LOGGING =====
+// ===== SERVER-SIDE LOGGING (fire-and-forget, non-blocking) =====
 function logClientEvent(action, details) {
   if (!currentUser) return;
   try {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
     fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'logClientEvent', clientAction: action, targetRef: details || '', details: {}, username: currentUser.username, password: currentUser.password })
-    }).catch(() => { });
+      body: JSON.stringify({ action: 'logClientEvent', clientAction: action, targetRef: details || '', details: {}, username: currentUser.username, pass: currentUser.password }),
+      signal: controller.signal
+    }).then(function() { clearTimeout(timeoutId); }).catch(function() { clearTimeout(timeoutId); });
   } catch (e) {
-    console.error('logClientEvent error:', e);
+    // silently ignore - logging should never block UI
   }
 }
 
