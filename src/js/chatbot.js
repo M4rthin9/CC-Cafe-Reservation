@@ -100,7 +100,7 @@ function formatI18n(key, params = {}, lang = getLang()) {
 }
 
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyhbQziLGRBLEgdhSTSmpYazR__we7gcqjcZp1kuDl-OY49a6cHSAVBa8Q-Ldtcxm4Dgg/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr7vyADDnwsKUWtJyHi2DwdhIj2K_Z0VF8M-O_8uEaYBCza5QJgSbQzDCFSSBndxUY2g/exec';
 const STAFF_PASS = '10900';
 
 // ===== SAFE FETCH WRAPPER =====

@@ -20,7 +20,7 @@ const SIDEBAR_MENU = {
   User: ['home']
 };
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyhbQziLGRBLEgdhSTSmpYazR__we7gcqjcZp1kuDl-OY49a6cHSAVBa8Q-Ldtcxm4Dgg/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr7vyADDnwsKUWtJyHi2DwdhIj2K_Z0VF8M-O_8uEaYBCza5QJgSbQzDCFSSBndxUY2g/exec';
 
 // ===== STATE =====
 let allRows = [];
@@ -162,7 +162,7 @@ async function loadData(retryCount) {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
+    const timeoutId = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
 
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -184,7 +184,7 @@ async function loadData(retryCount) {
     // Retry on abort/timeout/network error
     if (retryCount < MAX_RETRIES && (e.name === 'AbortError' || e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))) {
       console.log('Retrying loadData... attempt ' + (retryCount + 2));
-      await new Promise(function(r) { setTimeout(r, 2000 * (retryCount + 1)); });
+      await new Promise(function (r) { setTimeout(r, 2000 * (retryCount + 1)); });
       return loadData(retryCount + 1);
     }
     // Demo mode: use sample data if no Apps Script configured and DEMO_MODE is not explicitly disabled
@@ -3910,14 +3910,14 @@ function logClientEvent(action, details) {
   if (!currentUser) return;
   try {
     var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
+    var timeoutId = setTimeout(function () { controller.abort(); }, 5000);
     fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'logClientEvent', clientAction: action, targetRef: details || '', details: {}, username: currentUser.username, pass: currentUser.password }),
       signal: controller.signal
-    }).then(function() { clearTimeout(timeoutId); }).catch(function() { clearTimeout(timeoutId); });
+    }).then(function () { clearTimeout(timeoutId); }).catch(function () { clearTimeout(timeoutId); });
   } catch (e) {
     // silently ignore - logging should never block UI
   }
