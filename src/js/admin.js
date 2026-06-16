@@ -82,7 +82,7 @@ async function doLogin() {
   const pass = document.getElementById('passInput').value;
 
   if (!username || !pass) {
-    document.getElementById('loginErr').textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าย';
+    document.getElementById('loginErr').textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
     document.getElementById('loginErr').style.display = 'block';
     return;
   }

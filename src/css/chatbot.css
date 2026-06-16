@@ -1,19 +1,28 @@
-/* Chatbot Styles */
+/* ============================================================
+   CHATBOT.CSS — Chatbot Widget
+   Black & White / Dark Monochromatic Theme
+   ============================================================ */
+
+/* ===== CSS VARIABLES ===== */
 :root {
-  --chat-blue: #0B2545;
-  --chat-blue-dark: #061A33;
-  --chat-blue-light: #E8ECF4;
-  --chat-gold: #D4AF37;
-  --chat-gold-light: #F5EFD8;
+  --chat-bg: #0A0A0A;
+  --chat-bg-dark: #000000;
+  --chat-bg-light: #171717;
+  --chat-text: #FAFAFA;
+  --chat-text-muted: #A3A3A3;
+  --chat-border: #262626;
+  --chat-user-bg: #262626;
+  --chat-user-text: #FAFAFA;
 }
 
-/* Language Switcher */
+/* ===== LANGUAGE SWITCHER ===== */
 .lang-switcher {
   position: fixed;
   top: 24px;
   right: 24px;
   z-index: 999;
 }
+
 .lang-switcher button {
   background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.4);
@@ -25,25 +34,27 @@
   backdrop-filter: blur(8px);
   transition: all 0.2s;
 }
+
 .lang-switcher button:hover {
   background: rgba(255,255,255,0.25);
   border-color: rgba(255,255,255,0.6);
 }
 
-/* Language Switcher on light backgrounds (for booking/status pages) */
 body:not(.hero) .lang-switcher button,
 .app .lang-switcher button {
-  background: var(--blue-light);
+  background: var(--gray-100);
   border: 1px solid var(--border);
-  color: var(--blue);
-}
-body:not(.hero) .lang-switcher button:hover,
-.app .lang-switcher button:hover {
-  background: var(--blue);
-  color: #fff;
+  color: var(--text);
 }
 
-/* Chat Button */
+body:not(.hero) .lang-switcher button:hover,
+.app .lang-switcher button:hover {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+/* ===== CHAT BUTTON (FAB) ===== */
 .chat-button {
   position: fixed;
   bottom: 24px;
@@ -51,8 +62,8 @@ body:not(.hero) .lang-switcher button:hover,
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--chat-blue) 0%, var(--chat-blue-dark) 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--chat-bg) 0%, var(--chat-bg-dark) 100%);
+  color: var(--white);
   border: none;
   cursor: pointer;
   display: flex;
@@ -60,18 +71,20 @@ body:not(.hero) .lang-switcher button:hover,
   justify-content: center;
   font-size: 24px;
   z-index: 1000;
-  box-shadow: 0 4px 16px rgba(11, 37, 69, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   transition: all 0.2s;
 }
+
 .chat-button:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(11, 37, 69, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
+
 .chat-button:active {
   transform: scale(0.95);
 }
 
-/* Chat Modal */
+/* ===== CHAT MODAL ===== */
 .chat-modal {
   position: fixed;
   bottom: 96px;
@@ -79,121 +92,172 @@ body:not(.hero) .lang-switcher button:hover,
   width: 320px;
   max-width: calc(100vw - 48px);
   max-height: 500px;
-  background: #fff;
+  background: var(--chat-bg);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   z-index: 1000;
   display: none;
   flex-direction: column;
-  border: 1px solid var(--border, #E8E0D1);
+  border: 1px solid var(--chat-border);
 }
+
 .chat-modal.show {
   display: flex;
 }
 
-/* Chat Header */
+/* ===== CHAT HEADER ===== */
 .chat-header {
-  background: linear-gradient(135deg, var(--chat-blue) 0%, var(--chat-blue-dark) 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--chat-bg) 0%, var(--chat-bg-dark) 100%);
+  color: var(--white);
   padding: 14px 16px;
   border-radius: 16px 16px 0 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 1px solid var(--chat-border);
 }
+
 .chat-header h3 {
   font-size: 15px;
   font-weight: 600;
   margin: 0;
+  color: var(--white);
 }
+
 .chat-close {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--white);
   font-size: 22px;
   cursor: pointer;
-  opacity: 0.8;
+  opacity: 0.7;
 }
+
 .chat-close:hover {
   opacity: 1;
 }
 
-/* Chat Messages */
+/* ===== CHAT MESSAGES ===== */
 .chat-messages {
   flex: 1;
   padding: 12px 16px;
   overflow-y: auto;
   max-height: 300px;
 }
+
 .chat-msg {
   margin-bottom: 12px;
   font-size: 13px;
   line-height: 1.5;
 }
+
 .chat-msg.bot {
-  color: var(--chat-blue);
+  color: var(--chat-text);
 }
+
 .chat-msg.user {
   text-align: right;
-  color: var(--text, #1C2433);
+  color: var(--chat-text);
 }
+
 .chat-msg strong {
   font-weight: 600;
 }
 
-/* Status pills for chatbot status responses */
-.status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-.status-pending   { background: #F9F2DC; color: #A67C00; border: 1px solid rgba(212,175,55,0.35); }
-.status-approved  { background: #EAF0E8; color: #2E5238; border: 1px solid rgba(59,109,17,0.25); }
-.status-rejected  { background: #F8E6E6; color: #8B0000; border: 1px solid rgba(226,75,74,0.25); }
-.status-paid      { background: #e8f0fe; color: #1a56db; border: 1px solid rgba(26,86,219,0.25); }
+/* ===== STATUS PILLS ===== */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
 
-/* Quick Questions */
+.status-pending {
+  background: var(--gray-200);
+  color: var(--gray-700);
+  border: 1px solid var(--border);
+}
+
+.status-approved {
+  background: var(--gray-800);
+  color: var(--white);
+  border: 1px solid var(--gray-700);
+}
+
+.status-rejected {
+  background: var(--black);
+  color: var(--white);
+  border: 1px solid var(--black);
+}
+
+.status-paid {
+  background: var(--gray-100);
+  color: var(--text);
+  border: 1px solid var(--gray-600);
+}
+
+/* ===== QUICK QUESTIONS ===== */
 .chat-quick {
   padding: 12px 16px;
-  border-top: 1px solid var(--border, #E8E0D1);
+  border-top: 1px solid var(--chat-border);
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
+
 .quick-q-btn {
-  background: var(--chat-blue-light);
-  border: 1px solid var(--border, #E8E0D1);
+  background: var(--gray-800);
+  border: 1px solid var(--gray-700);
   border-radius: 16px;
   padding: 6px 12px;
   font-size: 12px;
-  color: var(--chat-blue);
+  color: var(--white);
   cursor: pointer;
   font-family: inherit;
   transition: all 0.15s;
 }
+
 .quick-q-btn:hover {
-  background: var(--chat-blue);
-  color: #fff;
+  background: var(--white);
+  color: var(--black);
+  border-color: var(--white);
 }
 
-/* Chat Input */
+/* ===== CHAT INPUT ===== */
 .chat-input-area {
   padding: 12px 16px;
-  border-top: 1px solid var(--border, #E8E0D1);
+  border-top: 1px solid var(--chat-border);
   display: flex;
   gap: 8px;
 }
+
 .chat-input {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid var(--border, #E8E0D1);
+  border: 1px solid var(--chat-border);
   border-radius: 20px;
   font-size: 13px;
   font-family: inherit;
   outline: none;
+  background: var(--chat-bg-light);
+  color: var(--chat-text);
+  transition: border-color 0.15s;
 }
+
+.chat-input::placeholder {
+  color: var(--chat-text-muted);
+}
+
 .chat-input:focus {
-  border-color: var(--chat-blue);
+  border-color: var(--chat-text-muted);
 }
+
 .chat-send {
-  background: var(--chat-blue);
-  color: #fff;
+  background: var(--white);
+  color: var(--black);
   border: none;
   width: 36px;
   height: 36px;
@@ -203,12 +267,14 @@ body:not(.hero) .lang-switcher button:hover,
   align-items: center;
   justify-content: center;
   font-size: 16px;
-}
-.chat-send:hover {
-  background: var(--chat-blue-dark);
+  transition: all 0.15s;
 }
 
-/* Mobile Responsive */
+.chat-send:hover {
+  background: var(--gray-200);
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
   .chat-modal {
     right: 12px;
@@ -220,12 +286,5 @@ body:not(.hero) .lang-switcher button:hover,
     right: 16px;
     width: 52px;
     height: 52px;
-  }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .chat-modal {
-    background: #1a1f2b;
   }
 }

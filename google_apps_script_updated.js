@@ -231,10 +231,10 @@ function doPost(e) {
   if (action === 'login') {
     const user = getUserByUsername(username);
     if (!user) {
-      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัดผ่านไม่ถูกต้อง' });
+      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
     }
     if (String(user.password) !== String(pass)) {
-      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัดผ่านไม่ถูกต้อง' });
+      return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
     }
     return jsonResp({
       status: 'ok',
@@ -257,9 +257,9 @@ function doPost(e) {
     const success = updatePassword(username, newPassword);
     if (success) {
       logEvent(username, 'password_changed', '', { method: 'first_time_login' }, 'success');
-      return jsonResp({ status: 'ok', message: 'เปลี่ยนรหัดผ่านสำเร็จ กรุณาเข้าระบบใหม่' });
+      return jsonResp({ status: 'ok', message: 'เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าระบบใหม่' });
     }
-    return jsonResp({ status: 'error', message: 'ไม่สามารถเปลี่ยนรหัดผ่านได้' });
+    return jsonResp({ status: 'error', message: 'ไม่สามารถเปลี่ยนรหัสผ่านได้' });
   }
 
 // ===== CREATE NEW USER (SUPERADMIN ONLY) =====
