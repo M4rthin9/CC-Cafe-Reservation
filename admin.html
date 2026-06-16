@@ -69,81 +69,178 @@
         <!-- Professional Header -->
         <div class="overview-header">
           <div>
-            <h2>ภาพรวม • ตัวชี้วัดสด</h2>
-            <div class="overview-subtitle">ข้อมูลอัปเดตเรียลไทม์จากระบบจอง</div>
+            <h2>ภาพรวมระบบ — Chance & Change Cafe</h2>
+            <div class="overview-subtitle">ทัณฑสถานบำบัดพิเศษกลาง · ข้อมูลอัปเดตเรียลไทม์</div>
           </div>
           <div class="overview-meta" id="overviewLastUpdated">—</div>
         </div>
 
-<div class="metrics-row primary">
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 1: PRIMARY KPI CARDS (4 cards)             -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="metrics-row primary">
           <div class="stat-card blue">
-            <div class="stat-label">📋 การจองทั้งหมด</div>
+            <div class="stat-card-icon">📋</div>
+            <div class="stat-label">การจองทั้งหมด</div>
             <div class="stat-val" id="statTotal">0</div>
+            <div class="stat-sub">รายการทั้งหมดในระบบ</div>
           </div>
           <div class="stat-card yellow">
-            <div class="stat-label">⏳ รอตรวจสอบวินัย</div>
+            <div class="stat-card-icon">⏳</div>
+            <div class="stat-label">รอตรวจสอบวินัย</div>
             <div class="stat-val" id="statWait">0</div>
+            <div class="stat-sub">ต้องตรวจสอบก่อนดำเนินการ</div>
           </div>
           <div class="stat-card green">
-            <div class="stat-label">✅ อนุมัติ / รอชำระ</div>
+            <div class="stat-card-icon">✅</div>
+            <div class="stat-label">อนุมัติ / รอชำระ</div>
             <div class="stat-val" id="statOk">0</div>
+            <div class="stat-sub">ผ่านการตรวจสอบแล้ว</div>
           </div>
           <div class="stat-card red">
-            <div class="stat-label">❌ ไม่อนุมัติ</div>
+            <div class="stat-card-icon">❌</div>
+            <div class="stat-label">ไม่อนุมัติ</div>
             <div class="stat-val" id="statReject">0</div>
+            <div class="stat-sub">ถูกปฏิเสธ / ยกเลิก</div>
           </div>
         </div>
 
-        <!-- Secondary Metrics (Contextual) -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 2: FINANCE KPI RIBBON                      -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="finance-ribbon">
+          <div class="finance-ribbon-item">
+            <div class="fr-icon">💰</div>
+            <div class="fr-body">
+              <div class="fr-label">ยอดจองรวม</div>
+              <div class="fr-value" id="financeTotalBooked">฿0</div>
+            </div>
+          </div>
+          <div class="finance-ribbon-divider"></div>
+          <div class="finance-ribbon-item">
+            <div class="fr-icon paid">✅</div>
+            <div class="fr-body">
+              <div class="fr-label">ชำระแล้ว</div>
+              <div class="fr-value paid" id="financePaid">฿0</div>
+            </div>
+          </div>
+          <div class="finance-ribbon-divider"></div>
+          <div class="finance-ribbon-item">
+            <div class="fr-icon unpaid">⚠️</div>
+            <div class="fr-body">
+              <div class="fr-label">ค้างชำระ</div>
+              <div class="fr-value unpaid" id="financeUnpaid">฿0</div>
+            </div>
+          </div>
+          <div class="finance-ribbon-divider"></div>
+          <div class="finance-ribbon-item">
+            <div class="fr-icon avg">📊</div>
+            <div class="fr-body">
+              <div class="fr-label">เฉลี่ยต่อรายการ</div>
+              <div class="fr-value" id="financeAvg">฿0</div>
+            </div>
+          </div>
+          <div class="finance-ribbon-divider"></div>
+          <div class="finance-ribbon-item">
+            <div class="fr-icon rate">📈</div>
+            <div class="fr-body">
+              <div class="fr-label">อัตราการชำระ</div>
+              <div class="fr-value" id="financeRate">0%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 3: SECONDARY METRICS (Contextual)          -->
+        <!-- ═══════════════════════════════════════════════ -->
         <div class="metrics-row secondary">
           <div class="stat-card">
-            <div class="stat-label">👥 ผู้ต้องขังไม่ซ้ำ</div>
+            <div class="stat-card-icon">👥</div>
+            <div class="stat-label">ผู้ต้องขังไม่ซ้ำ</div>
             <div class="stat-val" id="statUniquePrisoners">0</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">📅 จองสัปดาห์นี้</div>
+            <div class="stat-card-icon">📅</div>
+            <div class="stat-label">จองสัปดาห์นี้</div>
             <div class="stat-val" id="statThisWeek">0</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">📆 จองเดือนนี้</div>
+            <div class="stat-card-icon">📆</div>
+            <div class="stat-label">จองเดือนนี้</div>
             <div class="stat-val" id="statThisMonth">0</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">🧑‍🤝‍🧑 ผู้เยี่ยมไม่ซ้ำ</div>
+            <div class="stat-card-icon">🧑‍🤝‍🧑</div>
+            <div class="stat-label">ผู้เยี่ยมไม่ซ้ำ</div>
             <div class="stat-val" id="statUniqueVisitors">0</div>
           </div>
         </div>
 
-        <!-- Visualizations -->
-<div class="dash-grid">
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 4: VISUALIZATIONS (2-col grid)             -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-grid">
            <div class="dash-card">
              <div class="dash-card-h">
-               <span>💰</span> ภาพรวมการเงิน
+               <span>💰</span> แนวโน้มรายได้ 14 วัน
              </div>
              <div id="financeOverview" style="margin-top:12px">
                <div id="financeSummary" class="finance-summary"></div>
                <canvas id="financeChart" style="width:100%;max-width:100%;height:240px;display:block;margin-top:10px" aria-label="กราฟแนวโน้มยอดเงิน"></canvas>
                <div id="financeLegend" class="finance-chart-legend"></div>
-               <div class="chart-caption">แนวโน้มยอดเงิน (บาท) ตามวันที่เข้าร่วมกิจกรรม — 14 วันล่าสุด</div>
              </div>
            </div>
            <div class="dash-card">
              <div class="dash-card-h">
-               <span>📊</span> สถานะการจองทั้งหมด
+               <span>📊</span> สัดส่วนสถานะการจอง
              </div>
              <div id="statusPipeline" style="margin-top:8px"></div>
+             <div class="donut-wrapper">
+               <canvas id="statusDonutChart" width="180" height="180" aria-label="กราฟวงกลมสถานะ"></canvas>
+               <div id="donutLegend" class="donut-legend"></div>
+             </div>
            </div>
            <div class="dash-card">
              <div class="dash-card-h">
-               <span>🕒</span> แนวโน้มการจอง
+               <span>🕒</span> แนวโน้มการจอง 14 วัน
              </div>
              <canvas id="trendChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟแนวโน้มการจอง"></canvas>
            </div>
-           <div class="dash-card" style="grid-column: 1 / -1">
-             <div class="dash-card-h"><span>📋</span> การจองล่าสุด <span id="recentCount" style="font-size:12px;color:var(--text2);font-weight:400"></span></div>
-             <div id="recentBookings" style="margin-top:8px"></div>
+           <div class="dash-card">
+             <div class="dash-card-h">
+               <span>🏢</span> รายได้ตามแดน (Top 5)
+             </div>
+             <canvas id="wingRevenueChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟรายได้ตามแดน"></canvas>
            </div>
-</div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 5: FLOOR PLAN (Full Width)                 -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-card floor-plan-card" style="margin-top:12px;">
+          <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span>🪑</span> แผนผังโต๊ะ — จัดผู้ต้องขังตามโต๊ะ
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <select id="floorPlanDate" class="filter-select" onchange="renderFloorPlan()" style="font-size:12px;padding:5px 8px;"></select>
+              <div class="floor-legend">
+                <span class="fl-dot occupied"></span> มีผู้ต้องขัง
+                <span class="fl-dot reserved"></span> จองล่วงหน้า
+                <span class="fl-dot available"></span> ว่าง
+              </div>
+            </div>
+          </div>
+          <div id="floorPlanGrid" class="floor-plan-grid"></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 6: RECENT BOOKINGS (Full Width)            -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-card" style="margin-top:12px;">
+          <div class="dash-card-h"><span>📋</span> การจองล่าสุด <span id="recentCount" style="font-size:12px;color:var(--text2);font-weight:400"></span></div>
+          <div id="recentBookings" style="margin-top:8px"></div>
+        </div>
 
       </div>
 
