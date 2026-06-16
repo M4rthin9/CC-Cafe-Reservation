@@ -100,7 +100,11 @@ function formatI18n(key, params = {}, lang = getLang()) {
 }
 
 // ===== CONFIG =====
+<<<<<<< HEAD
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybgWqvgR1r3BszHin9yx-Kj-3eQILubafXlemavsbZkD1HSqla3PFvZ8FMhoE0duy10A/exec';
+=======
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr7vyADDnwsKUWtJyHi2DwdhIj2K_Z0VF8M-O_8uEaYBCza5QJgSbQzDCFSSBndxUY2g/exec';
+>>>>>>> 68f54d440b7e2fa1256ed7a1f8faa582565f6f65
 const STAFF_PASS = '10900';
 
 // ===== SAFE FETCH WRAPPER =====
@@ -329,8 +333,8 @@ function initChatbot() {
     }
     updateChatbotUI();
   });
-  
-  window.retryStatusCheck = function() {
+
+  window.retryStatusCheck = function () {
     askQuestion('เช็คสถานะยังไง');
   };
 
@@ -344,7 +348,7 @@ function initChatbot() {
   quickButtons.forEach(btn => {
     btn.addEventListener('click', () => askQuestion(btn.dataset.question));
   });
-  
+
   // Listen for language changes
   window.addEventListener('languageChanged', updateChatbotUI);
 }
@@ -424,7 +428,7 @@ function restoreChatHistory() {
         chatMessages.appendChild(msgDiv);
       });
       chatMessages.scrollTop = chatMessages.scrollHeight;
-    } catch {}
+    } catch { }
   }
 }
 

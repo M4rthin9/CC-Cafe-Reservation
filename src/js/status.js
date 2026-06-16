@@ -1,5 +1,9 @@
 // ===== CONFIG =====
+<<<<<<< HEAD
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybgWqvgR1r3BszHin9yx-Kj-3eQILubafXlemavsbZkD1HSqla3PFvZ8FMhoE0duy10A/exec';
+=======
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr7vyADDnwsKUWtJyHi2DwdhIj2K_Z0VF8M-O_8uEaYBCza5QJgSbQzDCFSSBndxUY2g/exec';
+>>>>>>> 68f54d440b7e2fa1256ed7a1f8faa582565f6f65
 const STAFF_PASS = '10900';
 
 // ===== SAFE FETCH WRAPPER =====
@@ -53,7 +57,7 @@ window.addEventListener('load', () => {
       document.getElementById('searchPrisoner').value = lastPId;
       switchTab('prisoner');
     }
-  } catch(e) {}
+  } catch (e) { }
 });
 
 // ===== SEARCH =====
@@ -78,7 +82,7 @@ async function doSearch() {
     const data = await appsScriptGet({ action: 'getAll', pass: STAFF_PASS });
     if (data.status === 'ok') rows = data.rows || [];
     else throw new Error(data.message || 'error');
-  } catch(err) {
+  } catch (err) {
     console.error('Fetch error:', err);
     if (APPS_SCRIPT_URL.includes('YOUR_GOOGLE')) {
       rows = getDemoRows();
@@ -98,7 +102,7 @@ async function doSearch() {
   const todayStr = toLocalDateStr(new Date());
   const completedStatus = ['เสร็จสิ้น', 'done'];
   const cancelledStatus = ['ยกเลิก', 'cancelled'];
-  
+
   if (mode === 'ref') {
     found = rows.find(r => (r.ref || '').toUpperCase() === query);
   } else {
@@ -182,21 +186,21 @@ function renderResult(row) {
 
   let visitorsDetailHtml = '';
   const mainAppr = (row.visitorApproved || '').trim();
-  const mainLabel = mainAppr==='yes' ? '✅ เข้าได้' : mainAppr==='no' ? '❌ เข้าไม่ได้' : '';
-  visitorsDetailHtml += `<div class="visitor-item"><span>👤 ${escHtml(row.visitorName||'—')}</span>${mainLabel ? '<span class="approval-badge '+(mainAppr==='yes'?'yes':mainAppr==='no'?'no':'pending')+'">'+mainLabel+'</span>' : ''}</div>`;
+  const mainLabel = mainAppr === 'yes' ? '✅ เข้าได้' : mainAppr === 'no' ? '❌ เข้าไม่ได้' : '';
+  visitorsDetailHtml += `<div class="visitor-item"><span>👤 ${escHtml(row.visitorName || '—')}</span>${mainLabel ? '<span class="approval-badge ' + (mainAppr === 'yes' ? 'yes' : mainAppr === 'no' ? 'no' : 'pending') + '">' + mainLabel + '</span>' : ''}</div>`;
   if (row.extraVisitorNames && row.extraVisitorNames.trim()) {
     const isNew = row.extraVisitorNames.includes(';;') || row.extraVisitorNames.includes('|');
     let exs = [];
     if (isNew) {
-      exs = row.extraVisitorNames.split(';;').map(e=>{const p=e.split('|');return {name:(p[0]||'').trim()};}).filter(e=>e.name);
+      exs = row.extraVisitorNames.split(';;').map(e => { const p = e.split('|'); return { name: (p[0] || '').trim() }; }).filter(e => e.name);
     } else {
-      exs = row.extraVisitorNames.split(/,(?![^(]*\))/).map(e=>{const m=e.trim().match(/^(.+?)\s*\(/);return {name:m?m[1].trim():e.trim()};}).filter(e=>e.name);
+      exs = row.extraVisitorNames.split(/,(?![^(]*\))/).map(e => { const m = e.trim().match(/^(.+?)\s*\(/); return { name: m ? m[1].trim() : e.trim() }; }).filter(e => e.name);
     }
-    const eAppr = String(row.extraVisitorApproved||'').split(';;');
-    exs.forEach((v,i)=>{
-      const a = (eAppr[i]||'').trim();
-      const lb = a==='yes'?'✅ เข้าได้':a==='no'?'❌ เข้าไม่ได้':'';
-      visitorsDetailHtml += `<div class="visitor-item"><span>👤 ${escHtml(v.name)}</span>${lb ? '<span class="approval-badge '+(a==='yes'?'yes':a==='no'?'no':'pending')+'">'+lb+'</span>' : ''}</div>`;
+    const eAppr = String(row.extraVisitorApproved || '').split(';;');
+    exs.forEach((v, i) => {
+      const a = (eAppr[i] || '').trim();
+      const lb = a === 'yes' ? '✅ เข้าได้' : a === 'no' ? '❌ เข้าไม่ได้' : '';
+      visitorsDetailHtml += `<div class="visitor-item"><span>👤 ${escHtml(v.name)}</span>${lb ? '<span class="approval-badge ' + (a === 'yes' ? 'yes' : a === 'no' ? 'no' : 'pending') + '">' + lb + '</span>' : ''}</div>`;
     });
   }
 
@@ -436,7 +440,7 @@ function processFile(file) {
   document.getElementById('uploadInner').style.opacity = '0.4';
   document.getElementById('uploadStatus').innerHTML =
     `✓ เลือกไฟล์แล้ว: <strong>${escHtml(file.name)}</strong><br>` +
-    `<span style="font-size:11px;color:var(--text2)">ขนาด: ${(file.size/1024).toFixed(1)} KB · จะอัปโหลดเมื่อกดยืนยัน</span>`;
+    `<span style="font-size:11px;color:var(--text2)">ขนาด: ${(file.size / 1024).toFixed(1)} KB · จะอัปโหลดเมื่อกดยืนยัน</span>`;
 }
 
 function showUploadAlert(type, msg) {
@@ -543,7 +547,7 @@ function showThankYou() {
   document.getElementById('thankYouArea').style.display = 'block';
   document.getElementById('tyRefNumber').textContent = row.ref;
 
-document.getElementById('tySummary').innerHTML = `
+  document.getElementById('tySummary').innerHTML = `
      <div>📋 <strong>Ref No.:</strong> ${escHtml(row.ref)}</div>
      <div>👤 <strong>ผู้ร่วมกิจกรรม:</strong> ${escHtml(row.visitorName)}</div>
      <div>🔒 <strong>ผู้ต้องขัง:</strong> ${escHtml(maskPrisonerName(row.prisonerName))} (#${escHtml(row.prisonerId)})</div>
@@ -584,8 +588,8 @@ function toLocalDateStr(date) {
 
 function parseThaiDateToISO(dateStr) {
   if (!dateStr) return '';
-  const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-                    'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const thMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
   const match = dateStr.match(/(\d+)\s*(?:วัน)?\s*([^\s]+)\s*(?:พ\.ศ\.|พศ\.|)\s*(\d+)/);
   if (match) {
     const day = String(match[1]).padStart(2, '0');
