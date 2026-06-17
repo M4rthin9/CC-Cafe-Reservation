@@ -699,6 +699,61 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     return jsonResp({ status: 'ok', message: 'เพิ่มหมายเหตุสำเร็จ' });
   }
 
+// ===== IMPORT PRISONERS (CSV BULK UPLOAD) =====
+  if (action === 'importPrisoners') {
+    if (!hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'ไม่มีสิทธิ์นำเข้าข้อมูลผู้ต้องขัง' });
+    }
+
+    const prisoners = body.prisoners;
+    if (!Array.isArray(prisoners) || prisoners.length === 0) {
+      return jsonResp({ status: 'error', message: 'กรุณาส่งข้อมูลผู้ต้องขังอย่างน้อย 1 รายการ' });
+    }
+
+    const sheet = getPrisonerSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIdx = headers.indexOf('prisonerId');
+
+    let added = 0, updated = 0, errors = [];
+
+    prisoners.forEach((p, i) => {
+      const prisonerId = String(p.prisonerId || '').trim();
+      const name = String(p.prisonerName || '').trim();
+      if (!prisonerId || !name) {
+        errors.push(`แถวที่ ${i + 1}: ขาดเลขผู้ต้องขังหรือชื่อ`);
+        return;
+      }
+
+      // Check if prisonerId already exists
+      let foundRow = -1;
+      for (let r = 1; r < data.length; r++) {
+        if (String(data[r][idIdx]).trim() === prisonerId) {
+          foundRow = r;
+          break;
+        }
+      }
+
+      if (foundRow >= 0) {
+        // Update existing row
+        const rowNum = foundRow + 1;
+        if (headers.indexOf('prisonerName') >= 0) sheet.getRange(rowNum, headers.indexOf('prisonerName') + 1).setValue(name);
+        if (headers.indexOf('wing') >= 0) sheet.getRange(rowNum, headers.indexOf('wing') + 1).setValue(String(p.wing || '').trim());
+        if (headers.indexOf('status') >= 0) sheet.getRange(rowNum, headers.indexOf('status') + 1).setValue(String(p.status || '').trim());
+        if (headers.indexOf('note') >= 0) sheet.getRange(rowNum, headers.indexOf('note') + 1).setValue(String(p.note || '').trim());
+        updated++;
+      } else {
+        // Append new row
+        const rowValues = [prisonerId, name, String(p.wing || '').trim(), String(p.status || '').trim(), String(p.note || '').trim()];
+        sheet.appendRow(rowValues);
+        added++;
+      }
+    });
+
+    logEvent(username, 'import_prisoners', '', { added, updated, errors: errors.length }, 'success');
+    return jsonResp({ status: 'ok', message: `นำเข้าสำเร็จ: เพิ่ม ${added} รายการ, อัปเดต ${updated} รายการ`, added, updated, errors });
+  }
+
 // ===== GET USERS (POST — same as GET) =====
   if (action === 'getUsers') {
     return jsonResp({ status: 'ok', users: getAllUsers() });

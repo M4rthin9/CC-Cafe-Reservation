@@ -46,6 +46,7 @@
        <a class="sb-link" data-view="reports" onclick="switchView('reports');return false">📊 <span class="sb-text">รายงาน</span></a>
        <a class="sb-link" data-view="eventlog" onclick="switchView('eventlog');return false">📝 <span class="sb-text">บันทึกการทำงาน</span></a>
        <a class="sb-link" data-view="users" id="sbUsers" style="display:none" onclick="switchView('users');return false">👥 <span class="sb-text">จัดการผู้ใช้</span></a>
+       <a class="sb-link" data-view="prisoners" id="sbPrisoners" style="display:none" onclick="switchView('prisoners');return false">🔒 <span class="sb-text">ผู้ต้องขัง</span></a>
        <a class="sb-link" data-view="settings" id="sbSettings" style="display:none" onclick="switchView('settings');return false">⚙️ <span class="sb-text">ตั้งค่า</span></a>
      </nav>
     <div class="sb-bottom">
@@ -298,14 +299,16 @@
            <div id="pagination" class="pagination"></div>
            <div class="last-updated" id="lastUpdated">อัพเดทล่าสุด: —</div>
          </div>
-         <div class="bulk-bar" id="bulkActionsBar" style="display:none;">
-           <span style="font-weight:600;">⚡ เลือก <span id="bulkSelectedCount">0</span> รายการ</span>
-           <button onclick="bulkApprove()">✅ อนุมัติ</button>
-           <button onclick="bulkReject()">❌ ปฏิเสธ</button>
-           <button class="danger" onclick="bulkCancel()">🚫 ยกเลิก</button>
-           <button onclick="bulkExport()">📤 ส่งออก</button>
-           <button onclick="updateBulkBar()" style="margin-left:auto;background:rgba(255,255,255,0.05);">✕ ปิด</button>
-         </div>
+          <div class="bulk-bar" id="bulkActionsBar" style="display:none;">
+            <span style="font-weight:600;">⚡ เลือก <span id="bulkSelectedCount">0</span> รายการ</span>
+            <span id="bulkStatusSummary" style="font-size:11px;color:var(--text2);margin-left:4px;"></span>
+            <button onclick="bulkApprove()">✅ อนุมัติ</button>
+            <button onclick="bulkReject()">❌ ปฏิเสธ</button>
+            <button onclick="bulkComplete()" id="bulkBtnComplete" style="display:none">✅ เสร็จสิ้น</button>
+            <button class="danger" onclick="bulkCancel()">🚫 ยกเลิก</button>
+            <button onclick="bulkExport()">📤 ส่งออก</button>
+            <button onclick="updateBulkBar()" style="margin-left:auto;background:rgba(255,255,255,0.05);">✕ ปิด</button>
+          </div>
       </div>
 
       <!-- REPORTS VIEW -->
@@ -441,6 +444,45 @@
         </div>
       </div>
 
+      <!-- PRISONERS VIEW -->
+      <div id="view-prisoners" class="view" style="display:none">
+        <div style="margin-bottom:12px">
+          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">🔒 จัดการข้อมูลผู้ต้องขัง</h1>
+          <div style="font-size:13px;color:var(--text2)">นำเข้าข้อมูลผู้ต้องขังจากไฟล์ CSV</div>
+        </div>
+        <div class="dash-card" style="padding:16px;margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">📤 นำเข้าข้อมูลผู้ต้องขัง (CSV)</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">
+            รูปแบบ CSV: <code>prisonerId, prisonerName, wing</code>
+            &nbsp;·&nbsp; อัปเดตอัตโนมัติถ้า <code>prisonerId</code> ซ้ำ
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <input type="file" id="csvFileInput" accept=".csv" style="font-size:13px;">
+            <button class="btn-approve" onclick="previewPrisonerCSV()" id="btnPreviewCSV">👁️ แสดงตัวอย่าง</button>
+            <button class="btn-approve" onclick="importPrisonerCSV()" id="btnImportCSV" style="display:none;background:var(--green);">💾 ยืนยันนำเข้า</button>
+            <span id="csvStatus" style="font-size:12px;color:var(--text2);"></span>
+          </div>
+        </div>
+        <div id="prisonerPreviewContainer" style="display:none;">
+          <div class="table-wrap">
+            <div class="table-header">
+              <h2>ตัวอย่างข้อมูล <span id="previewCount"></span></h2>
+            </div>
+            <table>
+              <thead>
+                <tr id="prisonerPreviewHeader">
+                  <th>#</th>
+                  <th>prisonerId</th>
+                  <th>prisonerName</th>
+                  <th>wing</th>
+                </tr>
+              </thead>
+              <tbody id="prisonerPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- SETTINGS VIEW -->
       <div id="view-settings" class="view" style="display:none">
         <div style="margin-bottom:12px">
@@ -531,6 +573,7 @@
     <a href="#" class="bottom-nav-item" data-view="reports" onclick="switchView('reports');return false">📊<br><span>รายงาน</span></a>
     <a href="#" class="bottom-nav-item" data-view="eventlog" onclick="switchView('eventlog');return false">📝<br><span>บันทึก</span></a>
     <a href="#" class="bottom-nav-item" data-view="users" id="bnUsers" style="display:none" onclick="switchView('users');return false">👥<br><span>ผู้ใช้</span></a>
+    <a href="#" class="bottom-nav-item" data-view="prisoners" id="bnPrisoners" style="display:none" onclick="switchView('prisoners');return false">🔒<br><span>ผู้ต้องขัง</span></a>
     <a href="#" class="bottom-nav-item" data-view="settings" id="bnSettings" style="display:none" onclick="switchView('settings');return false">⚙️<br><span>ตั้งค่า</span></a>
   </nav>
 

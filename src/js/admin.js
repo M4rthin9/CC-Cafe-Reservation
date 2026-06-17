@@ -18,15 +18,15 @@ const PERMISSIONS = {
 
 // Sidebar menu visibility by role
 const SIDEBAR_MENU = {
-  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'users', 'settings'],
-  Admin: ['home', 'reservations', 'reports', 'eventlog'],
+  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'users', 'prisoners', 'settings'],
+  Admin: ['home', 'reservations', 'reports', 'eventlog', 'prisoners'],
   Finance: ['reservations', 'reports'],
   Vinai: ['reservations', 'reports'],
   Tadtel: ['reservations', 'reports'],
   User: ['home']
 };
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSTFM7M-pXU_dDAe051sjzbF4YY2a97mnMl9ALJ76XcQiXbzzaMo0F5Q3n2lULwAgMaQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwT_GXXBcSiFBhWkaOIS4u7LxGA1bIV2_gxu-xWA1jbYrZoSUCkwXWn6t95yYl0-wKvig/exec';
 
 // ===== SHARED PRINT STYLES =====
 const PRINT_SHARED_CSS = `
@@ -168,13 +168,14 @@ async function doLogin() {
     if (btnPrint) btnPrint.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrintVinai) btnPrintVinai.style.display = isAdminOrSuper ? '' : 'none';
 
-    // Show Superadmin-only sidebar links and bottom nav
-    if (currentUser.role === 'Superadmin') {
-      ['sbUsers', 'sbSettings', 'bnUsers', 'bnSettings'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = '';
-      });
-    }
+    // Show role-specific sidebar links and bottom nav
+    ['sbUsers', 'sbPrisoners', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnSettings'].forEach(id => {
+      const viewName = id.replace(/^(sb|bn)/, '').toLowerCase();
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.display = visibleMenu.includes(viewName) ? '' : 'none';
+      }
+    });
 
     switchView(visibleMenu.includes('home') ? 'home' : visibleMenu[0] || 'reservations');
     renderDashboardHome();
@@ -219,8 +220,8 @@ function doLogout() {
   document.querySelectorAll('.sb-link').forEach(link => {
     link.style.display = '';
   });
-  // Hide Superadmin-only elements
-  ['sbUsers', 'sbSettings', 'bnUsers', 'bnSettings'].forEach(id => {
+  // Hide role-specific elements
+  ['sbUsers', 'sbPrisoners', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnSettings'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -530,6 +531,8 @@ function switchView(v) {
     renderEventlog();
   } else if (v === 'users') {
     renderUsersView();
+  } else if (v === 'prisoners') {
+    renderPrisonersView();
   } else if (v === 'settings') {
     renderSettingsView();
   }
@@ -2949,6 +2952,184 @@ function renderUsersView() {
   loadAddUserTable();
 }
 
+// ===== PRISONER CSV IMPORT =====
+function renderPrisonersView() {
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('prisonerPreviewContainer').style.display = 'none';
+  document.getElementById('btnImportCSV').style.display = 'none';
+  document.getElementById('csvStatus').textContent = '';
+  document.getElementById('csvStatus').style.color = 'var(--text2)';
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = '', inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (inQuote) {
+      if (ch === '"' && next === '"') {
+        cell += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuote = false;
+      } else {
+        cell += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuote = true;
+      } else if (ch === ',') {
+        row.push(cell.trim());
+        cell = '';
+      } else if (ch === '\n') {
+        row.push(cell.trim());
+        if (row.some(c => c)) rows.push(row);
+        row = [];
+        cell = '';
+      } else if (ch === '\r') {
+        // skip, handle \r\n below
+      } else {
+        cell += ch;
+      }
+    }
+  }
+  if (cell || row.length > 0) {
+    row.push(cell.trim());
+    if (row.some(c => c)) rows.push(row);
+  }
+  return rows;
+}
+
+function previewPrisonerCSV() {
+  const fileInput = document.getElementById('csvFileInput');
+  const file = fileInput.files[0];
+  if (!file) {
+    showToast('กรุณาเลือกไฟล์ CSV ก่อน', 'warning');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const text = e.target.result;
+      const rows = parseCSV(text);
+
+      if (rows.length < 2) {
+        showToast('ไฟล์ CSV มีข้อมูลไม่ถูกต้องหรือน้อยเกินไป', 'error');
+        return;
+      }
+
+      // First row is header - find column mapping
+      const headerRow = rows[0].map(h => h.toLowerCase().replace(/[\s\-]/g, ''));
+      const colMap = {
+        prisonerId: headerRow.indexOf('prisonerid'),
+        prisonerName: headerRow.indexOf('prisonername'),
+        wing: headerRow.indexOf('wing'),
+        status: headerRow.indexOf('status'),
+        note: headerRow.indexOf('note')
+      };
+
+      if (colMap.prisonerId < 0 || colMap.prisonerName < 0) {
+        showToast('CSV ต้องมีคอลัมน์ prisonerId และ prisonerName อย่างน้อย', 'error');
+        return;
+      }
+
+      const dataRows = rows.slice(1).filter(r => r[colMap.prisonerId] && r[colMap.prisonerId].trim());
+      if (dataRows.length === 0) {
+        showToast('ไม่พบข้อมูลผู้ต้องขังในไฟล์ CSV', 'error');
+        return;
+      }
+
+      // Store parsed data for import
+      const hasStatus = colMap.status >= 0;
+      const hasNote = colMap.note >= 0;
+      window._parsedPrisoners = dataRows.map(r => ({
+        prisonerId: r[colMap.prisonerId] || '',
+        prisonerName: r[colMap.prisonerName] || '',
+        wing: colMap.wing >= 0 ? (r[colMap.wing] || '') : '',
+        status: hasStatus ? (r[colMap.status] || '') : '',
+        note: hasNote ? (r[colMap.note] || '') : ''
+      }));
+
+      // Build dynamic header
+      const previewHeader = document.getElementById('prisonerPreviewHeader');
+      let headerHtml = '<th>#</th><th>prisonerId</th><th>prisonerName</th><th>wing</th>';
+      if (hasStatus) headerHtml += '<th>status</th>';
+      if (hasNote) headerHtml += '<th>note</th>';
+      previewHeader.innerHTML = headerHtml;
+
+      // Render preview rows
+      const tbody = document.getElementById('prisonerPreviewBody');
+      tbody.innerHTML = window._parsedPrisoners.slice(0, 50).map((p, i) => {
+        let cells = `<td>${i + 1}</td>
+          <td>${escapeHtml(p.prisonerId)}</td>
+          <td>${escapeHtml(p.prisonerName)}</td>
+          <td>${escapeHtml(p.wing)}</td>`;
+        if (hasStatus) cells += `<td>${escapeHtml(p.status)}</td>`;
+        if (hasNote) cells += `<td>${escapeHtml(p.note)}</td>`;
+        return `<tr>${cells}</tr>`;
+      }).join('');
+
+      const total = window._parsedPrisoners.length;
+      document.getElementById('previewCount').textContent = `(แสดงสูงสุด 50 จาก ${total} รายการ${total > 50 ? ' — จะนำเข้าทั้งหมด ' + total + ' รายการ' : ''})`;
+      document.getElementById('prisonerPreviewContainer').style.display = '';
+      document.getElementById('btnImportCSV').style.display = 'inline-block';
+      document.getElementById('csvStatus').textContent = `พบ ${total} รายการ พร้อมนำเข้า`;
+      document.getElementById('csvStatus').style.color = 'var(--green)';
+    } catch (err) {
+      showToast('เกิดข้อผิดพลาดในการอ่าน CSV: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function importPrisonerCSV() {
+  const prisoners = window._parsedPrisoners;
+  if (!prisoners || prisoners.length === 0) {
+    showToast('ไม่มีข้อมูลที่จะนำเข้า กรุณาเลือกไฟล์ก่อน', 'warning');
+    return;
+  }
+
+  document.getElementById('btnImportCSV').disabled = true;
+  document.getElementById('csvStatus').textContent = 'กำลังนำเข้า...';
+  document.getElementById('csvStatus').style.color = 'var(--text2)';
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'importPrisoners',
+        username: currentUser.username,
+        password: currentUser.password,
+        prisoners: prisoners
+      })
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      showToast(data.message, 'success');
+      document.getElementById('csvStatus').textContent = data.message;
+      document.getElementById('csvStatus').style.color = 'var(--green)';
+      document.getElementById('btnImportCSV').style.display = 'none';
+      document.getElementById('prisonerPreviewContainer').style.display = 'none';
+      document.getElementById('csvFileInput').value = '';
+      window._parsedPrisoners = null;
+    } else {
+      showToast('นำเข้าไม่สำเร็จ: ' + data.message, 'error');
+      document.getElementById('csvStatus').textContent = ' error: ' + data.message;
+      document.getElementById('csvStatus').style.color = 'var(--red)';
+    }
+  } catch (err) {
+    showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message, 'error');
+    document.getElementById('csvStatus').textContent = 'error: ' + err.message;
+    document.getElementById('csvStatus').style.color = 'var(--red)';
+  } finally {
+    document.getElementById('btnImportCSV').disabled = false;
+  }
+}
+
 async function editUser(username) {
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
@@ -4281,10 +4462,23 @@ function updateBulkBar() {
   const selected = getSelectedRows();
   const bar = document.getElementById('bulkActionsBar');
   const count = document.getElementById('bulkSelectedCount');
+  const summary = document.getElementById('bulkStatusSummary');
+  const btnComplete = document.getElementById('bulkBtnComplete');
   if (bar && count) {
     if (selected.length > 0) {
       bar.style.display = 'flex';
       count.textContent = selected.length;
+      // Count statuses
+      const statusCount = {};
+      let hasCompleted = false;
+      selected.forEach(idx => {
+        const s = normalizeStatus(allRows[idx]?.status);
+        statusCount[s] = (statusCount[s] || 0) + 1;
+        if (s === 'ชำระแล้ว') hasCompleted = true;
+      });
+      summary.textContent = Object.entries(statusCount)
+        .map(([s, n]) => `${s} ${n}`).join(', ');
+      btnComplete.style.display = hasCompleted ? '' : 'none';
     } else {
       bar.style.display = 'none';
     }
@@ -4348,6 +4542,32 @@ async function bulkReject() {
   document.getElementById('selectAll').checked = false;
   showToast(`ปฏิเสธ ${success} รายการ`, 'warning');
   logEvent('bulk_reject', `ปฏิเสธ ${success} รายการ`);
+  updateStats(); renderTable(); updateBulkBar();
+}
+
+async function bulkComplete() {
+  const indices = getSelectedRows();
+  if (!indices.length) { showToast('กรุณาเลือกรายการ', 'warning'); return; }
+  const paid = indices.filter(idx => normalizeStatus(allRows[idx]?.status) === 'ชำระแล้ว');
+  if (!paid.length) { showToast('ไม่มีรายการที่สถานะ "ชำระแล้ว"', 'warning'); return; }
+  if (!confirm(`ยืนยันเสร็จสิ้น ${paid.length} รายการ?`)) return;
+
+  let success = 0;
+  for (const idx of paid) {
+    const r = allRows[idx];
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: r.ref, status: 'เสร็จสิ้น' })
+      });
+      const data = await resp.json();
+      if (data.status === 'ok') { r.status = 'เสร็จสิ้น'; success++; }
+    } catch { }
+  }
+  document.getElementById('selectAll').checked = false;
+  showToast(`เสร็จสิ้น ${success} รายการ`, 'success');
+  logEvent('bulk_complete', `เสร็จสิ้น ${success} รายการ`);
   updateStats(); renderTable(); updateBulkBar();
 }
 
