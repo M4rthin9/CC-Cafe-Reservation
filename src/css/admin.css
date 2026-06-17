@@ -402,21 +402,22 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
 .refresh-btn:hover { background: var(--blue-dark); }
 
 /* Table */
-.table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: visible; }
 .table-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 .table-header h2 { font-size: 15px; font-weight: 700; }
 .table-count { font-size: 13px; color: var(--text2); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 th { background: var(--bg); padding: 10px 14px; text-align: left; font-weight: 600; color: var(--text2); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-thead th:nth-child(1) { width: 14%; }
-thead th:nth-child(2) { width: 22%; }
-thead th:nth-child(3) { width: 16%; }
-thead th:nth-child(4) { width: 10%; }
-thead th:nth-child(5) { width: 10%; }
-thead th:nth-child(6) { width: 8%; }
-thead th:nth-child(7) { width: 8%; }
-thead th:nth-child(8) { width: 14%; }
+thead th:nth-child(1) { width: 36px; }
+thead th:nth-child(2) { width: 11%; }
+thead th:nth-child(3) { width: 18%; }
+thead th:nth-child(4) { width: 13%; }
+thead th:nth-child(5) { width: 7%; }
+thead th:nth-child(6) { width: 10%; }
+thead th:nth-child(7) { width: 9%; }
+thead th:nth-child(8) { width: 8%; }
+thead th:nth-child(9) { width: auto; }
 tr:last-child td { border-bottom: none; }
 
 /* Reservations table - card layout on mobile */
@@ -522,10 +523,6 @@ tr:hover td { background: #f8f9fa; }
   display: flex; 
   gap: 4px; 
   flex-wrap: wrap;
-  min-width: fit-content; 
-}
-.action-btns > * {
-  flex-shrink: 0;
 }
 
 .eventlog-container {
@@ -1695,5 +1692,142 @@ button:active:not(:disabled), .refresh-btn:active:not(:disabled), .btn-approve:a
 @media (min-width: 1920px) {
   .floor-plan-grid {
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+}
+
+/* ===== EDIT MODAL ===== */
+#editModalBg .modal {
+  max-width: 650px;
+}
+#editModalBg .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+#editModalBg .search-box {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+#editModalBg .search-box:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(11,37,69,0.1);
+}
+
+/* ===== BULK ACTIONS BAR ===== */
+.bulk-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--blue);
+  color: #fff;
+  padding: 10px 16px;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  z-index: 50;
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+  flex-wrap: wrap;
+}
+.bulk-bar button {
+  padding: 6px 14px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.bulk-bar button:hover {
+  background: rgba(255,255,255,0.25);
+}
+.bulk-bar button.danger {
+  border-color: rgba(239,68,68,0.5);
+  background: rgba(239,68,68,0.2);
+}
+.bulk-bar button.danger:hover {
+  background: rgba(239,68,68,0.4);
+}
+
+/* ===== SELECT CHECKBOX ===== */
+.row-select,
+#selectAll {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--blue);
+}
+
+/* ===== NOTIFICATION BELL ===== */
+.notif-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: 18px;
+}
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 50%;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: notifPulse 2s infinite;
+  padding: 0 3px;
+}
+@keyframes notifPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* ===== NOTIFICATION PANEL ===== */
+.notif-panel {
+  position: absolute;
+  top: 50px;
+  right: 16px;
+  width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+  z-index: 100;
+}
+.notif-panel:empty {
+  display: none !important;
+}
+.notif-panel::before {
+  content: '🔔 การแจ้งเตือน';
+  display: block;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .notif-panel {
+    right: 8px;
+    width: calc(100vw - 16px);
+    max-width: 320px;
+  }
+}
+
+/* ===== TABLE RESPONSIVE: checkbox column ===== */
+@media (max-width: 768px) {
+  .table-wrap table th:first-child,
+  .table-wrap table td:first-child {
+    display: none;
   }
 }

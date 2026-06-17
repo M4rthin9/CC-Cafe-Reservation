@@ -8,7 +8,7 @@ function toLocalDateStr(date) {
 
 // ===== CONFIG =====
 const PERMISSIONS = {
-  Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
+  Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'manage_settings', 'view_eventlog'],
   Admin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
   Vinai: ['approve_discipline', 'reject_discipline', 'view_slip', 'view_detail'],
@@ -18,7 +18,7 @@ const PERMISSIONS = {
 
 // Sidebar menu visibility by role
 const SIDEBAR_MENU = {
-  Superadmin: ['home', 'reservations', 'reports', 'eventlog'],
+  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'users', 'settings'],
   Admin: ['home', 'reservations', 'reports', 'eventlog'],
   Finance: ['reservations', 'reports'],
   Vinai: ['reservations', 'reports'],
@@ -26,7 +26,31 @@ const SIDEBAR_MENU = {
   User: ['home']
 };
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybgWqvgR1r3BszHin9yx-Kj-3eQILubafXlemavsbZkD1HSqla3PFvZ8FMhoE0duy10A/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwc-ughXcNPLuEuWDwFl3NLalPCqjlyKStazp-okNHH0grJXLiKq2sqHfHjJZlEErqcgA/exec';
+
+// ===== SHARED PRINT STYLES =====
+const PRINT_SHARED_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Sarabun', sans-serif; font-size: 12px; color: #111; padding: 15px; }
+  .print-header { text-align: center; margin-bottom: 18px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+  .print-header h1 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .print-header h2 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+  .print-header p { font-size: 12px; color: #555; }
+  .print-title { font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11px; }
+  th, td { border: 1px solid #000; padding: 5px 7px; text-align: left; }
+  th { background: #f0f0f0; font-weight: 700; font-size: 10px; text-transform: uppercase; }
+  tr:nth-child(even) { background: #fafafa; }
+  .print-footer { text-align: center; font-size: 10px; color: #888; margin-top: 20px; border-top: 1px solid #ccc; padding-top: 6px; }
+  @media print {
+    body { padding: 0; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print, .print-preview-bar { display: none !important; }
+    .print-header { border-bottom-color: #000; }
+    th { background: #e8e8e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    tr:nth-child(even) { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+`;
 
 // ===== STATE =====
 let allRows = [];
@@ -45,7 +69,7 @@ function showToast(message, type = 'info', duration = 3000) {
 
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  
+
   let icon = 'ℹ️';
   if (type === 'success') icon = '✅';
   else if (type === 'error') icon = '❌';
@@ -70,7 +94,7 @@ function showToast(message, type = 'info', duration = 3000) {
       toast.remove();
     });
   };
-  
+
   closeBtn.addEventListener('click', dismissToast);
 
   setTimeout(dismissToast, duration);
@@ -144,6 +168,14 @@ async function doLogin() {
     if (btnPrint) btnPrint.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrintVinai) btnPrintVinai.style.display = isAdminOrSuper ? '' : 'none';
 
+    // Show Superadmin-only sidebar links and bottom nav
+    if (currentUser.role === 'Superadmin') {
+      ['sbUsers', 'sbSettings', 'bnUsers', 'bnSettings'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
+      });
+    }
+
     switchView(visibleMenu.includes('home') ? 'home' : visibleMenu[0] || 'reservations');
     renderDashboardHome();
     loadData();
@@ -187,12 +219,21 @@ function doLogout() {
   document.querySelectorAll('.sb-link').forEach(link => {
     link.style.display = '';
   });
+  // Hide Superadmin-only elements
+  ['sbUsers', 'sbSettings', 'bnUsers', 'bnSettings'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const notifBell = document.getElementById('notifBell');
+  if (notifBell) notifBell.style.display = 'none';
+  const notifPanel = document.getElementById('notifPanel');
+  if (notifPanel) notifPanel.style.display = 'none';
   allRows = [];
 }
 
 // ===== LOAD DATA =====
 async function loadData() {
-  document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -214,7 +255,7 @@ async function loadData() {
       document.getElementById('lastUpdated').textContent = 'โหมด Demo (ยังไม่ได้เชื่อม Google Sheet)';
       showToast('ไม่สามารถเชื่อมต่อระบบได้ กำลังแสดงโหมดทดสอบ (Demo)', 'warning');
     } else {
-      document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
+      document.getElementById('tableBody').innerHTML = `<tr><td colspan="9" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
       showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
       return;
     }
@@ -314,7 +355,7 @@ function renderTable() {
   const pageRows = rows.slice(startIdx, startIdx + pageSize);
 
   if (!totalFiltered) {
-    document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="empty-state">ไม่พบข้อมูล</td></tr>';
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="empty-state">ไม่พบข้อมูล</td></tr>';
     renderPagination(0, 0);
     return;
   }
@@ -354,6 +395,7 @@ function renderTable() {
     const canCancel = isAdminOrSuper || hasPermission('cancel');
 
     return `<tr data-idx="${rowIdx}">
+           <td data-label="" style="width:32px;text-align:center;"><input type="checkbox" class="row-select" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer;"></td>
            <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
 <td data-label="ผู้เข้าร่วม">
               <div style="font-weight:600">${r.visitorName}</div>
@@ -382,6 +424,7 @@ function renderTable() {
               <div class="action-btns">
                 <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
                 <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
+                ${isAdminOrSuper ? `<button class="btn-slip" style="background:#f0fdf4;color:var(--green);border-color:var(--green)" onclick="editBooking(${rowIdx})">✏️ แก้ไข</button>` : ''}
               </div>
               <div class="mobile-actions-expanded" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:${s === 'รอตรวจสอบวินัย' || s === 'รอตรวจสอบผู้เข้าร่วม' || s === 'รอชำระเงิน' || s === 'ชำระแล้ว' ? 'flex' : 'none'};flex-wrap:wrap;gap:6px">
                 ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
@@ -485,8 +528,10 @@ function switchView(v) {
     renderReportsView();
   } else if (v === 'eventlog') {
     renderEventlog();
-  } else if (v === 'addUser') {
-    renderAddUser();
+  } else if (v === 'users') {
+    renderUsersView();
+  } else if (v === 'settings') {
+    renderSettingsView();
   }
 
   // Dashboard home view - only for Admin/Superadmin who have access
@@ -2365,6 +2410,7 @@ function printReport() {
   @media print {
     @page { size: A4; margin: 10mm 8mm; }
     body { padding: 4mm 6mm; font-size: 11px; line-height: 1.4; }
+    .no-print, .print-preview-bar { display: none !important; }
     h1 { font-size: 16px; margin-bottom: 2px; }
     h2 { font-size: 13px; }
     .meta { font-size: 10px; margin-bottom: 8px; }
@@ -2487,6 +2533,15 @@ function printReport() {
   }
 </style></head><body>`;
 
+  html += `<div class="no-print print-preview-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:'Sarabun',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+    <span style="font-weight:600;">📋 ตัวอย่างก่อนพิมพ์</span>
+    <div style="display:flex;gap:8px;">
+      <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;">🖨️ พิมพ์</button>
+      <button onclick="window.close()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;">✕ ปิด</button>
+    </div>
+  </div>`;
+  html += `<div style="margin-top:50px;"></div>`;
+  html += `<div class="print-header"><h1>ทัณฑสถานบำบัดพิเศษกลาง</h1><h2>Chance & Change Cafe</h2></div>`;
   html += `<h1>🪑 รายงานการจัดโต๊ะ</h1>`;
   html += `<h2>ร้าน Chance & Change Cafe · ทัณฑสถานบำบัดพิเศษกลาง</h2>`;
   html += '<div class="meta">พิมพ์เมื่อ ' + now + ' · ผู้ปริ้น: ' + (currentUser?.displayName || currentUser?.username || 'ไม่ระบุ') + ' · เรียงตามเลขที่อ้างอิง · จำนวน ' + filtered.length + ' โต๊ะ</div>';
@@ -2605,10 +2660,7 @@ function printReport() {
   }
   w.document.write(html);
   w.document.close();
-
-  setTimeout(() => {
-    try { w.focus(); w.print(); } catch (e) { }
-  }, 650);
+  w.focus();
 }
 
 // ===== PRINT PRISONER LIST FOR วินัย CHECK (only name, ID, Wing) =====
@@ -2623,28 +2675,21 @@ function printPrisonerVinaiList() {
   const filterDate = document.getElementById('filterDate').value || 'ทุกวัน';
 
   let html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>รายชื่อผู้ต้องขัง - ตรวจสอบวินัย ${filterDate}</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
-  body { font-family: 'Sarabun', system-ui, sans-serif; padding: 16px 20px; margin:0; color:#000; background:#fff; font-size:15px; }
-  h1 { font-size:18px; margin:0 0 2px; font-weight:700; text-align:center; line-height:1.3; }
-  .meta { font-size:11px; color:#333; text-align:center; margin-bottom:12px; }
-  table { width:100%; border-collapse:collapse; margin-top:4px; }
-  th, td { border:1.5px solid #000; padding:6px 8px; text-align:left; }
-  th { background:#f1f5f9; font-weight:700; font-size:13px; }
-  td { font-size:14px; }
+<style>${PRINT_SHARED_CSS}
   .num { width:42px; text-align:center; }
-  .note { margin-top:12px; font-size:11px; color:#444; text-align:center; font-style:italic; }
-  @media print {
-    @page { size: A4; margin: 8mm; }
-    body { padding: 4mm 6mm; font-size:12px; }
-    h1 { font-size:15px; }
-    th, td { padding:4px 6px; font-size:12px; }
-    .note { display:none; }
-  }
 </style></head><body>`;
 
-  html += `<h1>รายชื่อผู้ต้องขัง - ตรวจสอบวินัย<br><span style="font-size:14px; font-weight:500;">วันที่ ${filterDate}</span></h1>`;
-  html += `<div class="meta">ทัณฑสถานบำบัดพิเศษกลาง • พิมพ์เมื่อ ${now}</div>`;
+  html += `<div class="no-print print-preview-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:'Sarabun',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+    <span style="font-weight:600;">📋 ตัวอย่างก่อนพิมพ์</span>
+    <div style="display:flex;gap:8px;">
+      <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;">🖨️ พิมพ์</button>
+      <button onclick="window.close()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;">✕ ปิด</button>
+    </div>
+  </div>`;
+  html += `<div style="margin-top:50px;"></div>`;
+  html += `<div class="print-header"><h1>ทัณฑสถานบำบัดพิเศษกลาง</h1><h2>Chance & Change Cafe</h2></div>`;
+  html += `<div class="print-title">รายชื่อผู้ต้องขัง - ตรวจสอบวินัย<br><span style="font-size:14px; font-weight:500;">วันที่ ${filterDate}</span></div>`;
+  html += `<div class="meta">พิมพ์เมื่อ ${now}</div>`;
 
   html += `<table>`;
   html += `<thead><tr>`;
@@ -2667,7 +2712,7 @@ function printPrisonerVinaiList() {
 
   html += `<div class="note">สำหรับใช้ตรวจสอบวินัย • ข้อมูลจากระบบการจอง CC Cafe</div>`;
   const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
-  html += `<div style="margin-top:8mm;font-size:10px;color:#666;text-align:center;">ผู้ปริ้น: ${printerName} · พิมพ์เมื่อ ${now}</div>`;
+  html += `<div class="print-footer">ผู้ปริ้น: ${printerName} · พิมพ์เมื่อ ${now}</div>`;
   html += `</body></html>`;
 
   const w = window.open('', '_blank', 'width=900,height=700');
@@ -2677,10 +2722,7 @@ function printPrisonerVinaiList() {
   }
   w.document.write(html);
   w.document.close();
-
-  setTimeout(() => {
-    try { w.focus(); w.print(); } catch (e) { }
-  }, 400);
+  w.focus();
 }
 
 // ===== DAILY AGGREGATED DEPARTMENT REPORTS (respects current filters) =====
@@ -2760,13 +2802,6 @@ function renderDailyDeptReports() {
   section.style.display = 'block';
 }
 
-function renderAddUser() {
-  // Removed permission check - everyone can access user management
-  document.getElementById('view-addUser').style.display = '';
-  fetchRolesList();
-  loadAddUserTable();
-}
-
 function fetchRolesList() {
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
@@ -2822,7 +2857,7 @@ function createAddUser() {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'createUser', username: username, password: password, role: role, pass: currentUser.password })
+    body: JSON.stringify({ action: 'createUser', username: username, password: password, role: role, displayName: username, adminUser: currentUser.username, pass: currentUser.password })
   })
     .then(resp => resp.json())
     .then(data => {
@@ -2865,6 +2900,11 @@ function loadAddUserTable() {
     });
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function renderAddUserTable(users) {
   const tbody = document.getElementById('addUserTableBody');
   if (!tbody) return;
@@ -2875,11 +2915,10 @@ function renderAddUserTable(users) {
   }
 
   tbody.innerHTML = users.map(u => {
-    // Determine if user can be edited/deleted? For simplicity, we just show.
     return `<tr>
-      <td>${u.username}</td>
-      <td>${u.role}</td>
-      <td>${u.displayName || '-'}</td>
+      <td>${escapeHtml(u.username)}</td>
+      <td>${escapeHtml(u.role)}</td>
+      <td>${escapeHtml(u.displayName || '-')}</td>
       <td>
         <button class="btn-refresh" onclick="editUser('${u.username}')">แก้ไข</button>
         <button class="btn-refresh" onclick="deleteUser('${u.username}')">ลบ</button>
@@ -2888,13 +2927,122 @@ function renderAddUserTable(users) {
   }).join('');
 }
 
-// Placeholder functions for edit/delete (optional)
-function editUser(username) {
-  showToast('ฟังก์ชันแก้ไขผู้ใช้ยังไม่ได้ทำการติดตั้ง', 'info');
+// ===== USER MANAGEMENT =====
+function renderUsersView() {
+  document.getElementById('view-users').style.display = '';
+  fetchRolesList();
+  loadAddUserTable();
 }
-function deleteUser(username) {
-  if (confirm(`คุณต้องการลบผู้ใช้ "${username}" จริงหรือไม่?`)) {
-    showToast('ฟังก์ชันลบผู้ใช้ยังไม่ได้ทำการติดตั้ง', 'info');
+
+async function editUser(username) {
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getUsers', username: currentUser.username, password: currentUser.password })
+    });
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message);
+
+    const user = (data.users || []).find(u => u.username === username);
+    if (!user) { showToast('ไม่พบผู้ใช้', 'error'); return; }
+
+    // Fetch roles dynamically from backend
+    let roles = ['Superadmin', 'Admin', 'Finance', 'Vinai', 'Tadtel', 'User'];
+    try {
+      const rolesResp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'getRoles', username: currentUser.username, password: currentUser.password })
+      });
+      const rolesData = await rolesResp.json();
+      if (rolesData.status === 'ok' && rolesData.roles && rolesData.roles.length > 0) {
+        roles = rolesData.roles.map(r => r.name);
+      }
+    } catch (e) { /* fallback to default */ }
+
+    const modal = document.getElementById('editModalBody');
+    modal.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">แก้ไขผู้ใช้: ${user.username}</div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">บทบาท</label>
+          <select id="editUserRole" class="filter-select" style="width:100%;">
+            ${roles.map(r =>
+      `<option value="${r}" ${r === user.role ? 'selected' : ''}>${r}</option>`
+    ).join('')}
+          </select>
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">ชื่อที่แสดง</label>
+          <input type="text" id="editUserDisplayName" class="search-box" value="${user.displayName || ''}" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)</label>
+          <input type="password" id="editUserPassword" class="search-box" placeholder="รหัสผ่านใหม่" style="width:100%;">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
+        <button class="btn-approve" onclick="saveEditUser('${user.username}')">💾 บันทึก</button>
+      </div>
+    `;
+    document.getElementById('editModalBg').classList.add('show');
+  } catch (e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+async function saveEditUser(username) {
+  const role = document.getElementById('editUserRole').value;
+  const displayName = document.getElementById('editUserDisplayName').value.trim();
+  const password = document.getElementById('editUserPassword').value;
+
+  const body = { action: 'updateUser', username: currentUser.username, password: currentUser.password, targetUser: username, role: role, displayName: displayName };
+  if (password) body.newPassword = password;
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message);
+
+    showToast('อัปเดตผู้ใช้สำเร็จ', 'success');
+    logEvent('update_user', `แก้ไขผู้ใช้ ${username} role=${role}`);
+    closeEditModal();
+    loadAddUserTable();
+  } catch (e) {
+    showToast('ไม่สามารถอัปเดตได้: ' + e.message, 'error');
+  }
+}
+
+async function deleteUser(username) {
+  if (username === currentUser.username) { showToast('ไม่สามารถลบตัวเองได้', 'error'); return; }
+  if (!confirm(`⚠️ ยืนยันการลบผู้ใช้ "${username}"?\nการดำเนินการนี้ไม่สามารถกู้คืนได้`)) return;
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'deleteUser', username: currentUser.username, password: currentUser.password, targetUser: username })
+    });
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message);
+
+    showToast('ลบผู้ใช้สำเร็จ', 'success');
+    logEvent('delete_user', `ลบผู้ใช้ ${username}`);
+    loadAddUserTable();
+  } catch (e) {
+    showToast('ไม่สามารถลบได้: ' + e.message, 'error');
+  }
+}
+
+function closeEditModal(e) {
+  if (!e || e.target === document.getElementById('editModalBg')) {
+    document.getElementById('editModalBg').classList.remove('show');
   }
 }
 
@@ -2919,19 +3067,24 @@ function printDailyDeptReports() {
     <html><head><meta charset="UTF-8">
     <title>รายงานประจำวัน - แยกตามฝ่าย</title>
     <style>
-      body { font-family: 'Sarabun', sans-serif; font-size:13px; padding:20px; }
-      h1 { text-align:center; margin-bottom:4px; }
+      ${PRINT_SHARED_CSS}
       .date-block { border:2px solid #333; margin-bottom:20px; padding:12px; page-break-inside:avoid; }
       .date-title { font-size:16px; font-weight:700; border-bottom:1px solid #ccc; padding-bottom:4px; margin-bottom:8px; }
       .dept { margin-bottom:8px; padding:6px; border:1px solid #aaa; border-radius:4px; }
       .dept strong { display:block; margin-bottom:4px; }
-      table { width:100%; border-collapse:collapse; margin-top:8px; }
-      th, td { border:1px solid #999; padding:4px 6px; text-align:left; font-size:12px; }
-      .footer-note { text-align:center; font-size:11px; color:#888; margin-top:20px; }
     </style>
     </head><body>
-    <h1>รายงานสรุปประจำวัน (แยกตามฝ่าย)</h1>
-    <div style="text-align:center; margin-bottom:8px; color:#555;">ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ ${now}</div>
+    <div class="no-print print-preview-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:'Sarabun',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+      <span style="font-weight:600;">📋 ตัวอย่างก่อนพิมพ์</span>
+      <div style="display:flex;gap:8px;">
+        <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;">🖨️ พิมพ์</button>
+        <button onclick="window.close()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;">✕ ปิด</button>
+      </div>
+    </div>
+    <div style="margin-top:50px;"></div>
+    <div class="print-header"><h1>ทัณฑสถานบำบัดพิเศษกลาง</h1><h2>Chance & Change Cafe</h2></div>
+    <div class="print-title">รายงานสรุปประจำวัน (แยกตามฝ่าย)</div>
+    <div class="meta">ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ ${now}</div>
   `;
 
   Object.keys(byDate).sort().forEach(date => {
@@ -2979,12 +3132,17 @@ function printDailyDeptReports() {
     html += `</div>`;
   });
 
+  html += `<div class="print-footer">รายงานนี้สร้างจากระบบ CC Cafe · ${now}</div>`;
   html += `</body></html>`;
 
   const w = window.open('', '_blank');
+  if (!w) {
+    showToast('กรุณาอนุญาต Popup เพื่อเปิดหน้าพิมพ์', 'warning');
+    return;
+  }
   w.document.write(html);
   w.document.close();
-  setTimeout(() => { w.focus(); w.print(); }, 300);
+  w.focus();
 }
 
 // ===== Helper: Get filtered rows for the Reports page (independent filters) =====
@@ -3303,17 +3461,31 @@ function printSingleReport(type, date) {
     content += `<p style="margin-top:12px; font-weight:600; font-size:14px;">รวมทั้งหมด: <strong>${grandTotal} คน</strong> จาก ${filtered.length} โต๊ะ</p>`;
   }
 
+  const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
   const printWin = window.open('', '_blank');
+  if (!printWin) {
+    showToast('กรุณาอนุญาต Popup เพื่อเปิดหน้าพิมพ์', 'warning');
+    return;
+  }
   printWin.document.write(`
     <html><head><meta charset="UTF-8"><title>รายงาน ${date}</title>
-    <style>body{font-family:'Sarabun',sans-serif;padding:20px;font-size:14px;} table{width:100%;} h2{margin-bottom:16px;}</style>
+    <style>${PRINT_SHARED_CSS}</style>
     </head><body>
+    <div class="no-print print-preview-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:'Sarabun',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+      <span style="font-weight:600;">📋 ตัวอย่างก่อนพิมพ์</span>
+      <div style="display:flex;gap:8px;">
+        <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;">🖨️ พิมพ์</button>
+        <button onclick="window.close()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;">✕ ปิด</button>
+      </div>
+    </div>
+    <div style="margin-top:50px;"></div>
+    <div class="print-header"><h1>ทัณฑสถานบำบัดพิเศษกลาง</h1><h2>Chance & Change Cafe</h2></div>
     ${content}
-    <div style="margin-top:30px;font-size:11px;color:#888;">ผู้ปริ้น: ${currentUser?.displayName || currentUser?.username || 'ไม่ระบุ'} • พิมพ์เมื่อ ${now} • ทัณฑสถานบำบัดพิเศษกลาง</div>
+    <div class="print-footer">ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ ${now}</div>
     </body></html>
   `);
   printWin.document.close();
-  setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
+  printWin.focus();
 }
 
 // ===== Monthly Report Functions =====
@@ -3322,37 +3494,37 @@ function generateMonthlyReport() {
   const endDateEl = document.getElementById('monthlyEndDate');
   const contentEl = document.getElementById('monthlyReportContent');
   const outputEl = document.getElementById('monthlyReportOutput');
-  
+
   if (!startDateEl || !endDateEl || !contentEl || !outputEl) return;
-  
+
   const startDate = startDateEl.value;
   const endDate = endDateEl.value;
-  
+
   if (!startDate || !endDate) {
     showToast('กรุณาเลือกวันที่ทั้งสองช่อง', 'warning');
     return;
   }
-  
+
   if (startDate > endDate) {
     showToast('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', 'warning');
     return;
   }
-  
+
   const filtered = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
     const key = getRowVisitDateKey(r);
     if (!key) return false;
     return key >= startDate && key <= endDate;
   });
-  
+
   if (filtered.length === 0) {
     contentEl.style.display = 'block';
     outputEl.innerHTML = '<div style="color:var(--text2);padding:20px;text-align:center;">ไม่มีข้อมูลในช่วงวันที่ที่เลือก</div>';
     return;
   }
-  
+
   const stats = computeFinanceStats(filtered);
-  
+
   // Count cancelled and not approved separately
   let cancelledCount = 0;
   let notApprovedCount = 0;
@@ -3361,11 +3533,11 @@ function generateMonthlyReport() {
     if (s === 'ยกเลิก') cancelledCount++;
     else if (s === 'ไม่อนุมัติ') notApprovedCount++;
   });
-  
+
   let totalAdults = 0, totalKids5_8 = 0, totalKidsUnder5 = 0;
   const prisoners = new Set();
   const wingCounts = {};
-  
+
   filtered.forEach(r => {
     const d = computeDeptReportData(r);
     totalAdults += d.adults;
@@ -3376,18 +3548,18 @@ function generateMonthlyReport() {
       wingCounts[r.wing] = (wingCounts[r.wing] || 0) + 1;
     }
   });
-  
+
   const totalVisitors = totalAdults + totalKids5_8 + totalKidsUnder5;
-  
+
   // Build wing statistics
   const wingStats = Object.entries(wingCounts)
     .sort((a, b) => b[1] - a[1])
     .map(([wing, count]) => `• แดน ${wing}: <strong>${count} คน</strong>`)
     .join('\n');
-  
+
   const startFmt = startDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
   const endFmt = endDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
-  
+
   const outputHtml = `
     <div style="font-size:13px;line-height:1.8;">
       <div style="margin-bottom:12px;">
@@ -3420,7 +3592,7 @@ function generateMonthlyReport() {
       </div>
     </div>
   `;
-  
+
   outputEl.innerHTML = outputHtml;
   contentEl.style.display = 'block';
 }
@@ -3428,32 +3600,32 @@ function generateMonthlyReport() {
 function printMonthlyReport() {
   const outputEl = document.getElementById('monthlyReportOutput');
   if (!outputEl) return;
-  
+
   const startDateEl = document.getElementById('monthlyStartDate');
   const endDateEl = document.getElementById('monthlyEndDate');
   const startDate = startDateEl?.value || '';
   const endDate = endDateEl?.value || '';
-  
+
   if (!startDate || !endDate) {
     alert('กรุณาสร้างรายงานก่อนพิมพ์');
     return;
   }
-  
+
   const now = new Date().toLocaleString('th-TH');
   const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
-  
+
   const startFmt = startDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
   const endFmt = endDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
-  
+
   const filtered = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
     const key = getRowVisitDateKey(r);
     if (!key) return false;
     return key >= startDate && key <= endDate;
   });
-  
+
   const stats = computeFinanceStats(filtered);
-  
+
   // Count cancelled and not approved separately
   let cancelledCount = 0;
   let notApprovedCount = 0;
@@ -3462,11 +3634,11 @@ function printMonthlyReport() {
     if (s === 'ยกเลิก') cancelledCount++;
     else if (s === 'ไม่อนุมัติ') notApprovedCount++;
   });
-  
+
   let totalAdults = 0, totalKids5_8 = 0, totalKidsUnder5 = 0;
   const prisoners = new Set();
   const wingCounts = {};
-  
+
   filtered.forEach(r => {
     const d = computeDeptReportData(r);
     totalAdults += d.adults;
@@ -3477,20 +3649,23 @@ function printMonthlyReport() {
       wingCounts[r.wing] = (wingCounts[r.wing] || 0) + 1;
     }
   });
-  
+
   // Build wing statistics
   const wingStats = Object.entries(wingCounts)
     .sort((a, b) => b[1] - a[1])
     .map(([wing, count]) => `<div>• แดน ${wing}: <strong>${count} คน</strong></div>`)
     .join('\n');
-  
+
   const printWin = window.open('', '_blank', 'width=800,height=600');
+  if (!printWin) {
+    showToast('กรุณาอนุญาต Popup เพื่อเปิดหน้าพิมพ์', 'warning');
+    return;
+  }
   printWin.document.write(`
     <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
     <title>รายงานรายเดือน</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
-      body { font-family: 'Sarabun', system-ui, sans-serif; padding: 20px 24px; margin: 0; color: #000; background: #fff; line-height: 1.6; font-size: 14px; }
+      ${PRINT_SHARED_CSS}
       .report-section { padding: 12px; border-radius: 6px; margin-bottom: 12px; }
       .section-title { font-weight: 600; margin-bottom: 6px; }
       .finance-section { background: #fff5f5; border: 1px solid #c62828; }
@@ -3499,17 +3674,20 @@ function printMonthlyReport() {
       .prisoner-section .section-title { color: #0B2545; }
       .visitor-section { background: #f5fff0; border: 1px solid #2E5238; }
       .visitor-section .section-title { color: #2E5238; }
-      .footer-note { text-align: center; font-size: 11px; color: #888; margin-top: 20px; }
     </style>
     </head><body>
-    <h1 style="font-size:20px;margin:0 0 8px;font-weight:700;text-align:center;color:#0B2545;">📊 รายงานรายเดือน</h1>
-    <div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">จากวันที่: ${startFmt} ถึงวันที่: ${endFmt}<br>ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ: ${now}</div>
-    <div style="font-size:13px;line-height:1.8;">
-      <div style="margin-bottom:12px;">
-        <div style="font-weight:600;margin-bottom:6px;">📊 รายงานรายเดือน</div>
-        <div style="color:#666;">จากวันที่: ${startFmt} ถึงวันที่: ${endFmt}</div>
+    <div class="no-print print-preview-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:'Sarabun',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+      <span style="font-weight:600;">📋 ตัวอย่างก่อนพิมพ์</span>
+      <div style="display:flex;gap:8px;">
+        <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;">🖨️ พิมพ์</button>
+        <button onclick="window.close()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;">✕ ปิด</button>
       </div>
-      
+    </div>
+    <div style="margin-top:50px;"></div>
+    <div class="print-header"><h1>ทัณฑสถานบำบัดพิเศษกลาง</h1><h2>Chance & Change Cafe</h2></div>
+    <div class="print-title">📊 รายงานรายเดือน</div>
+    <div class="meta">จากวันที่: ${startFmt} ถึงวันที่: ${endFmt}<br>ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ: ${now}</div>
+    <div style="font-size:13px;line-height:1.8;">
       <div class="report-section finance-section">
         <div class="section-title">💰 สรุปยอดเงิน</div>
         <div>• ยอดจองทั้งหมด: <strong>${formatBaht(stats.totalBooked)}</strong></div>
@@ -3534,11 +3712,11 @@ function printMonthlyReport() {
         <div>• รวมญาติผู้เยี่ยม: <strong>${totalAdults + totalKids5_8 + totalKidsUnder5} คน</strong></div>
       </div>
     </div>
-    <div class="footer-note">ทัณฑสถานบำบัดพิเศษกลาง</div>
+    <div class="print-footer">ทัณฑสถานบำบัดพิเศษกลาง • ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ ${now}</div>
     </body></html>
   `);
   printWin.document.close();
-  setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
+  printWin.focus();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3959,9 +4137,376 @@ function renderDashboardHomeV2() {
   renderFloorPlan();
 }
 
+// ===== EDIT BOOKING (Superadmin) =====
+function editBooking(idx) {
+  const r = allRows[idx];
+  if (!r) return;
+
+  const modal = document.getElementById('editModalBody');
+  modal.innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;">แก้ไขการจอง ${r.ref}</div>
+        <span class="badge badge-discipline-check" style="font-size:11px;">${r.status}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">👤 ชื่อผู้เข้าร่วม</label>
+          <input type="text" id="editVisitorName" class="search-box" value="${r.visitorName || ''}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">📞 เบอร์โทร</label>
+          <input type="text" id="editVisitorPhone" class="search-box" value="${r.visitorPhone || ''}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🪪 บัตรประชาชน</label>
+          <input type="text" id="editVisitorId" class="search-box" value="${r.visitorId || ''}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🤝 ความสัมพันธ์</label>
+          <input type="text" id="editRelation" class="search-box" value="${r.relation || ''}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🔒 ชื่อผู้ต้องขัง</label>
+          <input type="text" id="editPrisonerName" class="search-box" value="${r.prisonerName || ''}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🔢 เลขผู้ต้องขัง</label>
+          <input type="text" id="editPrisonerId" class="search-box" value="${r.prisonerId || ''}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🏢 แดน</label>
+          <input type="text" id="editWing" class="search-box" value="${r.wing || ''}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">📅 วันที่เยี่ยม</label>
+          <input type="text" id="editVisitDate" class="search-box" value="${r.visitDate || ''}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">👥 จำนวนคน</label>
+          <input type="number" id="editVisitorCount" class="search-box" value="${r.visitorCount || 1}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">💰 ยอดเงิน</label>
+          <input type="number" id="editTotal" class="search-box" value="${r.total || 0}" style="width:100%;">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">📝 สถานะ</label>
+          <select id="editStatus" class="filter-select" style="width:100%;">
+            ${['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'].map(s =>
+    `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`
+  ).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
+      <button class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
+      <button class="btn-approve" onclick="saveBookingEdit(${idx})">💾 บันทึกการแก้ไข</button>
+    </div>
+  `;
+  document.getElementById('editModalBg').classList.add('show');
+}
+
+async function saveBookingEdit(idx) {
+  const r = allRows[idx];
+  const oldData = { ...r };
+
+  const updates = {
+    visitorName: document.getElementById('editVisitorName').value.trim(),
+    visitorPhone: document.getElementById('editVisitorPhone').value.trim(),
+    visitorId: document.getElementById('editVisitorId').value.trim(),
+    relation: document.getElementById('editRelation').value.trim(),
+    prisonerName: document.getElementById('editPrisonerName').value.trim(),
+    prisonerId: document.getElementById('editPrisonerId').value.trim(),
+    wing: document.getElementById('editWing').value.trim(),
+    visitDate: document.getElementById('editVisitDate').value.trim(),
+    visitorCount: parseInt(document.getElementById('editVisitorCount').value) || 1,
+    total: parseInt(document.getElementById('editTotal').value) || 0,
+    status: document.getElementById('editStatus').value
+  };
+
+  Object.assign(r, updates);
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'updateBooking', username: currentUser.username, password: currentUser.password, ref: r.ref, ...updates })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
+
+    showToast('แก้ไขการจองสำเร็จ', 'success');
+    logEvent('edit_booking', `แก้ไขการจอง ${r.ref}`);
+    closeEditModal();
+    updateStats();
+    renderTable();
+    renderDashboardHome();
+  } catch (e) {
+    console.error('Edit booking error:', e);
+    Object.assign(r, oldData);
+    showToast(`ไม่สามารถแก้ไขได้: ${e.message}`, 'error');
+    closeEditModal();
+    updateStats();
+    renderTable();
+  }
+}
+
+// ===== BULK ACTIONS =====
+function toggleSelectAll() {
+  const master = document.getElementById('selectAll');
+  if (!master) return;
+  document.querySelectorAll('.row-select').forEach(cb => { cb.checked = master.checked; });
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const selected = getSelectedRows();
+  const bar = document.getElementById('bulkActionsBar');
+  const count = document.getElementById('bulkSelectedCount');
+  if (bar && count) {
+    if (selected.length > 0) {
+      bar.style.display = 'flex';
+      count.textContent = selected.length;
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+}
+
+function getSelectedRows() {
+  const checked = document.querySelectorAll('.row-select:checked');
+  return Array.from(checked).map(cb => parseInt(cb.dataset.idx));
+}
+
+async function bulkApprove() {
+  const indices = getSelectedRows();
+  if (!indices.length) { showToast('กรุณาเลือกรายการ', 'warning'); return; }
+  if (!confirm(`ยืนยันอนุมัติ ${indices.length} รายการ?`)) return;
+
+  let success = 0, fail = 0;
+  for (const idx of indices) {
+    const r = allRows[idx];
+    const s = normalizeStatus(r.status);
+    let nextStatus = null;
+    if (s === 'รอตรวจสอบวินัย') nextStatus = 'รอตรวจสอบผู้เข้าร่วม';
+    else if (s === 'รอตรวจสอบผู้เข้าร่วม') nextStatus = 'รอชำระเงิน';
+
+    if (nextStatus) {
+      try {
+        const resp = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST', redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: r.ref, status: nextStatus })
+        });
+        const data = await resp.json();
+        if (data.status === 'ok') { r.status = nextStatus; success++; } else { fail++; }
+      } catch { fail++; }
+    }
+  }
+  document.getElementById('selectAll').checked = false;
+  showToast(`อนุมัติสำเร็จ ${success} รายการ${fail ? ', ไม่สำเร็จ ' + fail : ''}`, success ? 'success' : 'warning');
+  logEvent('bulk_approve', `อนุมัติ ${success} รายการ`);
+  updateStats(); renderTable(); updateBulkBar();
+}
+
+async function bulkReject() {
+  const indices = getSelectedRows();
+  if (!indices.length) { showToast('กรุณาเลือกรายการ', 'warning'); return; }
+  if (!confirm(`ยืนยันปฏิเสธ ${indices.length} รายการ?`)) return;
+
+  let success = 0;
+  for (const idx of indices) {
+    const r = allRows[idx];
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: r.ref, status: 'ไม่อนุมัติ' })
+      });
+      const data = await resp.json();
+      if (data.status === 'ok') { r.status = 'ไม่อนุมัติ'; success++; }
+    } catch { }
+  }
+  document.getElementById('selectAll').checked = false;
+  showToast(`ปฏิเสธ ${success} รายการ`, 'warning');
+  logEvent('bulk_reject', `ปฏิเสธ ${success} รายการ`);
+  updateStats(); renderTable(); updateBulkBar();
+}
+
+async function bulkCancel() {
+  const indices = getSelectedRows();
+  if (!indices.length) { showToast('กรุณาเลือกรายการ', 'warning'); return; }
+  if (!confirm(`⚠️ ยืนยันยกเลิก ${indices.length} รายการ?\nไม่สามารถกู้คืนได้`)) return;
+
+  let success = 0;
+  for (const idx of indices) {
+    const r = allRows[idx];
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'cancelBooking', username: currentUser.username, password: currentUser.password, ref: r.ref })
+      });
+      const data = await resp.json();
+      if (data.status === 'ok') { r.status = 'ยกเลิก'; success++; }
+    } catch { }
+  }
+  document.getElementById('selectAll').checked = false;
+  showToast(`ยกเลิก ${success} รายการ`, 'warning');
+  logEvent('bulk_cancel', `ยกเลิก ${success} รายการ`);
+  updateStats(); renderTable(); updateBulkBar();
+}
+
+function bulkExport() {
+  const indices = getSelectedRows();
+  if (!indices.length) { showToast('กรุณาเลือกรายการ', 'warning'); return; }
+
+  const headers = ['ref', 'timestamp', 'visitorName', 'visitorPhone', 'visitorId', 'relation', 'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitorCount', 'total', 'status'];
+  let csvContent = headers.join(',') + '\r\n';
+  indices.forEach(idx => {
+    const r = allRows[idx];
+    csvContent += headers.map(h => {
+      let val = r[h] != null ? String(r[h]) : '';
+      if (val.includes(',') || val.includes('"')) val = '"' + val.replace(/"/g, '""') + '"';
+      return val;
+    }).join(',') + '\r\n';
+  });
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `CC_Selected_${indices.length}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast(`ส่งออก ${indices.length} รายการสำเร็จ`, 'success');
+}
+
+// ===== NOTIFICATIONS =====
+function renderNotifications() {
+  const pending = allRows.filter(r => {
+    const s = normalizeStatus(r.status);
+    return s === 'รอตรวจสอบวินัย' || s === 'รอชำระเงิน';
+  });
+
+  const bell = document.getElementById('notifBell');
+  const badge = document.getElementById('notifBadge');
+  const list = document.getElementById('notifPanel');
+
+  if (pending.length > 0 && bell) {
+    bell.style.display = 'flex';
+    if (badge) { badge.style.display = 'flex'; badge.textContent = pending.length > 99 ? '99+' : pending.length; }
+    if (list) {
+      list.innerHTML = pending.slice(0, 20).map(r => {
+        const s = normalizeStatus(r.status);
+        const icon = s === 'รอตรวจสอบวินัย' ? '🔍' : '💳';
+        return `<div onclick="viewDetail(${allRows.indexOf(r)});switchView('reservations');toggleNotifPanel()" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;align-items:center;transition:background 0.15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+          <span style="font-size:18px;">${icon}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">${r.ref} · ${r.visitorName || ''}</div>
+            <div style="font-size:11px;color:var(--text2);">${s} · ${r.wing || ''}</div>
+          </div>
+          <span class="badge badge-payment-pending" style="font-size:10px;white-space:nowrap;">${s}</span>
+        </div>`;
+      }).join('');
+      if (pending.length > 20) {
+        list.innerHTML += `<div style="padding:10px;text-align:center;font-size:12px;color:var(--text2);">และอีก ${pending.length - 20} รายการ...</div>`;
+      }
+    }
+  } else {
+    if (bell) bell.style.display = 'none';
+  }
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('click', (e) => {
+  const bell = document.getElementById('notifBell');
+  const panel = document.getElementById('notifPanel');
+  if (bell && panel && !bell.contains(e.target) && !panel.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
+// ===== SETTINGS =====
+function renderSettingsView() {
+  document.getElementById('view-settings').style.display = '';
+  const saved = JSON.parse(localStorage.getItem('cc_settings') || '{}');
+  document.getElementById('settingsPageSize').value = saved.pageSize || '10';
+  document.getElementById('settingsNotifEnabled').checked = saved.notifEnabled !== false;
+}
+
+async function saveSettings() {
+  const settings = {
+    pageSize: document.getElementById('settingsPageSize').value,
+    notifEnabled: document.getElementById('settingsNotifEnabled').checked,
+    savedAt: new Date().toISOString(),
+    savedBy: currentUser ? currentUser.username : 'unknown'
+  };
+
+  localStorage.setItem('cc_settings', JSON.stringify(settings));
+
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveSettings', username: currentUser.username, password: currentUser.password, settings: settings })
+    });
+  } catch { }
+
+  pageSize = parseInt(settings.pageSize) || 10;
+  showToast('บันทึกตั้งค่าสำเร็จ', 'success');
+  logEvent('save_settings', `บันทึกตั้งค่า: pageSize=${settings.pageSize}`);
+}
+
+// ===== NOTES =====
+function getNotes(ref) {
+  const allNotes = JSON.parse(localStorage.getItem('cc_notes') || '{}');
+  return allNotes[ref] || [];
+}
+
+function addNote(ref, text) {
+  if (!text.trim()) return;
+  const allNotes = JSON.parse(localStorage.getItem('cc_notes') || '{}');
+  if (!allNotes[ref]) allNotes[ref] = [];
+  const note = {
+    text: text.trim(),
+    user: currentUser ? currentUser.username : 'unknown',
+    timestamp: new Date().toLocaleString('th-TH')
+  };
+  allNotes[ref].push(note);
+  localStorage.setItem('cc_notes', JSON.stringify(allNotes));
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'addNote', username: currentUser.username, password: currentUser.password, ref: ref, note: note })
+  }).catch(() => { });
+
+  logEvent('add_note', `เพิ่มหมายเหตุ ${ref}`);
+  showToast('เพิ่มหมายเหตุสำเร็จ', 'success');
+}
+
 // Override the original renderDashboardHome
 renderDashboardHome = renderDashboardHomeV2;
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); } });
+// Call renderNotifications after dashboard loads
+const _origRenderDash = renderDashboardHome;
+renderDashboardHome = function () {
+  _origRenderDash();
+  renderNotifications();
+  const saved = JSON.parse(localStorage.getItem('cc_settings') || '{}');
+  if (saved.pageSize) pageSize = parseInt(saved.pageSize) || 10;
+};
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeEditModal(); } });
 document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('userInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });

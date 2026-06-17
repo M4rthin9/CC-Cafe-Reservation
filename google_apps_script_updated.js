@@ -2,6 +2,8 @@ const SHEET_NAME = 'การจอง';
 const EVENTLOG_SHEET = 'EventLog';
 const PRISONER_SHEET = 'ผู้ต้องขัง';
 const USERS_SHEET = 'Users';
+const NOTES_SHEET = 'Notes';
+const SETTINGS_SHEET = 'Settings';
 
 const LEGACY_STAFF_PASS = '10900';
 
@@ -264,8 +266,9 @@ function doPost(e) {
 
 // ===== CREATE NEW USER (SUPERADMIN ONLY) =====
   if (action === 'createUser') {
-    if (username.toLowerCase() !== 'superadmin' && !hasPermission(username, 'manage_users')) {
-      return jsonResp({ status: 'error', message: 'Only superadmin can create users' });
+    const adminUser = body.adminUser || username;
+    if (adminUser.toLowerCase() !== 'superadmin' && !hasPermission(adminUser, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะผู้ดูแลสูงสุดเท่านั้นที่สามารถสร้างผู้ใช้ได้' });
     }
 
     const sheet = getUsersSheet();
@@ -275,6 +278,7 @@ function doPost(e) {
     const newUsername = body.username?.trim();
     const newPassword = body.password?.trim();
     const newRole = body.role?.trim();
+    const newDisplayName = body.displayName?.trim() || newUsername;
 
     if (!newUsername || !newPassword || !newRole) {
       return jsonResp({ status: 'error', message: 'กรุณากรอกข้อมูลให้ครบ (username, password, role)' });
@@ -290,11 +294,11 @@ function doPost(e) {
       newUsername,
       newPassword,
       newRole,
-      newUsername + '_display',
+      newDisplayName,
       new Date().toISOString()
     ]);
 
-    logEvent(username, 'create_user', newUsername, { role: newRole });
+    logEvent(adminUser, 'create_user', newUsername, { role: newRole });
     return jsonResp({ status: 'ok', message: 'ผู้ใช้ถูกสร้างสำเร็จ', user: { username: newUsername, role: newRole } });
   }
 
@@ -555,6 +559,154 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
       }
     }
     return jsonResp({ status: 'error', message: 'Ref not found' });
+  }
+
+  // ===== UPDATE USER (SUPERADMIN ONLY) =====
+  if (action === 'updateUser') {
+    if (!hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะผู้ดูแลสูงสุดเท่านั้นที่สามารถแก้ไขผู้ใช้ได้' });
+    }
+
+    const targetUser = body.targetUser;
+    if (!targetUser) return jsonResp({ status: 'error', message: 'กรุณาระบุผู้ใช้ที่ต้องการแก้ไข' });
+
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const usernameIdx = headers.indexOf('username');
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][usernameIdx]).toLowerCase() === String(targetUser).toLowerCase()) {
+        const row = i + 1;
+        if (body.role !== undefined) {
+          sheet.getRange(row, headers.indexOf('role') + 1).setValue(body.role);
+        }
+        if (body.displayName !== undefined) {
+          sheet.getRange(row, headers.indexOf('displayName') + 1).setValue(body.displayName);
+        }
+        if (body.newPassword) {
+          sheet.getRange(row, headers.indexOf('password') + 1).setValue(body.newPassword);
+        }
+        logEvent(username, 'update_user', targetUser, { role: body.role, displayName: body.displayName }, 'success');
+        return jsonResp({ status: 'ok', message: 'อัปเดตผู้ใช้สำเร็จ' });
+      }
+    }
+    return jsonResp({ status: 'error', message: 'ไม่พบผู้ใช้ที่ระบุ' });
+  }
+
+  // ===== DELETE USER (SUPERADMIN ONLY) =====
+  if (action === 'deleteUser') {
+    if (!hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'เฉพาะผู้ดูแลสูงสุดเท่านั้นที่สามารถลบผู้ใช้ได้' });
+    }
+
+    const targetUser = body.targetUser;
+    if (!targetUser) return jsonResp({ status: 'error', message: 'กรุณาระบุผู้ใช้ที่ต้องการลบ' });
+    if (String(targetUser).toLowerCase() === String(username).toLowerCase()) {
+      return jsonResp({ status: 'error', message: 'ไม่สามารถลบตัวเองได้' });
+    }
+
+    const sheet = getUsersSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const usernameIdx = headers.indexOf('username');
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][usernameIdx]).toLowerCase() === String(targetUser).toLowerCase()) {
+        sheet.deleteRow(i + 1);
+        logEvent(username, 'delete_user', targetUser, {}, 'success');
+        return jsonResp({ status: 'ok', message: 'ลบผู้ใช้สำเร็จ' });
+      }
+    }
+    return jsonResp({ status: 'error', message: 'ไม่พบผู้ใช้ที่ระบุ' });
+  }
+
+  // ===== UPDATE BOOKING (SUPERADMIN/ADMIN) =====
+  if (action === 'updateBooking') {
+    if (!hasPermission(username, 'approve') && !hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'ไม่มีสิทธิ์แก้ไขการจอง' });
+    }
+
+    if (!body.ref) return jsonResp({ status: 'error', message: 'กรุณาระบุเลขอ้างอิง' });
+
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const refIdx = headers.indexOf('ref');
+
+    const updatableFields = [
+      'visitorName', 'visitorPhone', 'visitorId', 'relation',
+      'prisonerName', 'prisonerId', 'wing', 'visitDate',
+      'visitorCount', 'total', 'status'
+    ];
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+        const row = i + 1;
+        const changes = {};
+        updatableFields.forEach(field => {
+          if (body[field] !== undefined) {
+            const colIdx = headers.indexOf(field);
+            if (colIdx >= 0) {
+              sheet.getRange(row, colIdx + 1).setValue(body[field]);
+              changes[field] = body[field];
+            }
+          }
+        });
+        logEvent(username, 'update_booking', body.ref, changes, 'success');
+        return jsonResp({ status: 'ok', message: 'แก้ไขการจองสำเร็จ' });
+      }
+    }
+    return jsonResp({ status: 'error', message: 'ไม่พบการจองที่ระบุ' });
+  }
+
+  // ===== SAVE SETTINGS =====
+  if (action === 'saveSettings') {
+    if (!hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'ไม่มีสิทธิ์บันทึกตั้งค่า' });
+    }
+
+    try {
+      const scriptProps = PropertiesService.getScriptProperties();
+      const settings = body.settings || {};
+      settings._savedBy = username;
+      settings._savedAt = new Date().toISOString();
+      scriptProps.setProperty('admin_settings', JSON.stringify(settings));
+      logEvent(username, 'save_settings', '', settings, 'success');
+      return jsonResp({ status: 'ok', message: 'บันทึกตั้งค่าสำเร็จ' });
+    } catch (e) {
+      return jsonResp({ status: 'error', message: 'ไม่สามารถบันทึกตั้งค่าได้: ' + e.toString() });
+    }
+  }
+
+  // ===== ADD NOTE =====
+  if (action === 'addNote') {
+    if (!body.ref || !body.note) {
+      return jsonResp({ status: 'error', message: 'กรุณาระบุเลขอ้างอิงและหมายเหตุ' });
+    }
+
+    const sheet = getNotesSheet();
+    const note = body.note;
+    sheet.appendRow([
+      body.ref,
+      note.text || '',
+      note.user || username,
+      note.timestamp || new Date().toLocaleString('th-TH'),
+      new Date().toISOString()
+    ]);
+
+    logEvent(username, 'add_note', body.ref, { text: note.text }, 'success');
+    return jsonResp({ status: 'ok', message: 'เพิ่มหมายเหตุสำเร็จ' });
+  }
+
+// ===== GET USERS (POST — same as GET) =====
+  if (action === 'getUsers') {
+    return jsonResp({ status: 'ok', users: getUsers() });
+  }
+
+// ===== GET ROLES (POST — same as GET) =====
+  if (action === 'getRoles') {
+    return jsonResp({ status: 'ok', roles: getRoles() });
   }
 
   return jsonResp({ status: 'error', message: 'Unknown action' });
@@ -879,6 +1031,50 @@ function requirePermission(username, perm) {
   if (!hasPermission(username, perm)) {
     throw new Error('Permission denied: ' + perm);
   }
+}
+
+// ===== NOTES SHEET =====
+function getNotesSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(NOTES_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(NOTES_SHEET);
+    ensureNotesHeaders(sheet);
+  }
+  return sheet;
+}
+
+function ensureNotesHeaders(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  const headers = ['ref', 'text', 'user', 'timestamp', 'createdAt'];
+  sheet.appendRow(headers);
+  const range = sheet.getRange(1, 1, 1, headers.length);
+  range.setFontWeight('bold');
+  range.setBackground('#185FA5');
+  range.setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
+}
+
+// ===== SETTINGS SHEET (backup of ScriptProperties) =====
+function getSettingsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SETTINGS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(SETTINGS_SHEET);
+    ensureSettingsHeaders(sheet);
+  }
+  return sheet;
+}
+
+function ensureSettingsHeaders(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  const headers = ['key', 'value', 'savedBy', 'savedAt'];
+  sheet.appendRow(headers);
+  const range = sheet.getRange(1, 1, 1, headers.length);
+  range.setFontWeight('bold');
+  range.setBackground('#185FA5');
+  range.setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
 }
 
 function jsonResp(obj) {
