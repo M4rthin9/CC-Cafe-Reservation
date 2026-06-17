@@ -595,6 +595,7 @@ button:active:not(:disabled), .refresh-btn:active:not(:disabled), .btn-approve:a
 .btn-print-vinai:hover { box-shadow: 0 4px 12px rgba(194, 154, 56, 0.25); }
 .empty-state { text-align: center; padding: 3rem; color: var(--text2); }
 .loading-state { text-align: center; padding: 2rem; color: var(--text2); }
+.error-state { text-align: center; padding: 2rem; color: #dc2626; }
 .spinner-sm { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

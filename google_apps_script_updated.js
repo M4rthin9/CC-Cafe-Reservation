@@ -17,16 +17,16 @@ const ROLES = {
 };
 
 const AVAILABLE_PERMISSIONS = [
-  'approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 
-  'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 
-  'manage_users', 'view_eventlog'
+  'approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'cancel', 'confirm_payment',
+  'export', 'manage_users', 'manage_settings', 'print', 'reject_payment', 'view_detail',
+  'view_eventlog', 'view_slip', 'visitor_approval'
 ];
 
 const PERMISSIONS = {
-  Superadmin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'view_eventlog'],
-  Admin: ['approve', 'reject', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
+  Superadmin: ['approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'manage_settings', 'view_eventlog'],
+  Admin: ['approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
-  Vinai: ['approve', 'view_slip', 'view_detail'],
+  Vinai: ['approve_discipline', 'reject_discipline', 'view_slip', 'view_detail'],
   Tadtel: ['approve_participant', 'visitor_approval', 'view_slip', 'view_detail'],
   User: ['print']
 };
@@ -701,12 +701,12 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
 
 // ===== GET USERS (POST — same as GET) =====
   if (action === 'getUsers') {
-    return jsonResp({ status: 'ok', users: getUsers() });
+    return jsonResp({ status: 'ok', users: getAllUsers() });
   }
-
+  
 // ===== GET ROLES (POST — same as GET) =====
   if (action === 'getRoles') {
-    return jsonResp({ status: 'ok', roles: getRoles() });
+    return jsonResp({ status: 'ok', roles: getRolesList() });
   }
 
   return jsonResp({ status: 'error', message: 'Unknown action' });
@@ -901,7 +901,12 @@ function seedDefaultUsers(sheet) {
     ['superadmin', 'SuperAdmin@10900', 'Superadmin', 'ผู้ดูแลระบบ', now],
     ['finance', 'Finance@10900', 'Finance', 'การเงิน', now],
     ['vinai', 'Vinai@10900', 'Vinai', 'ตรวจสอบวินัย', now],
-    ['tadtel', 'Tadtel@10900', 'Tadtel', 'ฝ่ายทัณฑ์', now]
+    ['cida', 'Cida@10900', 'Tadtel', 'ฝ่ายทัณฑ์', now],
+    ['vinai001', 'Vinai@123', 'Vinai', 'พี่เหน่ง', now],
+    ['vinai002', 'Vinai@123', 'Vinai', 'พี่แมน', now],
+    ['admin', 'Admin@123', 'Admin', 'นายเสกสรรค์ ประจำสุข', now],
+    ['cida001', 'Cida@123', 'Tadtel', 'พี่ก่ำ', now],
+    ['cida002', 'Cida@123', 'Admin', 'พี่ฟ้า', now]
   ];
   defaultUsers.forEach(user => sheet.appendRow(user));
 }
@@ -939,20 +944,36 @@ function getRolesSheet() {
   let sheet = ss.getSheetByName('Roles');
   if (!sheet) {
     sheet = ss.insertSheet('Roles');
-    ensureRolesHeaders(sheet);
   }
+  ensureRolesHeaders(sheet);
   return sheet;
 }
 
 function ensureRolesHeaders(sheet) {
-  if (sheet.getLastRow() > 0) return;
   const headers = ['roleName', ...AVAILABLE_PERMISSIONS];
-  sheet.appendRow(headers);
-  const range = sheet.getRange(1, 1, 1, headers.length);
-  range.setFontWeight('bold');
-  range.setBackground('#185FA5');
-  range.setFontColor('#ffffff');
-  sheet.setFrozenRows(1);
+  
+  // Ensure header row exists
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    const range = sheet.getRange(1, 1, 1, headers.length);
+    range.setFontWeight('bold');
+    range.setBackground('#185FA5');
+    range.setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+  }
+  
+  // Seed default roles from PERMISSIONS object if no role data rows exist
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Object.keys(PERMISSIONS).forEach(roleName => {
+      const permissions = PERMISSIONS[roleName];
+      const rowValues = [roleName];
+      AVAILABLE_PERMISSIONS.forEach(perm => {
+        rowValues.push(permissions.includes(perm) ? true : false);
+      });
+      sheet.appendRow(rowValues);
+    });
+  }
 }
 
 
@@ -1008,7 +1029,7 @@ function isFirstTimeLogin(username) {
   if (!user) return false;
   
   // Check if user has default password (indicating first time login)
-  const defaultPasswords = ['SuperAdmin@10900', 'Finance@10900', 'Vinai@10900', 'Tadtel@10900'];
+  const defaultPasswords = ['SuperAdmin@10900', 'Finance@10900', 'Vinai@10900', 'Tadtel@10900', 'Admin@123', 'Vinai@123', 'Cida@123'];
   return defaultPasswords.includes(String(user.password));
 }
 

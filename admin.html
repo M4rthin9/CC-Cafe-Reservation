@@ -6,7 +6,7 @@
 <title>หน้าเจ้าหน้าที่ — ตรวจสอบการจอง</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/css/admin.css">
-<link rel="stylesheet" href="src/css/chatbot.css">
+
 </head>
 <body>
 
@@ -61,10 +61,11 @@
          <div style="font-size:12px;opacity:0.8">ทัณฑสถานบำบัดพิเศษกลาง</div>
        </div>
        <div class="topbar-right">
-         <div class="notif-bell" id="notifBell" style="display:none;cursor:pointer;padding:6px 10px;border-radius:8px;transition:background 0.15s;position:relative;" onclick="toggleNotifPanel()" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background=''">
-           🔔<span class="notif-badge" id="notifBadge" style="display:none;"></span>
-         </div>
-         <span id="topDate" style="font-size:13px;opacity:0.85"></span>
+<div class="notif-bell" id="notifBell" style="display:none;cursor:pointer;padding:6px 10px;border-radius:8px;transition:background 0.15s;position:relative;" onclick="toggleNotifPanel()" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background=''">
+            🔔<span class="notif-badge" id="notifBadge" style="display:none;"></span>
+          </div>
+          <div class="notif-panel" id="notifPanel" style="display:none;position:absolute;top:40px;right:0;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;width:300px;max-height:400px;overflow-y:auto;z-index:999;"></div>
+          <span id="topDate" style="font-size:13px;opacity:0.85"></span>
        </div>
      </div>
 
@@ -412,6 +413,10 @@
               <select id="addUserRole" class="filter-select" style="width:100%;"></select>
             </div>
             <div>
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">ชื่อที่แสดง</label>
+              <input type="text" id="addUserDisplayName" class="search-box" placeholder="ชื่อที่แสดง" style="width:100%;">
+            </div>
+            <div>
               <button class="btn-approve" onclick="createAddUser()" style="width:100%;">💾 สร้างผู้ใช้</button>
             </div>
           </div>
@@ -451,23 +456,38 @@
               <option value="10" selected>10</option>
               <option value="20">20</option>
               <option value="50">50</option>
-            </select>
-          </div>
-          <div style="font-size:14px;font-weight:600;margin:16px 0 12px;border-top:1px solid var(--border);padding-top:16px;">🔔 การแจ้งเตือน</div>
-          <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="settingsNotifEnabled" checked style="cursor:pointer;">
-            <label for="settingsNotifEnabled" style="font-size:13px;cursor:pointer;">แสดงการแจ้งเตือนในแถบด้านบน</label>
-          </div>
-          <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;display:flex;gap:8px;">
-            <button class="btn-approve" onclick="saveSettings()">💾 บันทึกตั้งค่า</button>
-            <button class="btn-cancel" onclick="renderSettingsView()">↺ รีเซ็ต</button>
-          </div>
-        </div>
-      </div>
+</select>
+           </div>
+           <div style="font-size:14px;font-weight:600;margin:16px 0 12px;border-top:1px solid var(--border);padding-top:16px;">🔔 การแจ้งเตือน</div>
+           <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+             <input type="checkbox" id="settingsNotifEnabled" checked style="cursor:pointer;">
+             <label for="settingsNotifEnabled" style="font-size:13px;cursor:pointer;">แสดงการแจ้งเตือนในแถบด้านบน</label>
+           </div>
+           <div style="font-size:14px;font-weight:600;margin:16px 0 12px;border-top:1px solid var(--border);padding-top:16px;">🔔 การแจ้งเตือนเพิ่มเติม</div>
+           <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+             <input type="checkbox" id="settingsEmailNotif" style="cursor:pointer;">
+             <label for="settingsEmailNotif" style="font-size:13px;cursor:pointer;">แจ้งเตือนทางอีเมล (เมื่อมีการจองใหม่)</label>
+           </div>
+           <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+             <input type="checkbox" id="settingsSoundNotif" style="cursor:pointer;">
+             <label for="settingsSoundNotif" style="font-size:13px;cursor:pointer;">เสียงแจ้งเตือน</label>
+           </div>
 
-    </div>
-  </div>
-</div>
+           <div style="font-size:14px;font-weight:600;margin:16px 0 12px;border-top:1px solid var(--border);padding-top:16px;">🎨 การแสดงผล</div>
+           <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+             <input type="checkbox" id="settingsDarkMode" style="cursor:pointer;">
+             <label for="settingsDarkMode" style="font-size:13px;cursor:pointer;">โหมดมืด</label>
+           </div>
+           <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;display:flex;gap:8px;">
+             <button class="btn-approve" onclick="saveSettings()">💾 บันทึกตั้งค่า</button>
+             <button class="btn-cancel" onclick="renderSettingsView()">↺ รีเซ็ต</button>
+           </div>
+         </div>
+       </div>
+
+     </div>
+   </div>
+ </div>
 
 <!-- Slip Modal -->
 <div class="modal-bg" id="modalBg" onclick="closeModal(event)">
@@ -502,29 +522,9 @@
   </div>
 </div>
 
-<a href="#" class="chat-button" id="chatButton" aria-label="เปิดแชทบอท">💬</a>
+  <script src="src/js/admin.js" defer></script>
 
-<div class="chat-modal" id="chatModal">
-  <div class="chat-header">
-    <h3>M4RTHIN9 AI</h3>
-    <button class="chat-close" id="chatClose" aria-label="ปิดแชท">×</button>
-  </div>
-  <div class="chat-messages" id="chatMessages"></div>
-<div class="chat-quick">
-    <button class="quick-q-btn" data-question="ค่าใช้จ่ายเท่าไหร่">💰 ค่าใช้จ่าย</button>
-    <button class="quick-q-btn" data-question="จองยังไง">📋 จองยังไง</button>
-    <button class="quick-q-btn" data-question="เช็คสถานะยังไง">🔍 เช็คสถานะ</button>
-  </div>
-  <div class="chat-input-area">
-    <input type="text" class="chat-input" id="chatInput" placeholder="พิมพ์คำถาม..." autocomplete="off">
-    <button class="chat-send" id="chatSend" aria-label="ส่ง">➤</button>
-  </div>
-</div>
-
-<script src="src/js/admin.js" defer></script>
-<script src="src/js/chatbot.js" defer></script>
-
-<!-- Bottom Navigation for Mobile -->
+  <!-- Bottom Navigation for Mobile -->
   <nav class="bottom-nav" id="bottomNav" style="display:none">
     <a href="#" class="bottom-nav-item active" data-view="home" onclick="switchView('home');return false">🏠<br><span>ภาพรวม</span></a>
     <a href="#" class="bottom-nav-item" data-view="reservations" onclick="switchView('reservations');return false">📋<br><span>รายการ</span></a>

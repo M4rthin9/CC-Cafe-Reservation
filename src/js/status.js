@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwc-ughXcNPLuEuWDwFl3NLalPCqjlyKStazp-okNHH0grJXLiKq2sqHfHjJZlEErqcgA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSTFM7M-pXU_dDAe051sjzbF4YY2a97mnMl9ALJ76XcQiXbzzaMo0F5Q3n2lULwAgMaQ/exec';
 const STAFF_PASS = '10900';
 
 // ===== SAFE FETCH WRAPPER =====

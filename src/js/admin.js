@@ -8,8 +8,8 @@ function toLocalDateStr(date) {
 
 // ===== CONFIG =====
 const PERMISSIONS = {
-  Superadmin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'manage_settings', 'view_eventlog'],
-  Admin: ['approve', 'approve_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
+  Superadmin: ['approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'manage_settings', 'view_eventlog'],
+  Admin: ['approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
   Finance: ['confirm_payment', 'reject_payment', 'cancel', 'view_slip', 'view_detail'],
   Vinai: ['approve_discipline', 'reject_discipline', 'view_slip', 'view_detail'],
   Tadtel: ['approve_participant', 'visitor_approval', 'view_slip', 'view_detail'],
@@ -26,7 +26,7 @@ const SIDEBAR_MENU = {
   User: ['home']
 };
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwc-ughXcNPLuEuWDwFl3NLalPCqjlyKStazp-okNHH0grJXLiKq2sqHfHjJZlEErqcgA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSTFM7M-pXU_dDAe051sjzbF4YY2a97mnMl9ALJ76XcQiXbzzaMo0F5Q3n2lULwAgMaQ/exec';
 
 // ===== SHARED PRINT STYLES =====
 const PRINT_SHARED_CSS = `
@@ -874,7 +874,7 @@ function renderDashboardHome() {
   });
 
   // Show pipeline for admin roles
-  const pipeline = document.getElementById('approvalPipeline');
+  const pipeline = document.getElementById('statusPipeline');
   if (pipeline && (role === 'Superadmin' || role === 'Admin')) {
     pipeline.style.display = 'block';
   } else if (pipeline) {
@@ -2803,6 +2803,8 @@ function renderDailyDeptReports() {
 }
 
 function fetchRolesList() {
+  const select = document.getElementById('addUserRole');
+  select.innerHTML = '<option value="">กำลังโหลดบทบาท...</option>';
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     redirect: 'follow',
@@ -2814,11 +2816,11 @@ function fetchRolesList() {
       if (data.status === 'ok') {
         populateRoleDropdown(data.roles);
       } else {
-        console.error('Failed to fetch roles:', data.message);
+        showToast('โหลดบทบาทไม่สำเร็จ: ' + data.message, 'error');
       }
     })
     .catch(err => {
-      console.error('Error fetching roles:', err);
+      showToast('เกิดข้อผิดพลาดในการโหลดบทบาท', 'error');
     });
 }
 
@@ -2827,8 +2829,9 @@ function populateRoleDropdown(roles) {
   select.innerHTML = '<option value="">เลือกบทบาท</option>';
   roles.forEach(role => {
     const option = document.createElement('option');
-    option.value = role.roleName;
-    option.textContent = role.roleName;
+    const roleName = role.roleName || role.name || role;
+    option.value = roleName;
+    option.textContent = roleName;
     select.appendChild(option);
   });
 }
@@ -2838,6 +2841,7 @@ function createAddUser() {
   const password = document.getElementById('addUserPassword').value;
   const confirmPassword = document.getElementById('addUserConfirmPassword').value;
   const role = document.getElementById('addUserRole').value;
+  const displayName = document.getElementById('addUserDisplayName').value.trim() || username;
 
   if (!username || !password || !confirmPassword || !role) {
     showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning');
@@ -2857,7 +2861,7 @@ function createAddUser() {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'createUser', username: username, password: password, role: role, displayName: username, adminUser: currentUser.username, pass: currentUser.password })
+    body: JSON.stringify({ action: 'createUser', username: username, password: password, role: role, displayName: displayName, adminUser: currentUser.username, pass: currentUser.password })
   })
     .then(resp => resp.json())
     .then(data => {
@@ -2868,6 +2872,7 @@ function createAddUser() {
         document.getElementById('addUserPassword').value = '';
         document.getElementById('addUserConfirmPassword').value = '';
         document.getElementById('addUserRole').value = '';
+        document.getElementById('addUserDisplayName').value = '';
         // Reload the table
         loadAddUserTable();
       } else {
@@ -2881,6 +2886,10 @@ function createAddUser() {
 }
 
 function loadAddUserTable() {
+  const tbody = document.getElementById('addUserTableBody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="4" class="loading-state">กำลังโหลดข้อมูล...</td></tr>';
+  }
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     redirect: 'follow',
@@ -2892,11 +2901,11 @@ function loadAddUserTable() {
       if (data.status === 'ok') {
         renderAddUserTable(data.users);
       } else {
-        console.error('Failed to fetch users:', data.message);
+        renderAddUserTableError(data.message || 'ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
       }
     })
     .catch(err => {
-      console.error('Error fetching users:', err);
+      renderAddUserTableError('เกิดข้อผิดพลาดในการเชื่อมต่อ');
     });
 }
 
@@ -2909,7 +2918,7 @@ function renderAddUserTable(users) {
   const tbody = document.getElementById('addUserTableBody');
   if (!tbody) return;
 
-  if (users.length === 0) {
+  if (!users || users.length === 0) {
     tbody.innerHTML = '<tr><td colspan="4" class="empty-state">ยังไม่มีผู้ใช้ในระบบ</td></tr>';
     return;
   }
@@ -2925,6 +2934,12 @@ function renderAddUserTable(users) {
       </td>
     </tr>`;
   }).join('');
+}
+
+function renderAddUserTableError(message) {
+  const tbody = document.getElementById('addUserTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" class="error-state">' + escapeHtml(message) + '</td></tr>';
 }
 
 // ===== USER MANAGEMENT =====
@@ -2957,7 +2972,7 @@ async function editUser(username) {
       });
       const rolesData = await rolesResp.json();
       if (rolesData.status === 'ok' && rolesData.roles && rolesData.roles.length > 0) {
-        roles = rolesData.roles.map(r => r.name);
+        roles = rolesData.roles.map(r => r.roleName || r.name || r);
       }
     } catch (e) { /* fallback to default */ }
 
@@ -4442,12 +4457,18 @@ function renderSettingsView() {
   const saved = JSON.parse(localStorage.getItem('cc_settings') || '{}');
   document.getElementById('settingsPageSize').value = saved.pageSize || '10';
   document.getElementById('settingsNotifEnabled').checked = saved.notifEnabled !== false;
+  document.getElementById('settingsEmailNotif').checked = saved.emailNotif || false;
+  document.getElementById('settingsSoundNotif').checked = saved.soundNotif || false;
+  document.getElementById('settingsDarkMode').checked = saved.darkMode || false;
 }
 
 async function saveSettings() {
   const settings = {
     pageSize: document.getElementById('settingsPageSize').value,
     notifEnabled: document.getElementById('settingsNotifEnabled').checked,
+    emailNotif: document.getElementById('settingsEmailNotif').checked,
+    soundNotif: document.getElementById('settingsSoundNotif').checked,
+    darkMode: document.getElementById('settingsDarkMode').checked,
     savedAt: new Date().toISOString(),
     savedBy: currentUser ? currentUser.username : 'unknown'
   };
