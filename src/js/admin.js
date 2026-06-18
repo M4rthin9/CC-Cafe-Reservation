@@ -1532,7 +1532,7 @@ async function updateVisitorApproval(idx, pidx, val) {
   const oldTotal = row.total;
 
   let approvedRel = ((row.visitorApproved || '') === 'yes' ? 1 : 0);
-  let total = 1000; // main visitor
+  let total = 2000; // main visitor (1000) + prisoner (1000)
   if (row.extraVisitorApproved && row.extraVisitorNames) {
     const extras = parseExtraVisitors(row);
     const approvals = String(row.extraVisitorApproved).split(';;');
@@ -1931,7 +1931,7 @@ async function approveAllVisitorsInDetail(idx) {
   }
 
   // Calculate visitor count and total with child pricing
-  let total = 1000; // main visitor
+  let total = 2000; // main visitor (1000) + prisoner (1000)
   extras.forEach(v => {
     let fee = 1000;
     if (v.relation === 'บุตร / ธิดา') {

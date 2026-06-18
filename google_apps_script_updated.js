@@ -502,15 +502,44 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     if (body.visitorApproved !== undefined) sheet.getRange(row, vaIdx + 1).setValue(body.visitorApproved);
     if (body.extraVisitorApproved !== undefined) sheet.getRange(row, evaIdx + 1).setValue(body.extraVisitorApproved);
 
-    // Recalc price
+    // Recalc price with child discount support (0-4 free, 5-8 = 500, 9+ = 1000)
     const mainApproved = (body.visitorApproved || '').toString().trim().toLowerCase() === 'yes' ? 1 : 0;
+    let correctTotal = 2000; // main visitor (1000) + prisoner (1000)
     let extraYesCount = 0;
     if (body.extraVisitorApproved) {
-      extraYesCount = String(body.extraVisitorApproved).split(';;').filter(v => (v || '').toString().trim().toLowerCase() === 'yes').length;
+      const allApprovals = String(body.extraVisitorApproved).split(';;');
+      extraYesCount = allApprovals.filter(v => (v || '').trim().toLowerCase() === 'yes').length;
+      const evnIdx = headers.indexOf('extraVisitorNames');
+      if (evnIdx > -1 && data[rowIndex][evnIdx]) {
+        const raw = String(data[rowIndex][evnIdx]);
+        if (raw.includes(';;')) {
+          const extras = raw.split(';;').map(e => {
+            const p = e.split('|');
+            return { name: (p[0] || '').trim(), id: (p[1] || '').trim(), relation: (p[2] || '').trim(), age: (p[3] || '').trim() };
+          }).filter(e => e.name);
+          let extraFeeSum = 0;
+          extras.forEach((v, idx) => {
+            if ((allApprovals[idx] || '').trim().toLowerCase() === 'yes') {
+              let fee = 1000;
+              if (v.relation === 'บุตร / ธิดา') {
+                const a = parseInt(v.age, 10);
+                if (!isNaN(a)) {
+                  if (a < 5) fee = 0;
+                  else if (a <= 8) fee = 500;
+                }
+              }
+              extraFeeSum += fee;
+            }
+          });
+          correctTotal += extraFeeSum;
+        } else {
+          correctTotal += extraYesCount * 1000;
+        }
+      } else {
+        correctTotal += extraYesCount * 1000;
+      }
     }
-    const approvedRelatives = mainApproved + extraYesCount;
-    const correctVisitorCount = approvedRelatives;
-    const correctTotal = (approvedRelatives + 1) * 1000;
+    const correctVisitorCount = mainApproved + extraYesCount;
 
     const vcIdx = headers.indexOf('visitorCount');
     const tIdx  = headers.indexOf('total');
