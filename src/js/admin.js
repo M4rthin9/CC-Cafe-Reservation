@@ -318,6 +318,7 @@ async function loadData() {
   updateStats();
   buildDateFilter();
   buildWingFilter();
+  setDefaultFormalDate();
   renderTable();
   logEvent('load_data', 'โหลดข้อมูลการจอง');
 }
@@ -5056,22 +5057,28 @@ function thaiDateStr(date) {
   return d + ' ' + months[m] + ' พ.ศ. ' + y;
 }
 
+function setDefaultFormalDate() {
+  const dateEl = document.getElementById('formalDate');
+  if (!dateEl) return;
+  const dates = allRows.map(r => r.visitDateISO).filter(Boolean).sort();
+  if (dates.length > 0) {
+    dateEl.value = dates[dates.length - 1];
+  }
+}
+
 function getFormalFilteredRows() {
-  const startEl = document.getElementById('formalStartDate');
-  const endEl = document.getElementById('formalEndDate');
+  const dateEl = document.getElementById('formalDate');
   const wingEl = document.getElementById('formalFilterWing');
   const statusEl = document.getElementById('formalFilterStatus');
 
-  const sd = startEl ? startEl.value : '';
-  const ed = endEl ? endEl.value : '';
+  const fd = dateEl ? dateEl.value : '';
   const fw = wingEl ? wingEl.value : '';
   const fs = statusEl ? statusEl.value : '';
 
   return allRows.filter(r => {
     if (fs && normalizeStatus(r.status) !== fs) return false;
     if (fw && (r.wing || '') !== fw) return false;
-    if (sd && (r.visitDate || r.visitDateISO) < sd) return false;
-    if (ed && (r.visitDate || r.visitDateISO) > ed) return false;
+    if (fd && (r.visitDateISO || r.visitDate) !== fd) return false;
     return true;
   });
 }
@@ -5080,61 +5087,55 @@ function renderFormalReportsView() {
   const container = document.getElementById('formalReportsContent');
   if (!container) return;
 
+  const dateEl = document.getElementById('formalDate');
+  if (!dateEl || !dateEl.value) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">กรุณาเลือกวันที่จากปฏิทิน แล้วคลิก "แสดงรายงาน"</div>';
+    return;
+  }
+
   const filtered = getFormalFilteredRows();
   if (filtered.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>';
     return;
   }
 
-  const byDate = {};
+  const date = filtered[0].visitDate || filtered[0].visitDateISO || 'ไม่ระบุวันที่';
+
+  let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
+  const prisonerList = [];
   filtered.forEach(r => {
-    const key = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
-    if (!byDate[key]) byDate[key] = [];
-    byDate[key].push(r);
+    const d = computeDeptReportData(r);
+    totalAdults += d.adults;
+    total5_8 += d.kids5_8;
+    totalUnder5 += d.kidsUnder5;
+    if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
+      prisonerList.push({ name: r.prisonerName, id: r.prisonerId, wing: r.wing || '-' });
+    }
   });
-  const sortedDates = Object.keys(byDate).sort();
 
-  let html = '<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">พบ ' + filtered.length + ' รายการ (' + sortedDates.length + ' วันที่)</div>';
+  const totalTables = filtered.length;
+  const totalRelatives = filtered.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
+  const totalPrisoners = prisonerList.length;
 
-  sortedDates.forEach(date => {
-    const rows = byDate[date];
+  let html = '<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">พบ ' + filtered.length + ' รายการ วันที่ ' + date + '</div>';
 
-    let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
-    const prisonerList = [];
-    rows.forEach(r => {
-      const d = computeDeptReportData(r);
-      totalAdults += d.adults;
-      total5_8 += d.kids5_8;
-      totalUnder5 += d.kidsUnder5;
-      if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
-        prisonerList.push({ name: r.prisonerName, id: r.prisonerId, wing: r.wing || '-' });
-      }
-    });
+  html += '<div style="margin-bottom:20px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--bg2);">';
+  html += '<div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:10px;">วันที่ ' + date + '</div>';
 
-    const totalTables = rows.length;
-    const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
-    const totalPrisoners = prisonerList.length;
+  html += buildFormalMiniPreview('disciplinary', prisonerList);
+  html += buildFormalMiniPreview('kitchen', null, { totalTables, totalRelatives, totalPrisoners, totalAdults, total5_8, totalUnder5 });
+  html += buildFormalMiniPreview('table', null, filtered);
 
-    html += '<div style="margin-bottom:20px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--bg2);">';
-    html += '<div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:10px;">วันที่ ' + date + '</div>';
-
-    html += buildFormalMiniPreview('disciplinary', date, prisonerList, rows);
-    html += buildFormalMiniPreview('kitchen', date, null, { totalTables, totalRelatives, totalPrisoners, totalAdults, total5_8, totalUnder5 });
-    html += buildFormalMiniPreview('table', date, null, rows);
-    html += buildFormalMiniPreview('monthly', date, null, null);
-
-    html += '</div>';
-  });
+  html += '</div>';
 
   container.innerHTML = html;
 }
 
-function buildFormalMiniPreview(type, date, data, extra) {
+function buildFormalMiniPreview(type, data, extra) {
   const labels = {
     disciplinary: { title: 'รายงานส่วนทัณฑ์', icon: '🚨', color: '#c62828' },
     kitchen: { title: 'รายงานครัวและเบเกอรี่', icon: '🍽️', color: '#1b5e20' },
-    table: { title: 'รายงานการจัดโต๊ะ', icon: '🪑', color: '#e65100' },
-    monthly: { title: 'รายงานสรุปประจำเดือน', icon: '📊', color: '#1565c0' }
+    table: { title: 'รายงานการจัดโต๊ะ', icon: '🪑', color: '#e65100' }
   };
   const l = labels[type];
   if (!l) return '';
@@ -5145,8 +5146,6 @@ function buildFormalMiniPreview(type, date, data, extra) {
     detail = extra.totalTables + ' โต๊ะ, ' + (extra.totalRelatives + extra.totalPrisoners) + ' คน';
   } else if (type === 'table' && extra) {
     detail = extra.length + ' โต๊ะ';
-  } else if (type === 'monthly') {
-    detail = 'สรุปภาพรวมทั้งเดือน';
   }
   return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee;">' +
     '<span style="font-size:13px;"><span style="color:' + l.color + ';">' + l.icon + '</span> ' + l.title + '</span>' +
@@ -5154,33 +5153,16 @@ function buildFormalMiniPreview(type, date, data, extra) {
 }
 
 function printFormalReport() {
+  const dateEl = document.getElementById('formalDate');
+  if (!dateEl || !dateEl.value) { showToast('กรุณาเลือกวันที่ก่อนพิมพ์', 'warning'); return; }
+
   const filtered = getFormalFilteredRows();
   if (filtered.length === 0) { showToast('ไม่มีข้อมูลสำหรับพิมพ์', 'warning'); return; }
 
-  const byDate = {};
-  filtered.forEach(r => {
-    const key = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
-    if (!byDate[key]) byDate[key] = [];
-    byDate[key].push(r);
-  });
-  const sortedDates = Object.keys(byDate).sort();
-  const startDate = sortedDates[0] || '';
-  const endDate = sortedDates[sortedDates.length - 1] || '';
+  const date = filtered[0].visitDate || filtered[0].visitDateISO || 'ไม่ระบุวันที่';
 
   const wingEl = document.getElementById('formalFilterWing');
   const wingLabel = wingEl && wingEl.value ? ' แดน' + wingEl.value : '';
-
-  // Build all daily sections
-  let allPagesHtml = '';
-  sortedDates.forEach((date, idx) => {
-    const rows = byDate[date];
-    if (idx > 0) allPagesHtml += '<div class="page-break"></div>';
-    allPagesHtml += buildDailyFormalContent(date, rows);
-  });
-
-  // Add monthly summary as last page
-  allPagesHtml += '<div class="page-break"></div>';
-  allPagesHtml += buildMonthlyFormalPage(filtered, startDate, endDate);
 
   const printContainer = document.getElementById('formalReportPrintPage');
   if (!printContainer) return;
@@ -5188,9 +5170,9 @@ function printFormalReport() {
   const title = 'รายงานผลการดำเนินกิจกรรมการเยี่ยมผู้ต้องขัง';
 
   const fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + FORMAL_PRINT_CSS + '</style></head><body>' +
-    buildLetterhead(title, wingLabel, startDate, endDate) +
-    allPagesHtml +
-    buildFromClause() +
+    buildLetterhead(title, wingLabel, date) +
+    buildDailyFormalContent(date, filtered) +
+    buildFromClause(date) +
     buildSignatureBlock() +
     '</body></html>';
 
@@ -5204,7 +5186,7 @@ function printFormalReport() {
   setTimeout(() => { printWindow.print(); }, 500);
 }
 
-function buildLetterhead(title, wingLabel, startDate, endDate) {
+function buildLetterhead(title, wingLabel, visitDate) {
   const dept = 'เรือนจำจําลอง CC คาเฟ่';
   const addr1 = 'เลขที่ ๑ ถนนจําลอง ตําบลจําลอง';
   const addr2 = 'อําเภอจําลอง จังหวัดจําลอง ๑๐๐๐๐';
@@ -5234,14 +5216,13 @@ function buildLetterhead(title, wingLabel, startDate, endDate) {
   html += '<div class="attn-line"><span class="label">เรียน </span><span class="value">ผู้บัญชาการเรือนจําจําลอง CC คาเฟ่</span></div>';
 
   // Body opening
-  const dateStr = startDate === endDate ? 'เมื่อวันที่ ' + startDate : 'ระหว่างวันที่ ' + startDate + ' ถึง ' + endDate;
   html += '<div class="content-body">';
-  html += '<p>ตามที่เรือนจําจําลอง CC คาเฟ่ ได้ดำเนินกิจกรรมการเยี่ยมผู้ต้องขังตามโครงการ Chance &amp; Change Cafe ' + dateStr + ' นั้น ในการนี้ฝ่ายที่เกี่ยวข้องได้ดำเนินการจัดกิจกรรมและมีรายละเอียดสรุปได้ดังนี้</p>';
+  html += '<p>ตามที่เรือนจําจําลอง CC คาเฟ่ ได้ดำเนินกิจกรรมการเยี่ยมผู้ต้องขังตามโครงการ Chance &amp; Change Cafe เมื่อวันที่ ' + visitDate + ' นั้น ในการนี้ฝ่ายที่เกี่ยวข้องได้ดำเนินการจัดกิจกรรมและมีรายละเอียดสรุปได้ดังนี้</p>';
 
   return html;
 }
 
-function buildFromClause() {
+function buildFromClause(visitDate) {
   return '<p>จึงเรียนมาเพื่อโปรดทราบ</p>';
 }
 
@@ -5387,64 +5368,6 @@ function buildTableSection(date, rows) {
   html += '<p><b>รวมทั้งสิ้น ' + totalTables + ' โต๊ะ จำนวน ' + grandTotal + ' คน</b></p>';
   return html;
 }
-
-function buildMonthlyFormalPage(rows, startDate, endDate) {
-  const byDate = {};
-  rows.forEach(r => {
-    const key = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
-    if (!byDate[key]) byDate[key] = [];
-    byDate[key].push(r);
-  });
-  const sortedDates = Object.keys(byDate).sort();
-
-  let totalTables = 0, totalRelatives = 0, totalPrisoners = 0;
-  const prisonerSet = new Set();
-  let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
-
-  sortedDates.forEach(date => {
-    const dateRows = byDate[date];
-    totalTables += dateRows.length;
-    dateRows.forEach(r => {
-      totalRelatives += parseInt(r.visitorCount) || 1;
-      if (r.prisonerId) prisonerSet.add(r.prisonerId);
-      const d = computeDeptReportData(r);
-      totalAdults += d.adults;
-      total5_8 += d.kids5_8;
-      totalUnder5 += d.kidsUnder5;
-    });
-  });
-  totalPrisoners = prisonerSet.size;
-  const grandTotal = totalRelatives + totalTables;
-
-  let dailyRows = '';
-  sortedDates.forEach(date => {
-    const dateRows = byDate[date];
-    const dRelatives = dateRows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
-    const dPrisoners = dateRows.filter(r => r.prisonerName).length;
-    dailyRows += '<tr><td>' + date + '</td><td style="text-align:center;">' + dateRows.length + '</td><td style="text-align:center;">' + dRelatives + '</td><td style="text-align:center;">' + dPrisoners + '</td><td style="text-align:center;">' + (dRelatives + dPrisoners) + '</td></tr>';
-  });
-
-  let html = '<p>สรุปผลการดำเนินงานกิจกรรมการเยี่ยมผู้ต้องขัง ระหว่างวันที่ ' + startDate + ' ถึง ' + endDate + ' รวมทั้งสิ้น ' + sortedDates.length + ' วัน มีรายละเอียดดังนี้</p>';
-
-  html += '<table>';
-  html += '<thead><tr><th>วันที่</th><th>จำนวนโต๊ะ</th><th>จำนวนญาติ</th><th>จำนวนผู้ต้องขัง</th><th>รวมทั้งหมด</th></tr></thead><tbody>';
-  html += dailyRows;
-  html += '</tbody></table>';
-
-  html += '<table style="margin-top:12pt;">';
-  html += '<thead><tr><th>รายการสรุป</th><th>จำนวน</th></tr></thead><tbody>';
-  html += '<tr><td>จำนวนวันที่เปิดให้บริการ</td><td style="text-align:center;">' + sortedDates.length + ' วัน</td></tr>';
-  html += '<tr><td>จำนวนโต๊ะรวมตลอดช่วง</td><td style="text-align:center;">' + totalTables + ' โต๊ะ</td></tr>';
-  html += '<tr><td>จำนวนญาติผู้เยี่ยมรวม</td><td style="text-align:center;">' + totalRelatives + ' คน</td></tr>';
-  html += '<tr><td>จำนวนผู้ต้องขังที่เข้าร่วม (ไม่ซ้ำ)</td><td style="text-align:center;">' + totalPrisoners + ' คน</td></tr>';
-  html += '<tr class="total-row"><td>จำนวนผู้เข้าร่วมทั้งหมด</td><td style="text-align:center;">' + grandTotal + ' คน</td></tr>';
-  html += '<tr><td>ผู้ใหญ่ (9 ปีขึ้นไป รวมผู้ต้องขัง)</td><td style="text-align:center;">' + (totalAdults + totalTables) + ' คน</td></tr>';
-  html += '<tr><td>เด็กอายุ 5-8 ปี</td><td style="text-align:center;">' + total5_8 + ' คน</td></tr>';
-  html += '<tr><td>เด็กอายุต่ำกว่า 5 ปี</td><td style="text-align:center;">' + totalUnder5 + ' คน</td></tr>';
-  html += '</tbody></table>';
-  return html;
-}
-
 // ===== END FORMAL REPORTS ENGINE =====
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeEditModal(); } });
