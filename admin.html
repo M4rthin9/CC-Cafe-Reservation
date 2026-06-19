@@ -44,6 +44,7 @@
        <a class="sb-link active" data-view="home" onclick="switchView('home');return false">🏠 <span class="sb-text">ภาพรวม</span></a>
        <a class="sb-link" data-view="reservations" onclick="switchView('reservations');return false">📋 <span class="sb-text">รายการจอง</span></a>
        <a class="sb-link" data-view="reports" onclick="switchView('reports');return false">📊 <span class="sb-text">รายงาน</span></a>
+       <a class="sb-link" data-view="formal-reports" onclick="switchView('formal-reports');return false">📜 <span class="sb-text">รายงานราชการ</span></a>
        <a class="sb-link" data-view="eventlog" onclick="switchView('eventlog');return false">📝 <span class="sb-text">บันทึกการทำงาน</span></a>
        <a class="sb-link" data-view="users" id="sbUsers" style="display:none" onclick="switchView('users');return false">👥 <span class="sb-text">จัดการผู้ใช้</span></a>
        <a class="sb-link" data-view="prisoners" id="sbPrisoners" style="display:none" onclick="switchView('prisoners');return false">🔒 <span class="sb-text">ผู้ต้องขัง</span></a>
@@ -264,13 +265,25 @@
              <option value="เสร็จสิ้น">เสร็จสิ้น</option>
              <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
            </select>
-           <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
-             <option value="">ทุกวัน</option>
-           </select>
+             <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
+              <option value="">ทุกวัน</option>
+            </select>
+            <select class="filter-select" id="filterWing" aria-label="กรองตามแดน" onchange="resetToFirstPage();renderTable()">
+              <option value="">ทุกแดน</option>
+            </select>
            <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄 โหลดใหม่</button>
            <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤 Export CSV</button>
            <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️ พิมพ์รายงาน</button>
-           <button class="btn-print-vinai" onclick="printPrisonerVinaiList()" aria-label="พิมพ์รายชื่อผู้ต้องขัง" id="btnPrintVinai" style="display:none">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
+            <button class="btn-print-vinai" onclick="printPrisonerVinaiList()" aria-label="พิมพ์รายชื่อผู้ต้องขัง" id="btnPrintVinai" style="display:none">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
+            <button class="btn-export" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤 Export CSV (มีเบอร์)</button>
+            <button class="refresh-btn" onclick="syncPrisonerWings()" id="btnSyncWings" style="display:none;background:#7c3aed;">🔄 Sync Wings</button>
+         </div>
+         <div class="controls" style="margin-top:8px;flex-wrap:wrap;">
+            <label style="font-size:12px;color:var(--text2);white-space:nowrap;">ตั้งแต่:</label>
+            <input type="date" id="exportStartDate" class="search-box" style="width:auto;padding:6px 8px;font-size:12px;">
+            <label style="font-size:12px;color:var(--text2);white-space:nowrap;">ถึง:</label>
+            <input type="date" id="exportEndDate" class="search-box" style="width:auto;padding:6px 8px;font-size:12px;">
+            <button class="btn-export" onclick="exportFilteredCSVWithRange()">📤 Export CSV (ช่วงวันที่)</button>
          </div>
 
 <div class="table-wrap">
@@ -332,6 +345,9 @@
           <select class="filter-select" id="reportsFilterDate" onchange="renderReportsView()">
             <option value="">ทุกวัน</option>
           </select>
+          <select class="filter-select" id="reportsFilterWing" onchange="renderReportsView()">
+            <option value="">ทุกแดน</option>
+          </select>
           <button class="refresh-btn" onclick="renderReportsView()">🔄 ดึงข้อมูลรายงาน</button>
         </div>
 
@@ -358,6 +374,50 @@
         <div id="reportsContent">
           <!-- Populated dynamically by JS -->
         </div>
+      </div>
+
+<!-- FORMAL GOVERNMENT REPORTS VIEW -->
+      <div id="view-formal-reports" class="view" style="display:none">
+        <div style="margin-bottom:12px">
+          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">📜 รายงานราชการ</h1>
+          <div style="font-size:13px;color:var(--text2)">แบบรายงานทางการสำหรับหน่วยงานราชการ — พิมพ์เอกสารราชการ</div>
+        </div>
+
+        <div class="controls" style="margin-bottom:16px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-size:12px;color:var(--text2);white-space:nowrap;">จากวันที่:</label>
+            <input type="date" id="formalStartDate" class="search-box" style="width:auto;padding:8px 10px;font-size:13px;">
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-size:12px;color:var(--text2);white-space:nowrap;">ถึงวันที่:</label>
+            <input type="date" id="formalEndDate" class="search-box" style="width:auto;padding:8px 10px;font-size:13px;">
+          </div>
+          <select class="filter-select" id="formalFilterWing">
+            <option value="">ทุกแดน</option>
+          </select>
+          <select class="filter-select" id="formalFilterStatus">
+            <option value="">ทุกสถานะ</option>
+            <option value="รอตรวจสอบวินัย">รอตรวจสอบวินัย</option>
+            <option value="รอตรวจสอบผู้เข้าร่วม">รอตรวจสอบผู้เข้าร่วม</option>
+            <option value="รอชำระเงิน">รอชำระเงิน</option>
+            <option value="ชำระแล้ว">ชำระแล้ว</option>
+            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+            <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+          </select>
+          <select class="filter-select" id="formalReportType">
+            <option value="disciplinary">ส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</option>
+            <option value="kitchen">ครัวและเบเกอรี่</option>
+            <option value="table">การจัดโต๊ะ</option>
+            <option value="monthly">สรุปประจำเดือน</option>
+          </select>
+          <button class="refresh-btn" onclick="renderFormalReportsView()">🔍 แสดงรายงาน</button>
+          <button class="btn-print" onclick="printFormalReport()" id="btnPrintFormal">🖨️ พิมพ์รายงานราชการ</button>
+        </div>
+
+        <div id="formalReportsContent" style="background:#fff;border-radius:8px;border:1px solid var(--border);padding:20px;min-height:200px;">
+          <div style="text-align:center;padding:40px;color:var(--text2);">เลือกวันที่และประเภทรายงาน แล้วคลิก "แสดงรายงาน"</div>
+        </div>
+        <div id="formalReportPrintPage" style="display:none;"></div>
       </div>
 
 <!-- EVENTLOG VIEW -->
@@ -460,6 +520,7 @@
             <input type="file" id="csvFileInput" accept=".csv" style="font-size:13px;">
             <button class="btn-approve" onclick="previewPrisonerCSV()" id="btnPreviewCSV">👁️ แสดงตัวอย่าง</button>
             <button class="btn-approve" onclick="importPrisonerCSV()" id="btnImportCSV" style="display:none;background:var(--green);">💾 ยืนยันนำเข้า</button>
+            <button class="refresh-btn" onclick="syncPrisonerWings()" style="background:#7c3aed;">🔄 Sync Wings (อัปเดตแดนในรายการจอง)</button>
             <span id="csvStatus" style="font-size:12px;color:var(--text2);"></span>
           </div>
         </div>
@@ -571,6 +632,7 @@
     <a href="#" class="bottom-nav-item active" data-view="home" onclick="switchView('home');return false">🏠<br><span>ภาพรวม</span></a>
     <a href="#" class="bottom-nav-item" data-view="reservations" onclick="switchView('reservations');return false">📋<br><span>รายการ</span></a>
     <a href="#" class="bottom-nav-item" data-view="reports" onclick="switchView('reports');return false">📊<br><span>รายงาน</span></a>
+    <a href="#" class="bottom-nav-item" data-view="formal-reports" onclick="switchView('formal-reports');return false">📜<br><span>รายงานราชการ</span></a>
     <a href="#" class="bottom-nav-item" data-view="eventlog" onclick="switchView('eventlog');return false">📝<br><span>บันทึก</span></a>
     <a href="#" class="bottom-nav-item" data-view="users" id="bnUsers" style="display:none" onclick="switchView('users');return false">👥<br><span>ผู้ใช้</span></a>
     <a href="#" class="bottom-nav-item" data-view="prisoners" id="bnPrisoners" style="display:none" onclick="switchView('prisoners');return false">🔒<br><span>ผู้ต้องขัง</span></a>

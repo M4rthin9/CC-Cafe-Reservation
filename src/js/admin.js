@@ -18,15 +18,63 @@ const PERMISSIONS = {
 
 // Sidebar menu visibility by role
 const SIDEBAR_MENU = {
-  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'users', 'prisoners', 'settings'],
-  Admin: ['home', 'reservations', 'reports', 'eventlog', 'prisoners'],
+  Superadmin: ['home', 'reservations', 'reports', 'formal-reports', 'eventlog', 'users', 'prisoners', 'settings'],
+  Admin: ['home', 'reservations', 'reports', 'formal-reports', 'eventlog', 'prisoners'],
   Finance: ['reservations', 'reports'],
   Vinai: ['reservations', 'reports'],
   Tadtel: ['reservations', 'reports'],
   User: ['home']
 };
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwT_GXXBcSiFBhWkaOIS4u7LxGA1bIV2_gxu-xWA1jbYrZoSUCkwXWn6t95yYl0-wKvig/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIKSZFvJwDqyVHoGJl3C16jhnuv_RXWPR68ZSds9bJs3xgFEY0wXsicbG3T5rG78I7gg/exec';
+
+// ===== POLLING FOR REALTIME UPDATES =====
+let pollInterval = null;
+const POLL_INTERVAL_MS = 30000;
+
+function startPolling() {
+  stopPolling();
+  pollInterval = setInterval(() => { pollData(); }, POLL_INTERVAL_MS);
+}
+
+function stopPolling() {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+}
+
+async function pollData() {
+  if (!currentUser) return;
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getAll', username: currentUser.username, password: currentUser.password })
+    });
+    if (!resp.ok) return;
+    const text = await resp.text();
+    const data = JSON.parse(text);
+    if (data.status !== 'ok' || !data.rows) return;
+
+    const oldRefs = allRows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
+    const newRefs = data.rows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
+    if (oldRefs === newRefs) return;
+
+    allRows = data.rows || [];
+    document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
+
+    const activeView = document.querySelector('.view:not([style*="display: none"])');
+    if (activeView) {
+      const viewId = activeView.id.replace('view-', '');
+      if (viewId === 'home') renderDashboardHome();
+      else if (viewId === 'reservations') renderTable();
+      else if (viewId === 'reports') renderReportsView();
+      else if (viewId === 'formal-reports') renderFormalReportsView();
+    }
+  } catch (e) { /* silent */ }
+}
 
 // ===== SHARED PRINT STYLES =====
 const PRINT_SHARED_CSS = `
@@ -163,10 +211,14 @@ async function doLogin() {
     const btnExport = document.getElementById('btnExport');
     const btnPrint = document.getElementById('btnPrint');
     const btnPrintVinai = document.getElementById('btnPrintVinai');
+    const btnExportPhones = document.getElementById('btnExportPhones');
+    const btnSyncWings = document.getElementById('btnSyncWings');
     if (filterStatusEl) filterStatusEl.style.display = isAdminOrSuper ? '' : 'none';
     if (btnExport) btnExport.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrint) btnPrint.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrintVinai) btnPrintVinai.style.display = isAdminOrSuper ? '' : 'none';
+    if (btnExportPhones) btnExportPhones.style.display = isAdminOrSuper ? '' : 'none';
+    if (btnSyncWings) btnSyncWings.style.display = isAdminOrSuper ? '' : 'none';
 
     // Show role-specific sidebar links and bottom nav
     ['sbUsers', 'sbPrisoners', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnSettings'].forEach(id => {
@@ -180,6 +232,7 @@ async function doLogin() {
     switchView(visibleMenu.includes('home') ? 'home' : visibleMenu[0] || 'reservations');
     renderDashboardHome();
     loadData();
+    startPolling();
     showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณ ' + (currentUser.displayName || currentUser.username), 'success');
 
   } catch (e) {
@@ -229,6 +282,7 @@ function doLogout() {
   if (notifBell) notifBell.style.display = 'none';
   const notifPanel = document.getElementById('notifPanel');
   if (notifPanel) notifPanel.style.display = 'none';
+  stopPolling();
   allRows = [];
 }
 
@@ -263,6 +317,7 @@ async function loadData() {
   }
   updateStats();
   buildDateFilter();
+  buildWingFilter();
   renderTable();
   logEvent('load_data', 'โหลดข้อมูลการจอง');
 }
@@ -318,11 +373,26 @@ function buildDateFilter() {
   });
 }
 
+function buildWingFilter() {
+  const wings = [...new Set(allRows.map(r => (r.wing || '').trim()).filter(Boolean))].sort();
+  const sel = document.getElementById('filterWing');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">ทุกแดน</option>';
+  wings.forEach(w => {
+    const o = document.createElement('option');
+    o.value = w; o.textContent = w;
+    if (w === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
 // ===== RENDER TABLE =====
 function renderTable() {
   const q = document.getElementById('searchBox').value.toLowerCase();
   const fs = document.getElementById('filterStatus').value;
   const fd = document.getElementById('filterDate').value;
+  const fw = document.getElementById('filterWing') ? document.getElementById('filterWing').value : '';
   const role = currentUser ? currentUser.role : null;
 
   // Filter by role - each role sees only specific statuses
@@ -342,6 +412,7 @@ function renderTable() {
     }
     if (fs && normalizeStatus(r.status) !== fs) return false;
     if (fd && r.visitDate !== fd) return false;
+    if (fw && (r.wing || '') !== fw) return false;
     if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
     return true;
   });
@@ -526,7 +597,11 @@ function switchView(v) {
     renderTable();
   } else if (v === 'reports') {
     populateReportsDateFilter();
+    populateReportsWingFilter();
     renderReportsView();
+  } else if (v === 'formal-reports') {
+    populateFormalWingFilter();
+    renderFormalReportsView();
   } else if (v === 'eventlog') {
     renderEventlog();
   } else if (v === 'users') {
@@ -2051,6 +2126,132 @@ function exportFilteredCSV() {
   logEvent('export_csv', 'ส่งออกข้อมูลเป็น CSV');
 }
 
+function exportFilteredCSVWithPhones() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const fs = document.getElementById('filterStatus').value;
+  const fd = document.getElementById('filterDate').value;
+
+  const filtered = allRows.filter(r => {
+    if (!r.ref || String(r.ref).trim() === '') return false;
+    if (fs && normalizeStatus(r.status) !== fs) return false;
+    if (fd && r.visitDate !== fd) return false;
+    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    showToast('ไม่มีข้อมูลตาม filter ที่เลือก', 'warning');
+    return;
+  }
+
+  const headers = ['ref', 'timestamp', 'visitorName', 'visitorPhone', 'visitorId', 'relation', 'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitorCount', 'total', 'status', 'extraVisitorNames', 'extraVisitorPhones', 'visitorApproved', 'extraVisitorApproved'];
+  let csvContent = headers.join(',') + '\r\n';
+
+  filtered.forEach(r => {
+    const row = headers.map(h => {
+      let val = r[h] != null ? String(r[h]) : '';
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        val = '"' + val.replace(/"/g, '""') + '"';
+      }
+      return val;
+    });
+    csvContent += row.join(',') + '\r\n';
+  });
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `CC_Cafe_Reservations_WithPhones_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast('ส่งออกไฟล์ CSV (มีเบอร์โทร) สำเร็จ', 'success');
+  logEvent('export_csv_phones', 'ส่งออกข้อมูล CSV พร้อมเบอร์โทร');
+}
+
+async function syncPrisonerWings() {
+  if (!confirm('ดำเนินการ Sync Wings (อัปเดตแดนในรายการจองตามข้อมูลผู้ต้องขังล่าสุด) ใช่หรือไม่?')) return;
+  const btn = document.getElementById('btnSyncWings');
+  if (btn) btn.disabled = true;
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'syncPrisonerWings', username: currentUser.username, password: currentUser.password })
+    });
+    const data = JSON.parse(await resp.text());
+    if (data.status === 'ok') {
+      showToast('Sync Wings สำเร็จ: ' + (data.updated || 0) + ' รายการ', 'success');
+      logEvent('sync_wings', 'Sync ข้อมูลแดน');
+      await loadData();
+      renderTable();
+      renderReportsView();
+      renderFormalReportsView();
+    } else {
+      showToast('Sync Wings ล้มเหลว: ' + (data.message || ''), 'error');
+    }
+  } catch (e) {
+    showToast('Sync Wings Error: ' + e.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function exportFilteredCSVWithRange() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const fs = document.getElementById('filterStatus').value;
+  const fd = document.getElementById('filterDate').value;
+  const fw = document.getElementById('filterWing') ? document.getElementById('filterWing').value : '';
+  const sd = document.getElementById('exportStartDate') ? document.getElementById('exportStartDate').value : '';
+  const ed = document.getElementById('exportEndDate') ? document.getElementById('exportEndDate').value : '';
+
+  const filtered = allRows.filter(r => {
+    if (!r.ref || String(r.ref).trim() === '') return false;
+    if (fs && normalizeStatus(r.status) !== fs) return false;
+    if (fd && r.visitDate !== fd) return false;
+    if (fw && (r.wing || '') !== fw) return false;
+    if (sd && (r.visitDate || r.visitDateISO) < sd) return false;
+    if (ed && (r.visitDate || r.visitDateISO) > ed) return false;
+    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    showToast('ไม่มีข้อมูลตามช่วงวันที่ที่เลือก', 'warning');
+    return;
+  }
+
+  const headers = ['ref', 'timestamp', 'visitorName', 'visitorPhone', 'visitorId', 'relation', 'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitorCount', 'total', 'status', 'extraVisitorNames', 'extraVisitorPhones', 'visitorApproved', 'extraVisitorApproved'];
+  let csvContent = headers.join(',') + '\r\n';
+
+  filtered.forEach(r => {
+    const row = headers.map(h => {
+      let val = r[h] != null ? String(r[h]) : '';
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        val = '"' + val.replace(/"/g, '""') + '"';
+      }
+      return val;
+    });
+    csvContent += row.join(',') + '\r\n';
+  });
+
+  const rangeLabel = (sd || 'start') + '_to_' + (ed || 'end');
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `CC_Cafe_Reservations_${rangeLabel}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast('ส่งออก CSV (ช่วงวันที่) สำเร็จ ' + filtered.length + ' รายการ', 'success');
+  logEvent('export_csv_range', 'ส่งออกข้อมูล CSV ช่วงวันที่');
+}
+
 // ===== HELPER: Parse extra visitors (same logic as detail view) =====
 function parseExtraVisitors(row) {
   if (!row || !row.extraVisitorNames || !String(row.extraVisitorNames).trim()) return [];
@@ -3346,14 +3547,17 @@ function getReportsFilteredRows() {
   const searchEl = document.getElementById('reportsSearchBox');
   const statusEl = document.getElementById('reportsFilterStatus');
   const dateEl = document.getElementById('reportsFilterDate');
+  const wingEl = document.getElementById('reportsFilterWing');
 
   const q = searchEl ? searchEl.value.toLowerCase().trim() : '';
   const fs = statusEl ? statusEl.value : '';
   const fd = dateEl ? dateEl.value : '';
+  const fw = wingEl ? wingEl.value : '';
 
   return allRows.filter(r => {
     if (fs && normalizeStatus(r.status) !== fs) return false;
     if (fd && (r.visitDate !== fd && r.visitDateISO !== fd)) return false;
+    if (fw && (r.wing || '') !== fw) return false;
 
     if (q) {
       const text = [
@@ -3383,6 +3587,32 @@ function populateReportsDateFilter() {
     select.appendChild(opt);
   });
   if (dates.includes(current)) select.value = current;
+}
+
+function populateReportsWingFilter() {
+  const el = document.getElementById('reportsFilterWing');
+  if (!el) return;
+  const wings = [...new Set(allRows.map(r => (r.wing || '').trim()).filter(Boolean))].sort();
+  const cur = el.value;
+  el.innerHTML = '<option value="">ทุกแดน</option>';
+  wings.forEach(w => {
+    const o = document.createElement('option');
+    o.value = w; o.textContent = w;
+    el.appendChild(o);
+  });
+  if (wings.includes(cur)) el.value = cur;
+}
+
+function populateFormalWingFilter() {
+  const el = document.getElementById('formalFilterWing');
+  if (!el) return;
+  const wings = [...new Set(allRows.map(r => (r.wing || '').trim()).filter(Boolean))].sort();
+  el.innerHTML = '<option value="">ทุกแดน</option>';
+  wings.forEach(w => {
+    const o = document.createElement('option');
+    o.value = w; o.textContent = w;
+    el.appendChild(o);
+  });
 }
 
 // ===== NEW: Dedicated Reports View (each department as its own section/page) =====
@@ -4747,6 +4977,482 @@ renderDashboardHome = function () {
   const saved = JSON.parse(localStorage.getItem('cc_settings') || '{}');
   if (saved.pageSize) pageSize = parseInt(saved.pageSize) || 10;
 };
+
+// =====================================================
+// ===== FORMAL GOVERNMENT REPORTS ENGINE =============
+// ===== ตามระเบียบสำนักนายกรัฐมนตรีว่าด้วยงานสารบรรณ พ.ศ. 2526 ====
+// =====================================================
+const FORMAL_PRINT_CSS = `
+  @page { size: A4; margin: 35mm 20mm 20mm 30mm; }
+  @media print {
+    html, body { margin: 0; padding: 0; width:210mm; }
+    * { box-sizing:border-box; }
+  }
+  body {
+    font-family:'TH Sarabun New','Sarabun PSK','Sarabun','Tahoma',sans-serif;
+    font-size:16pt; line-height:1.5; color:#000;
+  }
+  .formal-page { width:160mm; margin:0 auto; padding:0; }
+
+  /* ตราครุฑ */
+  .garuda-wrap { text-align:center; margin-bottom:12pt; }
+  .garuda-img { width:85pt; height:auto; display:inline-block; }
+
+  /* ส่วนราชการเจ้าของหนังสือ และวันที่ */
+  .header-block { margin-bottom:14pt; }
+  .header-block .ref-line { }
+  .header-block .dept-line { }
+  .header-block .addr-line { }
+  .header-block .date-line { text-align:right; margin-top:2pt; }
+
+  /* เรื่อง */
+  .topic-line { margin-bottom:4pt; display:flex; }
+  .topic-line .label { white-space:pre; }
+  .topic-line .value { }
+
+  /* เรียน */
+  .attn-line { margin-bottom:4pt; display:flex; }
+  .attn-line .label { white-space:pre; }
+  .attn-line .value { }
+
+  /* อ้างถึง */
+  .ref-line { margin-bottom:4pt; display:flex; }
+  .ref-line .label { white-space:pre; }
+
+  /* สิ่งที่ส่งมาด้วย */
+  .enclose-line { margin-bottom:8pt; display:flex; }
+  .enclose-line .label { white-space:pre; }
+
+  /* เนื้อหา */
+  .content-body { margin-top:10pt; }
+  .content-body p { text-indent:2.5cm; margin:0 0 8pt 0; }
+  .content-body table { width:100%; border-collapse:collapse; margin:10pt 0; font-size:15pt; }
+  .content-body th, .content-body td { border:1px solid #000; padding:5pt 8pt; text-align:left; vertical-align:top; }
+  .content-body th { font-weight:700; text-align:center; }
+  .content-body .total-row { font-weight:700; }
+  .content-body .center { text-align:center; }
+
+  /* คำลงท้าย */
+  .closing { margin-top:22pt; text-align:right; }
+
+  /* ลายเซ็น */
+  .signature-block { margin-top:16pt; }
+  .signature-table { width:100%; }
+  .signature-table td { width:50%; vertical-align:top; padding:0 10pt; text-align:center; }
+  .signature-table .sign-label { }
+  .signature-table .sign-name { font-weight:700; margin-top:2pt; }
+  .signature-table .sign-pos { }
+  .signature-table .sign-dept { }
+  .signature-table .sign-phone { margin-top:4pt; }
+
+  .page-break { page-break-after:always; }
+`;
+
+function thaiDateStr(date) {
+  const months = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const d = date.getDate();
+  const m = date.getMonth() + 1;
+  const y = date.getFullYear() + 543;
+  return d + ' ' + months[m] + ' พ.ศ. ' + y;
+}
+
+function getFormalFilteredRows() {
+  const startEl = document.getElementById('formalStartDate');
+  const endEl = document.getElementById('formalEndDate');
+  const wingEl = document.getElementById('formalFilterWing');
+  const statusEl = document.getElementById('formalFilterStatus');
+
+  const sd = startEl ? startEl.value : '';
+  const ed = endEl ? endEl.value : '';
+  const fw = wingEl ? wingEl.value : '';
+  const fs = statusEl ? statusEl.value : '';
+
+  return allRows.filter(r => {
+    if (fs && normalizeStatus(r.status) !== fs) return false;
+    if (fw && (r.wing || '') !== fw) return false;
+    if (sd && (r.visitDate || r.visitDateISO) < sd) return false;
+    if (ed && (r.visitDate || r.visitDateISO) > ed) return false;
+    return true;
+  });
+}
+
+function renderFormalReportsView() {
+  const container = document.getElementById('formalReportsContent');
+  if (!container) return;
+
+  const filtered = getFormalFilteredRows();
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>';
+    return;
+  }
+
+  const byDate = {};
+  filtered.forEach(r => {
+    const key = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(r);
+  });
+  const sortedDates = Object.keys(byDate).sort();
+
+  let html = '<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">พบ ' + filtered.length + ' รายการ (' + sortedDates.length + ' วันที่)</div>';
+
+  sortedDates.forEach(date => {
+    const rows = byDate[date];
+
+    let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
+    const prisonerList = [];
+    rows.forEach(r => {
+      const d = computeDeptReportData(r);
+      totalAdults += d.adults;
+      total5_8 += d.kids5_8;
+      totalUnder5 += d.kidsUnder5;
+      if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
+        prisonerList.push({ name: r.prisonerName, id: r.prisonerId, wing: r.wing || '-' });
+      }
+    });
+
+    const totalTables = rows.length;
+    const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
+    const totalPrisoners = prisonerList.length;
+
+    html += '<div style="margin-bottom:20px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--bg2);">';
+    html += '<div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:10px;">วันที่ ' + date + '</div>';
+
+    html += buildFormalMiniPreview('disciplinary', date, prisonerList, rows);
+    html += buildFormalMiniPreview('kitchen', date, null, { totalTables, totalRelatives, totalPrisoners, totalAdults, total5_8, totalUnder5 });
+    html += buildFormalMiniPreview('table', date, null, rows);
+    html += buildFormalMiniPreview('monthly', date, null, null);
+
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function buildFormalMiniPreview(type, date, data, extra) {
+  const labels = {
+    disciplinary: { title: 'รายงานส่วนทัณฑ์', icon: '🚨', color: '#c62828' },
+    kitchen: { title: 'รายงานครัวและเบเกอรี่', icon: '🍽️', color: '#1b5e20' },
+    table: { title: 'รายงานการจัดโต๊ะ', icon: '🪑', color: '#e65100' },
+    monthly: { title: 'รายงานสรุปประจำเดือน', icon: '📊', color: '#1565c0' }
+  };
+  const l = labels[type];
+  if (!l) return '';
+  let detail = '';
+  if (type === 'disciplinary' && data) {
+    detail = 'ผู้ต้องขัง ' + data.length + ' คน';
+  } else if (type === 'kitchen' && extra) {
+    detail = extra.totalTables + ' โต๊ะ, ' + (extra.totalRelatives + extra.totalPrisoners) + ' คน';
+  } else if (type === 'table' && extra) {
+    detail = extra.length + ' โต๊ะ';
+  } else if (type === 'monthly') {
+    detail = 'สรุปภาพรวมทั้งเดือน';
+  }
+  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee;">' +
+    '<span style="font-size:13px;"><span style="color:' + l.color + ';">' + l.icon + '</span> ' + l.title + '</span>' +
+    '<span style="font-size:12px;color:var(--text2);">' + detail + '</span></div>';
+}
+
+function printFormalReport() {
+  const rtype = document.getElementById('formalReportType').value;
+  if (!rtype) { showToast('กรุณาเลือกประเภทรายงาน', 'warning'); return; }
+
+  const filtered = getFormalFilteredRows();
+  if (filtered.length === 0) { showToast('ไม่มีข้อมูลสำหรับพิมพ์', 'warning'); return; }
+
+  const byDate = {};
+  filtered.forEach(r => {
+    const key = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(r);
+  });
+  const sortedDates = Object.keys(byDate).sort();
+  const startDate = sortedDates[0] || '';
+  const endDate = sortedDates[sortedDates.length - 1] || '';
+
+  let allPagesHtml = '';
+
+  if (rtype === 'monthly') {
+    allPagesHtml = buildMonthlyFormalPage(filtered, startDate, endDate);
+  } else {
+    sortedDates.forEach((date, idx) => {
+      const rows = byDate[date];
+      if (idx > 0) allPagesHtml += '<div class="page-break"></div>';
+      allPagesHtml += buildDailyFormalPage(rtype, date, rows);
+    });
+  }
+
+  const printContainer = document.getElementById('formalReportPrintPage');
+  if (!printContainer) return;
+
+  const wingEl = document.getElementById('formalFilterWing');
+  const wingLabel = wingEl && wingEl.value ? ' (แดน' + wingEl.value + ')' : '';
+
+  const rtypeLabels = {
+    disciplinary: 'รายงานการเบิกตัวผู้ต้องขังเข้าร่วมกิจกรรม',
+    kitchen: 'รายงานการเตรียมอาหารและเบเกอรี่',
+    table: 'รายงานการจัดโต๊ะ',
+    monthly: 'รายงานสรุปผลการดำเนินงานประจำเดือน'
+  };
+  const title = rtypeLabels[rtype] || 'รายงานราชการ';
+
+  const fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + FORMAL_PRINT_CSS + '</style></head><body>' +
+    buildLetterhead(rtype, title, wingLabel, startDate, endDate) +
+    allPagesHtml +
+    buildFromClause(startDate, endDate) +
+    buildSignatureBlock() +
+    '</body></html>';
+
+  printContainer.innerHTML = fullHtml;
+
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  if (!printWindow) { showToast('กรุณาอนุญาต Pop-up เพื่อพิมพ์รายงาน', 'error'); return; }
+  printWindow.document.write(fullHtml);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => { printWindow.print(); }, 500);
+}
+
+function buildLetterhead(rtype, title, wingLabel, startDate, endDate) {
+  const dept = 'เรือนจำจําลอง CC คาเฟ่';
+  const ministry = 'กรมราชทัณฑ์ กระทรวงยุติธรรม';
+  const addr1 = 'เลขที่ ๑ ถนนจําลอง ตําบลจําลอง';
+  const addr2 = 'อําเภอจําลอง จังหวัดจําลอง ๑๐๐๐๐';
+
+  const thaiYear = new Date().getFullYear() + 543;
+  const docNum = String(Math.floor(Math.random() * 9000) + 1000);
+  const docRef = 'ศผ XXX/' + docNum;
+
+  let html = '<div class="formal-page">';
+
+  // Garuda
+  html += '<div class="garuda-wrap"><div class="garuda-img"><svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg"><path d="M60 10 L68 30 L95 20 L80 40 L110 50 L88 65 L115 80 L88 90 L95 115 L75 100 L68 130 L60 110 L52 130 L45 100 L25 115 L32 90 L5 80 L32 65 L10 50 L40 40 L25 20 L52 30 Z" fill="black"/><circle cx="60" cy="52" r="12" fill="white"/><circle cx="60" cy="52" r="6" fill="black"/><path d="M50 68 Q60 78 70 68" stroke="black" stroke-width="3" fill="none"/><path d="M40 85 L60 95 L80 85" stroke="black" stroke-width="3" fill="none"/><path d="M35 100 L60 115 L85 100" stroke="black" stroke-width="3" fill="none"/></svg></div></div>';
+
+  // Header block: ที่, ส่วนราชการ, address, date
+  html += '<div class="header-block">';
+  html += '<div class="ref-line">ที่ ' + docRef + '</div>';
+  html += '<div class="dept-line">' + dept + '</div>';
+  html += '<div class="addr-line">' + addr1 + '</div>';
+  html += '<div class="addr-line">' + addr2 + '</div>';
+  html += '<div class="date-line">' + thaiDateStr(new Date()) + '</div>';
+  html += '</div>';
+
+  // Subject
+  html += '<div class="topic-line"><span class="label">เรื่อง </span><span class="value">' + title + wingLabel + '</span></div>';
+
+  // Attention
+  html += '<div class="attn-line"><span class="label">เรียน </span><span class="value">ผู้บัญชาการเรือนจําจําลอง CC คาเฟ่</span></div>';
+
+  // Body opening
+  const dateStr = startDate === endDate ? 'เมื่อวันที่ ' + startDate : 'ระหว่างวันที่ ' + startDate + ' ถึง ' + endDate;
+  html += '<div class="content-body">';
+  html += '<p>ตามที่เรือนจําจําลอง CC คาเฟ่ ได้ดำเนินกิจกรรมการเยี่ยมผู้ต้องขังตามโครงการ Chance &amp; Change Cafe ' + dateStr + ' นั้น ในการนี้ฝ่ายที่เกี่ยวข้องได้ดำเนินการจัดกิจกรรมและมีรายละเอียดสรุปได้ดังนี้</p>';
+
+  return html;
+}
+
+function buildFromClause(startDate, endDate) {
+  const dateStr = startDate === endDate ? 'เมื่อวันที่ ' + startDate : 'ระหว่างวันที่ ' + startDate + ' ถึง ' + endDate;
+  return '<p>จึงเรียนมาเพื่อโปรดทราบ</p>';
+}
+
+function buildSignatureBlock() {
+  const dept = 'เรือนจําจําลอง CC คาเฟ่';
+  const phone = '๐ ๒xxx-xxxx';
+
+  return '</div>' + // close content-body
+    '<div class="closing">ขอแสดงความนับถือ</div>' +
+    '<div class="signature-block">' +
+    '<table class="signature-table">' +
+    '<tr>' +
+    '<td>' +
+    '<div class="sign-label">(ลงชื่อ)........................................................</div>' +
+    '<div class="sign-name">(' + (currentUser ? currentUser.displayName || currentUser.username : '____________________') + ')</div>' +
+    '<div class="sign-pos">เจ้าหน้าที่ดําเนินงานโครงการ</div>' +
+    '<div class="sign-dept">' + dept + '</div>' +
+    '<div class="sign-phone">โทร. ' + phone + '</div>' +
+    '</td>' +
+    '<td>' +
+    '<div class="sign-label">(ลงชื่อ)........................................................</div>' +
+    '<div class="sign-name">(____________________________________)</div>' +
+    '<div class="sign-pos">ผู้บัญชาการเรือนจําจําลอง CC คาเฟ่</div>' +
+    '<div class="sign-dept">' + dept + '</div>' +
+    '<div class="sign-phone">โทร. ' + phone + '</div>' +
+    '</td>' +
+    '</tr>' +
+    '</table>' +
+    '</div>' +
+    '</div>'; // close formal-page
+}
+
+function buildDailyFormalPage(rtype, date, rows) {
+  if (rtype === 'disciplinary') return buildDisciplinaryPage(date, rows);
+  if (rtype === 'kitchen') return buildKitchenPage(date, rows);
+  if (rtype === 'table') return buildTablePage(date, rows);
+  return '';
+}
+
+function buildDisciplinaryPage(date, rows) {
+  const prisonerList = [];
+  rows.forEach(r => {
+    if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
+      prisonerList.push({
+        name: r.prisonerName,
+        id: r.prisonerId,
+        wing: r.wing || '-',
+        ref: r.ref || '-'
+      });
+    }
+  });
+
+  let html = '<p>รายชื่อผู้ต้องขังที่ได้รับการเบิกตัวเพื่อเข้าร่วมกิจกรรมการเยี่ยม ณ เรือนจำ CC คาเฟ่ ประจำวันที่ ' + date + ' มีจำนวนทั้งสิ้น ' + prisonerList.length + ' คน ดังนี้</p>';
+
+  if (prisonerList.length === 0) {
+    html += '<p>ไม่มีรายการเบิกตัวผู้ต้องขังในวันนี้</p>';
+    return html;
+  }
+
+  html += '<table>';
+  html += '<thead><tr><th>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>เลขประจำตัวผู้ต้องขัง</th><th>แดน</th><th>หมายเลขอ้างอิง</th></tr></thead><tbody>';
+  prisonerList.forEach((p, i) => {
+    html += '<tr><td>' + (i + 1) + '</td><td>' + p.name + '</td><td>' + p.id + '</td><td>' + p.wing + '</td><td>' + p.ref + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  html += '<p>รวมผู้ต้องขังทั้งสิ้น ' + prisonerList.length + ' คน</p>';
+  return html;
+}
+
+function buildKitchenPage(date, rows) {
+  let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
+  const prisonerList = [];
+  rows.forEach(r => {
+    const d = computeDeptReportData(r);
+    totalAdults += d.adults;
+    total5_8 += d.kids5_8;
+    totalUnder5 += d.kidsUnder5;
+    if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
+      prisonerList.push({ name: r.prisonerName, id: r.prisonerId });
+    }
+  });
+
+  const totalTables = rows.length;
+  const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
+  const totalPrisoners = prisonerList.length;
+  const grandTotal = totalRelatives + totalPrisoners;
+  const combinedAdults = totalAdults + totalPrisoners;
+
+  let html = '<p>สรุปจำนวนอาหารและเครื่องดื่มที่ต้องเตรียมสำหรับกิจกรรมการเยี่ยม ประจำวันที่ ' + date + '</p>';
+
+  html += '<table>';
+  html += '<thead><tr><th>รายการ</th><th>จำนวน</th><th>หมายเหตุ</th></tr></thead><tbody>';
+  html += '<tr><td>จำนวนโต๊ะที่เปิดให้บริการ</td><td style="text-align:center;">' + totalTables + ' โต๊ะ</td><td></td></tr>';
+  html += '<tr><td>จำนวนผู้ต้องขัง (เบิกตัว)</td><td style="text-align:center;">' + totalPrisoners + ' คน</td><td>นับเป็นผู้ใหญ่ 1 ที่นั่งต่อคน</td></tr>';
+  html += '<tr><td>จำนวนญาติผู้เยี่ยม (ผู้ใหญ่)</td><td style="text-align:center;">' + totalAdults + ' คน</td><td>อายุ 9 ปีขึ้นไป</td></tr>';
+  html += '<tr><td>จำนวนเด็กอายุ 5-8 ปี</td><td style="text-align:center;">' + total5_8 + ' คน</td><td></td></tr>';
+  html += '<tr><td>จำนวนเด็กอายุต่ำกว่า 5 ปี</td><td style="text-align:center;">' + totalUnder5 + ' คน</td><td></td></tr>';
+  html += '<tr class="total-row"><td>รวมจำนวนผู้เข้าร่วมทั้งหมด</td><td style="text-align:center;">' + grandTotal + ' คน</td><td>ญาติ ' + totalRelatives + ' คน + ผู้ต้องขัง ' + totalPrisoners + ' คน</td></tr>';
+  html += '<tr class="total-row"><td>รวมจำนวนอาหารผู้ใหญ่</td><td style="text-align:center;">' + combinedAdults + ' ที่</td><td>รวมผู้ต้องขัง</td></tr>';
+  html += '</tbody></table>';
+
+  html += '<div style="margin-top:8pt;padding:6pt;border:1px solid #000;">';
+  html += '<b>สรุปการเตรียมอาหารและเบเกอรี่</b><br>';
+  html += '- อาหารคาว (ผู้ใหญ่): ' + combinedAdults + ' ที่<br>';
+  html += '- อาหารว่างและเบเกอรี่: ' + grandTotal + ' ชุด<br>';
+  html += '- เครื่องดื่ม: ' + grandTotal + ' แก้ว';
+  html += '</div>';
+
+  return html;
+}
+
+function buildTablePage(date, rows) {
+  const totalTables = rows.length;
+  const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
+  const totalPrisoners = rows.filter(r => r.prisonerName).length;
+  const grandTotal = totalRelatives + totalPrisoners;
+
+  let html = '<p>รายละเอียดการจัดโต๊ะสำหรับกิจกรรมการเยี่ยม ประจำวันที่ ' + date + ' จำนวน ' + totalTables + ' โต๊ะ รวมผู้เข้าร่วม ' + grandTotal + ' คน</p>';
+
+  html += '<table>';
+  html += '<thead><tr><th>ลำดับ</th><th>โต๊ะที่</th><th>ผู้ต้องขัง</th><th>ผู้เยี่ยม</th><th>เบอร์โทรศัพท์</th><th>จำนวน (คน)</th></tr></thead><tbody>';
+
+  rows.forEach((r, i) => {
+    const tableNo = i + 1;
+    const prisoner = r.prisonerName || '-';
+    const mainVisitor = r.visitorName || '-';
+    const phone = r.visitorPhone || '-';
+
+    let extras = [];
+    try { extras = parseExtraVisitors(r); } catch (e) { extras = []; }
+    const extraNames = extras.map(ex => ex.name).filter(Boolean).join(', ');
+    const allVisitors = mainVisitor + (extraNames ? ', ' + extraNames : '');
+    const totalPeople = (parseInt(r.visitorCount) || 1) + 1;
+
+    html += '<tr><td style="text-align:center;">' + (i + 1) + '</td><td style="text-align:center;">' + tableNo + '</td><td>' + prisoner + '</td><td>' + allVisitors + '</td><td>' + phone + '</td><td style="text-align:center;">' + totalPeople + '</td></tr>';
+  });
+
+  html += '</tbody></table>';
+  html += '<p><b>รวมทั้งสิ้น ' + totalTables + ' โต๊ะ จำนวน ' + grandTotal + ' คน</b></p>';
+  return html;
+}
+
+function buildMonthlyFormalPage(rows, startDate, endDate) {
+  const byDate = {};
+  rows.forEach(r => {
+    const key = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(r);
+  });
+  const sortedDates = Object.keys(byDate).sort();
+
+  let totalTables = 0, totalRelatives = 0, totalPrisoners = 0;
+  const prisonerSet = new Set();
+  let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
+
+  sortedDates.forEach(date => {
+    const dateRows = byDate[date];
+    totalTables += dateRows.length;
+    dateRows.forEach(r => {
+      totalRelatives += parseInt(r.visitorCount) || 1;
+      if (r.prisonerId) prisonerSet.add(r.prisonerId);
+      const d = computeDeptReportData(r);
+      totalAdults += d.adults;
+      total5_8 += d.kids5_8;
+      totalUnder5 += d.kidsUnder5;
+    });
+  });
+  totalPrisoners = prisonerSet.size;
+  const grandTotal = totalRelatives + totalTables;
+
+  let dailyRows = '';
+  sortedDates.forEach(date => {
+    const dateRows = byDate[date];
+    const dRelatives = dateRows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
+    const dPrisoners = dateRows.filter(r => r.prisonerName).length;
+    dailyRows += '<tr><td>' + date + '</td><td style="text-align:center;">' + dateRows.length + '</td><td style="text-align:center;">' + dRelatives + '</td><td style="text-align:center;">' + dPrisoners + '</td><td style="text-align:center;">' + (dRelatives + dPrisoners) + '</td></tr>';
+  });
+
+  let html = '<p>สรุปผลการดำเนินงานกิจกรรมการเยี่ยมผู้ต้องขัง ระหว่างวันที่ ' + startDate + ' ถึง ' + endDate + ' รวมทั้งสิ้น ' + sortedDates.length + ' วัน มีรายละเอียดดังนี้</p>';
+
+  html += '<table>';
+  html += '<thead><tr><th>วันที่</th><th>จำนวนโต๊ะ</th><th>จำนวนญาติ</th><th>จำนวนผู้ต้องขัง</th><th>รวมทั้งหมด</th></tr></thead><tbody>';
+  html += dailyRows;
+  html += '</tbody></table>';
+
+  html += '<table style="margin-top:12pt;">';
+  html += '<thead><tr><th>รายการสรุป</th><th>จำนวน</th></tr></thead><tbody>';
+  html += '<tr><td>จำนวนวันที่เปิดให้บริการ</td><td style="text-align:center;">' + sortedDates.length + ' วัน</td></tr>';
+  html += '<tr><td>จำนวนโต๊ะรวมตลอดช่วง</td><td style="text-align:center;">' + totalTables + ' โต๊ะ</td></tr>';
+  html += '<tr><td>จำนวนญาติผู้เยี่ยมรวม</td><td style="text-align:center;">' + totalRelatives + ' คน</td></tr>';
+  html += '<tr><td>จำนวนผู้ต้องขังที่เข้าร่วม (ไม่ซ้ำ)</td><td style="text-align:center;">' + totalPrisoners + ' คน</td></tr>';
+  html += '<tr class="total-row"><td>จำนวนผู้เข้าร่วมทั้งหมด</td><td style="text-align:center;">' + grandTotal + ' คน</td></tr>';
+  html += '<tr><td>ผู้ใหญ่ (9 ปีขึ้นไป รวมผู้ต้องขัง)</td><td style="text-align:center;">' + (totalAdults + totalTables) + ' คน</td></tr>';
+  html += '<tr><td>เด็กอายุ 5-8 ปี</td><td style="text-align:center;">' + total5_8 + ' คน</td></tr>';
+  html += '<tr><td>เด็กอายุต่ำกว่า 5 ปี</td><td style="text-align:center;">' + totalUnder5 + ' คน</td></tr>';
+  html += '</tbody></table>';
+  return html;
+}
+
+// ===== END FORMAL REPORTS ENGINE =====
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeEditModal(); } });
 document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });

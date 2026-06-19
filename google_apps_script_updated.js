@@ -783,6 +783,65 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     return jsonResp({ status: 'ok', message: `นำเข้าสำเร็จ: เพิ่ม ${added} รายการ, อัปเดต ${updated} รายการ`, added, updated, errors });
   }
 
+// ===== SYNC PRISONER WINGS TO EXISTING BOOKINGS =====
+  if (action === 'syncPrisonerWings') {
+    if (!isAuthorized(username, pass) && !hasPermission(username, 'manage_users')) {
+      return jsonResp({ status: 'error', message: 'Unauthorized' });
+    }
+
+    const prisonerSheet = getPrisonerSheet();
+    const prisonerData = prisonerSheet.getDataRange().getValues();
+    if (prisonerData.length <= 1) {
+      return jsonResp({ status: 'error', message: 'ไม่มีข้อมูลผู้ต้องขังในระบบ' });
+    }
+
+    const pHeaders = prisonerData[0];
+    const pIdIdx = pHeaders.indexOf('prisonerId');
+    const pWingIdx = pHeaders.indexOf('wing');
+    if (pIdIdx === -1 || pWingIdx === -1) {
+      return jsonResp({ status: 'error', message: 'ข้อมูลผู้ต้องขังไม่ครบถ้วน (ขาด prisonerId หรือ wing)' });
+    }
+
+    // Build prisonerId -> wing map
+    const wingMap = {};
+    for (let i = 1; i < prisonerData.length; i++) {
+      const id = String(prisonerData[i][pIdIdx] || '').trim();
+      const wing = String(prisonerData[i][pWingIdx] || '').trim();
+      if (id) wingMap[id] = wing;
+    }
+
+    const sheet = getMainSheet();
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return jsonResp({ status: 'error', message: 'ไม่มีข้อมูลการจองในระบบ' });
+    }
+
+    const headers = data[0];
+    const pIdBookingIdx = headers.indexOf('prisonerId');
+    const wingBookingIdx = headers.indexOf('wing');
+
+    if (pIdBookingIdx === -1 || wingBookingIdx === -1) {
+      return jsonResp({ status: 'error', message: 'ข้อมูลการจองไม่ครบถ้วน' });
+    }
+
+    let updated = 0;
+    for (let i = 1; i < data.length; i++) {
+      const prisonerId = String(data[i][pIdBookingIdx] || '').trim();
+      if (!prisonerId || !wingMap[prisonerId]) continue;
+
+      const currentWing = String(data[i][wingBookingIdx] || '').trim();
+      const newWing = wingMap[prisonerId];
+
+      if (currentWing !== newWing) {
+        sheet.getRange(i + 1, wingBookingIdx + 1).setValue(newWing);
+        updated++;
+      }
+    }
+
+    logEvent(username, 'sync_prisoner_wings', '', { updated: updated }, 'success');
+    return jsonResp({ status: 'ok', message: 'อัปเดตแดนผู้ต้องขังเสร็จสิ้น: ' + updated + ' รายการ', updated: updated });
+  }
+
 // ===== GET USERS (POST — same as GET) =====
   if (action === 'getUsers') {
     return jsonResp({ status: 'ok', users: getAllUsers() });
