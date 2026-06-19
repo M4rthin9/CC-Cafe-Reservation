@@ -5154,9 +5154,6 @@ function buildFormalMiniPreview(type, date, data, extra) {
 }
 
 function printFormalReport() {
-  const rtype = document.getElementById('formalReportType').value;
-  if (!rtype) { showToast('กรุณาเลือกประเภทรายงาน', 'warning'); return; }
-
   const filtered = getFormalFilteredRows();
   if (filtered.length === 0) { showToast('ไม่มีข้อมูลสำหรับพิมพ์', 'warning'); return; }
 
@@ -5170,36 +5167,30 @@ function printFormalReport() {
   const startDate = sortedDates[0] || '';
   const endDate = sortedDates[sortedDates.length - 1] || '';
 
-  let allPagesHtml = '';
+  const wingEl = document.getElementById('formalFilterWing');
+  const wingLabel = wingEl && wingEl.value ? ' แดน' + wingEl.value : '';
 
-  if (rtype === 'monthly') {
-    allPagesHtml = buildMonthlyFormalPage(filtered, startDate, endDate);
-  } else {
-    sortedDates.forEach((date, idx) => {
-      const rows = byDate[date];
-      if (idx > 0) allPagesHtml += '<div class="page-break"></div>';
-      allPagesHtml += buildDailyFormalPage(rtype, date, rows);
-    });
-  }
+  // Build all daily sections
+  let allPagesHtml = '';
+  sortedDates.forEach((date, idx) => {
+    const rows = byDate[date];
+    if (idx > 0) allPagesHtml += '<div class="page-break"></div>';
+    allPagesHtml += buildDailyFormalContent(date, rows);
+  });
+
+  // Add monthly summary as last page
+  allPagesHtml += '<div class="page-break"></div>';
+  allPagesHtml += buildMonthlyFormalPage(filtered, startDate, endDate);
 
   const printContainer = document.getElementById('formalReportPrintPage');
   if (!printContainer) return;
 
-  const wingEl = document.getElementById('formalFilterWing');
-  const wingLabel = wingEl && wingEl.value ? ' (แดน' + wingEl.value + ')' : '';
-
-  const rtypeLabels = {
-    disciplinary: 'รายงานการเบิกตัวผู้ต้องขังเข้าร่วมกิจกรรม',
-    kitchen: 'รายงานการเตรียมอาหารและเบเกอรี่',
-    table: 'รายงานการจัดโต๊ะ',
-    monthly: 'รายงานสรุปผลการดำเนินงานประจำเดือน'
-  };
-  const title = rtypeLabels[rtype] || 'รายงานราชการ';
+  const title = 'รายงานผลการดำเนินกิจกรรมการเยี่ยมผู้ต้องขัง';
 
   const fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + FORMAL_PRINT_CSS + '</style></head><body>' +
-    buildLetterhead(rtype, title, wingLabel, startDate, endDate) +
+    buildLetterhead(title, wingLabel, startDate, endDate) +
     allPagesHtml +
-    buildFromClause(startDate, endDate) +
+    buildFromClause() +
     buildSignatureBlock() +
     '</body></html>';
 
@@ -5213,9 +5204,8 @@ function printFormalReport() {
   setTimeout(() => { printWindow.print(); }, 500);
 }
 
-function buildLetterhead(rtype, title, wingLabel, startDate, endDate) {
+function buildLetterhead(title, wingLabel, startDate, endDate) {
   const dept = 'เรือนจำจําลอง CC คาเฟ่';
-  const ministry = 'กรมราชทัณฑ์ กระทรวงยุติธรรม';
   const addr1 = 'เลขที่ ๑ ถนนจําลอง ตําบลจําลอง';
   const addr2 = 'อําเภอจําลอง จังหวัดจําลอง ๑๐๐๐๐';
 
@@ -5228,7 +5218,7 @@ function buildLetterhead(rtype, title, wingLabel, startDate, endDate) {
   // Garuda
   html += '<div class="garuda-wrap"><div class="garuda-img"><svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg"><path d="M60 10 L68 30 L95 20 L80 40 L110 50 L88 65 L115 80 L88 90 L95 115 L75 100 L68 130 L60 110 L52 130 L45 100 L25 115 L32 90 L5 80 L32 65 L10 50 L40 40 L25 20 L52 30 Z" fill="black"/><circle cx="60" cy="52" r="12" fill="white"/><circle cx="60" cy="52" r="6" fill="black"/><path d="M50 68 Q60 78 70 68" stroke="black" stroke-width="3" fill="none"/><path d="M40 85 L60 95 L80 85" stroke="black" stroke-width="3" fill="none"/><path d="M35 100 L60 115 L85 100" stroke="black" stroke-width="3" fill="none"/></svg></div></div>';
 
-  // Header block: ที่, ส่วนราชการ, address, date
+  // Header block
   html += '<div class="header-block">';
   html += '<div class="ref-line">ที่ ' + docRef + '</div>';
   html += '<div class="dept-line">' + dept + '</div>';
@@ -5251,8 +5241,7 @@ function buildLetterhead(rtype, title, wingLabel, startDate, endDate) {
   return html;
 }
 
-function buildFromClause(startDate, endDate) {
-  const dateStr = startDate === endDate ? 'เมื่อวันที่ ' + startDate : 'ระหว่างวันที่ ' + startDate + ' ถึง ' + endDate;
+function buildFromClause() {
   return '<p>จึงเรียนมาเพื่อโปรดทราบ</p>';
 }
 
@@ -5285,14 +5274,15 @@ function buildSignatureBlock() {
     '</div>'; // close formal-page
 }
 
-function buildDailyFormalPage(rtype, date, rows) {
-  if (rtype === 'disciplinary') return buildDisciplinaryPage(date, rows);
-  if (rtype === 'kitchen') return buildKitchenPage(date, rows);
-  if (rtype === 'table') return buildTablePage(date, rows);
-  return '';
+function buildDailyFormalContent(date, rows) {
+  let html = '';
+  html += buildDisciplinarySection(date, rows);
+  html += buildKitchenSection(date, rows);
+  html += buildTableSection(date, rows);
+  return html;
 }
 
-function buildDisciplinaryPage(date, rows) {
+function buildDisciplinarySection(date, rows) {
   const prisonerList = [];
   rows.forEach(r => {
     if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
@@ -5305,7 +5295,8 @@ function buildDisciplinaryPage(date, rows) {
     }
   });
 
-  let html = '<p>รายชื่อผู้ต้องขังที่ได้รับการเบิกตัวเพื่อเข้าร่วมกิจกรรมการเยี่ยม ณ เรือนจำ CC คาเฟ่ ประจำวันที่ ' + date + ' มีจำนวนทั้งสิ้น ' + prisonerList.length + ' คน ดังนี้</p>';
+  let html = '<p><b>๑. ส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</b></p>';
+  html += '<p>รายชื่อผู้ต้องขังที่ได้รับการเบิกตัวเพื่อเข้าร่วมกิจกรรมการเยี่ยม ณ เรือนจำ CC คาเฟ่ ประจำวันที่ ' + date + ' มีจำนวนทั้งสิ้น ' + prisonerList.length + ' คน ดังนี้</p>';
 
   if (prisonerList.length === 0) {
     html += '<p>ไม่มีรายการเบิกตัวผู้ต้องขังในวันนี้</p>';
@@ -5315,14 +5306,14 @@ function buildDisciplinaryPage(date, rows) {
   html += '<table>';
   html += '<thead><tr><th>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>เลขประจำตัวผู้ต้องขัง</th><th>แดน</th><th>หมายเลขอ้างอิง</th></tr></thead><tbody>';
   prisonerList.forEach((p, i) => {
-    html += '<tr><td>' + (i + 1) + '</td><td>' + p.name + '</td><td>' + p.id + '</td><td>' + p.wing + '</td><td>' + p.ref + '</td></tr>';
+    html += '<tr><td class="center">' + (i + 1) + '</td><td>' + p.name + '</td><td>' + p.id + '</td><td>' + p.wing + '</td><td>' + p.ref + '</td></tr>';
   });
   html += '</tbody></table>';
   html += '<p>รวมผู้ต้องขังทั้งสิ้น ' + prisonerList.length + ' คน</p>';
   return html;
 }
 
-function buildKitchenPage(date, rows) {
+function buildKitchenSection(date, rows) {
   let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
   const prisonerList = [];
   rows.forEach(r => {
@@ -5341,17 +5332,18 @@ function buildKitchenPage(date, rows) {
   const grandTotal = totalRelatives + totalPrisoners;
   const combinedAdults = totalAdults + totalPrisoners;
 
-  let html = '<p>สรุปจำนวนอาหารและเครื่องดื่มที่ต้องเตรียมสำหรับกิจกรรมการเยี่ยม ประจำวันที่ ' + date + '</p>';
+  let html = '<p><b>๒. ครัวและเบเกอรี่ (เตรียมอาหารและของหวาน)</b></p>';
+  html += '<p>สรุปจำนวนอาหารและเครื่องดื่มที่ต้องเตรียมสำหรับกิจกรรมการเยี่ยม ประจำวันที่ ' + date + '</p>';
 
   html += '<table>';
   html += '<thead><tr><th>รายการ</th><th>จำนวน</th><th>หมายเหตุ</th></tr></thead><tbody>';
-  html += '<tr><td>จำนวนโต๊ะที่เปิดให้บริการ</td><td style="text-align:center;">' + totalTables + ' โต๊ะ</td><td></td></tr>';
-  html += '<tr><td>จำนวนผู้ต้องขัง (เบิกตัว)</td><td style="text-align:center;">' + totalPrisoners + ' คน</td><td>นับเป็นผู้ใหญ่ 1 ที่นั่งต่อคน</td></tr>';
-  html += '<tr><td>จำนวนญาติผู้เยี่ยม (ผู้ใหญ่)</td><td style="text-align:center;">' + totalAdults + ' คน</td><td>อายุ 9 ปีขึ้นไป</td></tr>';
-  html += '<tr><td>จำนวนเด็กอายุ 5-8 ปี</td><td style="text-align:center;">' + total5_8 + ' คน</td><td></td></tr>';
-  html += '<tr><td>จำนวนเด็กอายุต่ำกว่า 5 ปี</td><td style="text-align:center;">' + totalUnder5 + ' คน</td><td></td></tr>';
-  html += '<tr class="total-row"><td>รวมจำนวนผู้เข้าร่วมทั้งหมด</td><td style="text-align:center;">' + grandTotal + ' คน</td><td>ญาติ ' + totalRelatives + ' คน + ผู้ต้องขัง ' + totalPrisoners + ' คน</td></tr>';
-  html += '<tr class="total-row"><td>รวมจำนวนอาหารผู้ใหญ่</td><td style="text-align:center;">' + combinedAdults + ' ที่</td><td>รวมผู้ต้องขัง</td></tr>';
+  html += '<tr><td>จำนวนโต๊ะที่เปิดให้บริการ</td><td class="center">' + totalTables + ' โต๊ะ</td><td></td></tr>';
+  html += '<tr><td>จำนวนผู้ต้องขัง (เบิกตัว)</td><td class="center">' + totalPrisoners + ' คน</td><td>นับเป็นผู้ใหญ่ ๑ ที่นั่งต่อคน</td></tr>';
+  html += '<tr><td>จำนวนญาติผู้เยี่ยม (ผู้ใหญ่)</td><td class="center">' + totalAdults + ' คน</td><td>อายุ ๙ ปีขึ้นไป</td></tr>';
+  html += '<tr><td>จำนวนเด็กอายุ ๕-๘ ปี</td><td class="center">' + total5_8 + ' คน</td><td></td></tr>';
+  html += '<tr><td>จำนวนเด็กอายุต่ำกว่า ๕ ปี</td><td class="center">' + totalUnder5 + ' คน</td><td></td></tr>';
+  html += '<tr class="total-row"><td>รวมจำนวนผู้เข้าร่วมทั้งหมด</td><td class="center">' + grandTotal + ' คน</td><td>ญาติ ' + totalRelatives + ' คน + ผู้ต้องขัง ' + totalPrisoners + ' คน</td></tr>';
+  html += '<tr class="total-row"><td>รวมจำนวนอาหารผู้ใหญ่</td><td class="center">' + combinedAdults + ' ที่</td><td>รวมผู้ต้องขัง</td></tr>';
   html += '</tbody></table>';
 
   html += '<div style="margin-top:8pt;padding:6pt;border:1px solid #000;">';
@@ -5364,13 +5356,14 @@ function buildKitchenPage(date, rows) {
   return html;
 }
 
-function buildTablePage(date, rows) {
+function buildTableSection(date, rows) {
   const totalTables = rows.length;
   const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
   const totalPrisoners = rows.filter(r => r.prisonerName).length;
   const grandTotal = totalRelatives + totalPrisoners;
 
-  let html = '<p>รายละเอียดการจัดโต๊ะสำหรับกิจกรรมการเยี่ยม ประจำวันที่ ' + date + ' จำนวน ' + totalTables + ' โต๊ะ รวมผู้เข้าร่วม ' + grandTotal + ' คน</p>';
+  let html = '<p><b>๓. การจัดโต๊ะ</b></p>';
+  html += '<p>รายละเอียดการจัดโต๊ะสำหรับกิจกรรมการเยี่ยม ประจำวันที่ ' + date + ' จำนวน ' + totalTables + ' โต๊ะ รวมผู้เข้าร่วม ' + grandTotal + ' คน</p>';
 
   html += '<table>';
   html += '<thead><tr><th>ลำดับ</th><th>โต๊ะที่</th><th>ผู้ต้องขัง</th><th>ผู้เยี่ยม</th><th>เบอร์โทรศัพท์</th><th>จำนวน (คน)</th></tr></thead><tbody>';
@@ -5387,7 +5380,7 @@ function buildTablePage(date, rows) {
     const allVisitors = mainVisitor + (extraNames ? ', ' + extraNames : '');
     const totalPeople = (parseInt(r.visitorCount) || 1) + 1;
 
-    html += '<tr><td style="text-align:center;">' + (i + 1) + '</td><td style="text-align:center;">' + tableNo + '</td><td>' + prisoner + '</td><td>' + allVisitors + '</td><td>' + phone + '</td><td style="text-align:center;">' + totalPeople + '</td></tr>';
+    html += '<tr><td class="center">' + (i + 1) + '</td><td class="center">' + tableNo + '</td><td>' + prisoner + '</td><td>' + allVisitors + '</td><td>' + phone + '</td><td class="center">' + totalPeople + '</td></tr>';
   });
 
   html += '</tbody></table>';

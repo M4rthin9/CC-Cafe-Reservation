@@ -404,18 +404,12 @@
             <option value="เสร็จสิ้น">เสร็จสิ้น</option>
             <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
           </select>
-          <select class="filter-select" id="formalReportType">
-            <option value="disciplinary">ส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</option>
-            <option value="kitchen">ครัวและเบเกอรี่</option>
-            <option value="table">การจัดโต๊ะ</option>
-            <option value="monthly">สรุปประจำเดือน</option>
-          </select>
           <button class="refresh-btn" onclick="renderFormalReportsView()">🔍 แสดงรายงาน</button>
           <button class="btn-print" onclick="printFormalReport()" id="btnPrintFormal">🖨️ พิมพ์รายงานราชการ</button>
         </div>
 
         <div id="formalReportsContent" style="background:#fff;border-radius:8px;border:1px solid var(--border);padding:20px;min-height:200px;">
-          <div style="text-align:center;padding:40px;color:var(--text2);">เลือกวันที่และประเภทรายงาน แล้วคลิก "แสดงรายงาน"</div>
+          <div style="text-align:center;padding:40px;color:var(--text2);">เลือกวันที่และแดน แล้วคลิก "แสดงรายงาน"</div>
         </div>
         <div id="formalReportPrintPage" style="display:none;"></div>
       </div>
