@@ -362,7 +362,17 @@ function updateStats() {
 
 // ===== DATE FILTER =====
 function buildDateFilter() {
-  const dates = [...new Set(allRows.map(r => r.visitDate))].sort();
+  const dateMap = {};
+  allRows.forEach(r => {
+    if (r.visitDate && r.visitDateISO && !dateMap[r.visitDate]) {
+      dateMap[r.visitDate] = r.visitDateISO;
+    }
+  });
+  const dates = Object.keys(dateMap).sort((a, b) => {
+    if (dateMap[a] < dateMap[b]) return -1;
+    if (dateMap[a] > dateMap[b]) return 1;
+    return 0;
+  });
   const sel = document.getElementById('filterDate');
   const cur = sel.value;
   sel.innerHTML = '<option value="">ทุกวัน</option>';
