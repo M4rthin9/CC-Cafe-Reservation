@@ -361,6 +361,10 @@ function updateStats() {
 }
 
 // ===== DATE FILTER =====
+function stripDayPrefix(dateStr) {
+  return dateStr.replace(/^(?:วัน)?(?:จันทร์|อังคาร|พุธ|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)ที่\s+/, '');
+}
+
 function buildDateFilter() {
   const dateMap = {};
   allRows.forEach(r => {
@@ -378,7 +382,7 @@ function buildDateFilter() {
   sel.innerHTML = '<option value="">ทุกวัน</option>';
   dates.forEach(d => {
     const o = document.createElement('option');
-    o.value = d; o.textContent = d;
+    o.value = d; o.textContent = stripDayPrefix(d);
     if (d === cur) o.selected = true;
     sel.appendChild(o);
   });
