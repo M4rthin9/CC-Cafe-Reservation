@@ -172,7 +172,7 @@ function updateExtraVisitors() {
       '<div class="form-group"><label>ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>' +
       '<input type="text" id="extraVisitorName' + i + '" placeholder="เช่น สมหญิง ใจดี"></div>' +
       '<div class="form-group"><label>เลขบัตรประชาชน <span style="color:var(--red)">*</span></label>' +
-      '<input type="text" id="extraVisitorId' + i + '" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17"></div>' +
+      '<input type="text" id="extraVisitorId' + i + '" placeholder="เลขบัตร ปชช. หรือ Passport" maxlength="20"></div>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
       '<div class="form-group"><label>ศาสนา <span style="color:var(--red)">*</span></label>' +
@@ -497,11 +497,27 @@ function checkPrisonerMatch() {
   }
 }
 
+// ===== VALIDATION HELPERS =====
+function validateIdFormat(val) {
+  if (!val) return { valid: true };
+  if (val.includes('-')) {
+    const isValid = /^\d{1}-\d{4}-\d{5}-\d{2}-\d{1}$/.test(val);
+    return { valid: isValid, error: 'รูปแบบเลขบัตรประชาชนไม่ถูกต้อง (X-XXXX-XXXXX-XX-X)' };
+  }
+  const isValid = /^[A-Za-z0-9]{6,20}$/.test(val);
+  return { valid: isValid, error: 'รูปแบบ Passport ไม่ถูกต้อง (ตัวอักษร/ตัวเลข 6-20 หลัก)' };
+}
+
+function validatePhone(val) {
+  const cleaned = val.replace(/[^0-9]/g, '');
+  return { cleaned, valid: cleaned.length === 10, error: 'เบอร์โทรศัพท์ต้องมี 10 ตัวเลข' };
+}
+
 // ===== VALIDATION =====
 function validate() {
   const fields = [
     { id: 'visitorName', label: 'ชื่อผู้ร่วมกิจกรรม' },
-    { id: 'visitorId', label: 'เลขบัตรประชาชน' },
+    { id: 'visitorId', label: 'เลขประจำตัว' },
     { id: 'visitorPhone', label: 'เบอร์โทรศัพท์' },
     { id: 'relation', label: 'ความสัมพันธ์' },
     { id: 'prisonerName', label: 'ชื่อผู้ต้องขัง' },
@@ -512,6 +528,16 @@ function validate() {
     const el = document.getElementById(f.id);
     if (!el.value.trim()) { alert(`กรุณากรอก ${f.label}`); el.focus(); return false; }
   }
+
+  // Validate ID format (auto-detect Thai ID or Passport)
+  const visitorIdEl = document.getElementById('visitorId');
+  const idResult = validateIdFormat(visitorIdEl.value.trim());
+  if (!idResult.valid) { alert(idResult.error); visitorIdEl.focus(); return false; }
+
+  // Validate phone format (must be 10 digits)
+  const phoneEl = document.getElementById('visitorPhone');
+  const phoneResult = validatePhone(phoneEl.value.trim());
+  if (!phoneResult.valid) { alert(phoneResult.error); phoneEl.focus(); return false; }
 
   // Validate main visitor religion (required)
   const mainReligion = document.getElementById('visitorReligion');
@@ -527,7 +553,11 @@ function validate() {
     const nameEl = document.getElementById('extraVisitorName' + i);
     const idEl = document.getElementById('extraVisitorId' + i);
     if (nameEl && !nameEl.value.trim()) { alert('กรุณากรอกชื่อผู้เข้าร่วมกิจกรรมคนที่ ' + i); nameEl.focus(); return false; }
-    if (idEl && !idEl.value.trim()) { alert('กรุณากรอกเลขบัตรประชาชนผู้เข้าร่วมกิจกรรมคนที่ ' + i); idEl.focus(); return false; }
+    if (idEl && !idEl.value.trim()) { alert('กรุณากรอกเลขประจำตัวผู้เข้าร่วมกิจกรรมคนที่ ' + i); idEl.focus(); return false; }
+    if (idEl) {
+      const extraIdResult = validateIdFormat(idEl.value.trim());
+      if (!extraIdResult.valid) { alert('ผู้เข้าร่วมคนที่ ' + i + ': ' + extraIdResult.error); idEl.focus(); return false; }
+    }
 
     // Validate religion for extra visitors
     const religionEl = document.getElementById('extraVisitorReligion' + i);
@@ -738,7 +768,7 @@ async function submitBooking() {
     visitorName: document.getElementById('visitorName').value.trim(),
     extraVisitorNames: extraNamesStr,
     visitorId: document.getElementById('visitorId').value.trim(),
-    visitorPhone: document.getElementById('visitorPhone').value.trim(),
+    visitorPhone: validatePhone(document.getElementById('visitorPhone').value.trim()).cleaned,
     relation: document.getElementById('relation').value,
     religion: document.getElementById('visitorReligion').value.trim(),
     allergy: document.getElementById('visitorAllergy').value.trim(),

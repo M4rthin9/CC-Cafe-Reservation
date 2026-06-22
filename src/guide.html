@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>คู่มือการใช้งานระบบจัดการ — CC Cafe Reservation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    :root {
+      --navy: #0b1a30;
+      --blue: #1e3a8a;
+      --blue-dark: #172554;
+      --blue-light: #eff6ff;
+      --gold: #c29a38;
+      --green: #166534;
+      --green-light: #f0fdf4;
+      --red: #dc2626;
+      --red-light: #fee2e2;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text2: #475569;
+      --text-muted: #94a3b8;
+      --bg: #f8fafc;
+      --bg2: #ffffff;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.7;
+      padding-top: 64px;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Top bar */
+    .top-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 64px;
+      background: var(--navy);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .top-bar .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .top-bar .logo span { opacity: 0.7; font-weight: 400; font-size: 13px; }
+    .top-bar-actions { display: flex; gap: 10px; align-items: center; }
+    .top-bar-actions a, .top-bar-actions button {
+      color: #fff;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .top-bar-actions a:hover, .top-bar-actions button:hover {
+      background: rgba(255,255,255,0.22);
+      text-decoration: none;
+    }
+
+    /* Layout */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    /* TOC */
+    .toc-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .toc-card h2 {
+      font-size: 18px;
+      color: var(--navy);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toc-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 20px;
+    }
+    .toc-list li a {
+      display: block;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: background 0.15s;
+    }
+    .toc-list li a:hover {
+      background: var(--blue-light);
+      text-decoration: none;
+    }
+    @media (max-width: 600px) {
+      .toc-list { grid-template-columns: 1fr; }
+    }
+
+    /* Sections */
+    .section {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      scroll-margin-top: 80px;
+    }
+    .section h2 {
+      font-size: 22px;
+      color: var(--navy);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section h3 {
+      font-size: 16px;
+      color: var(--blue);
+      margin: 20px 0 10px;
+    }
+    .section h4 {
+      font-size: 14px;
+      color: var(--text);
+      margin: 14px 0 6px;
+    }
+    .section p {
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .section ul, .section ol {
+      margin: 8px 0 14px 20px;
+      font-size: 14px;
+    }
+    .section li { margin-bottom: 4px; }
+
+    /* Tables */
+    .guide-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 12px 0 16px;
+    }
+    .guide-table th {
+      background: var(--navy);
+      color: #fff;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+    .guide-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .guide-table tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .guide-table .perm-yes { color: var(--green); font-weight: 700; text-align: center; }
+    .guide-table .perm-no { color: var(--red); text-align: center; }
+
+    /* Image placeholder */
+    .img-placeholder {
+      background: #f1f5f9;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 32px 20px;
+      margin: 16px 0;
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .img-placeholder strong {
+      display: block;
+      color: var(--text2);
+      margin-bottom: 4px;
+    }
+
+    /* Callout / Tip */
+    .callout {
+      background: var(--blue-light);
+      border-left: 4px solid var(--blue);
+      padding: 12px 16px;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .callout.warn {
+      background: #fffbeb;
+      border-left-color: var(--gold);
+    }
+    .callout.error {
+      background: var(--red-light);
+      border-left-color: var(--red);
+    }
+
+    /* Badge */
+    .role-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .role-badge.superadmin { background: #1e293b; color: #fff; }
+    .role-badge.admin { background: var(--blue); color: #fff; }
+    .role-badge.finance { background: #059669; color: #fff; }
+    .role-badge.vinai { background: #7c3aed; color: #fff; }
+    .role-badge.tadtel { background: #ea580c; color: #fff; }
+    .role-badge.user { background: #64748b; color: #fff; }
+
+    /* Step list */
+    .step-list {
+      counter-reset: step;
+      list-style: none;
+      margin: 12px 0;
+    }
+    .step-list li {
+      counter-increment: step;
+      margin-bottom: 8px;
+      padding-left: 36px;
+      position: relative;
+      font-size: 14px;
+    }
+    .step-list li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 26px;
+      height: 26px;
+      background: var(--blue);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Scroll to top */
+    .scroll-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99;
+    }
+    .scroll-top:hover { transform: translateY(-2px); }
+
+    /* Strikethrough */
+    .removed { text-decoration: line-through; color: var(--text-muted); }
+
+    /* Button styles in content */
+    .btn-sample {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      cursor: default;
+      font-family: inherit;
+    }
+    .btn-sample.approve { background: var(--green); color: #fff; }
+    .btn-sample.reject { background: var(--red); color: #fff; }
+    .btn-sample.cancel { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .btn-sample.pay { background: #2563eb; color: #fff; }
+    .btn-sample.slip { background: var(--bg2); border: 1px solid var(--border); color: var(--text2); }
+    .btn-sample.edit { background: #f0fdf4; color: var(--green); border: 1px solid var(--green); }
+
+    @media (max-width: 600px) {
+      .section { padding: 20px 16px; }
+      .top-bar { padding: 0 12px; }
+      .top-bar .logo { font-size: 14px; }
+      .top-bar .logo span { display: none; }
+      .container { padding: 16px 12px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div class="top-bar">
+  <div class="logo">
+    <span>🏛️</span> คู่มือการใช้งานระบบจัดการ
+    <span>— CC Cafe Reservation</span>
+  </div>
+  <div class="top-bar-actions">
+    <a href="../admin.html" target="_blank"><i class="ti ti-external-link"></i> เปิด Admin</a>
+    <button onclick="window.print()"><i class="ti ti-printer"></i> พิมพ์</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:32px;">
+    <h1 style="font-size:28px;color:var(--navy);margin-bottom:6px;">📘 คู่มือการใช้งานระบบจัดการ</h1>
+    <p style="font-size:15px;color:var(--text2);">CC Cafe Reservation — ทัณฑสถานบำบัดพิเศษกลาง</p>
+    <p style="font-size:12px;color:var(--text-muted);">อัปเดตล่าสุด: มิถุนายน 2569</p>
+  </div>
+
+  <!-- ===== TOC ===== -->
+  <div class="toc-card">
+    <h2><i class="ti ti-list"></i> สารบัญ</h2>
+    <ol class="toc-list">
+      <li><a href="#s1">🔐 หน้าเข้าสู่ระบบ (Login)</a></li>
+      <li><a href="#s2">📊 ภาพรวมแดชบอร์ด (Dashboard)</a></li>
+      <li><a href="#s3">📋 จัดการการจอง (Reservations)</a></li>
+      <li><a href="#s4">➕ สร้างการจองใหม่ (New Booking)</a></li>
+      <li><a href="#s5">✏️ แก้ไขการจอง (Edit Booking)</a></li>
+      <li><a href="#s6">🔒 จัดการผู้ต้องขัง (Prisoners)</a></li>
+      <li><a href="#s7">📈 รายงาน (Reports)</a></li>
+      <li><a href="#s8">📑 รายงานทางการ (Formal Reports)</a></li>
+      <li><a href="#s9">📝 บันทึกการทำงาน (Event Log)</a></li>
+      <li><a href="#s10">👥 จัดการผู้ใช้ (Users)</a></li>
+      <li><a href="#s11">🔑 สิทธิ์ในแต่ละบทบาท (Permissions)</a></li>
+      <li><a href="#s12">⚙️ จัดการตั้งค่า (Settings)</a></li>
+      <li><a href="#s13">💡 เคล็ดลับการใช้งาน</a></li>
+      <li><a href="#s14">🔧 การแก้ไขปัญหาเบื้องต้น</a></li>
+    </ol>
+  </div>
+
+  <!-- ===== SECTION 1 ===== -->
+  <div class="section" id="s1">
+    <h2><i class="ti ti-login"></i> 1. หน้าเข้าสู่ระบบ (Login)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: หน้า Login</strong>
+      แสดงฟอร์มกรอก Username และ Password พร้อมปุ่ม "เข้าสู่ระบบ"
+    </div>
+
+    <ol class="step-list">
+      <li>เปิด URL: <code>https://[domain]/admin.html</code></li>
+      <li>กรอก <strong>ชื่อผู้ใช้ (Username)</strong> และ <strong>รหัสผ่าน (Password)</strong></li>
+      <li>กดปุ่ม <strong>"เข้าสู่ระบบ"</strong></li>
+      <li>หากข้อมูลถูกต้องจะเข้าสู่หน้า Dashboard ทันที</li>
+      <li>หากผิดพลาดจะแสดงข้อความ error สีแดง</li>
+    </ol>
+
+    <div class="callout">
+      <strong>💡 หมายเหตุ:</strong> ระบบจะซ่อนเมนูตามสิทธิ์ของผู้ใช้โดยอัตโนมัติ — แต่ละบทบาทจะเห็นเฉพาะฟังก์ชันที่เกี่ยวข้อง
+    </div>
+  </div>
+
+  <!-- ===== SECTION 2 ===== -->
+  <div class="section" id="s2">
+    <h2><i class="ti ti-dashboard"></i> 2. ภาพรวมแดชบอร์ด (Dashboard)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: Dashboard ทั้งหน้า</strong>
+      แสดงสถิติ 4 ตัวด้านบน กราฟแนวโน้ม สถานะ Pipeline สรุปการเงิน
+    </div>
+
+    <h3>สถิติหลัก (4 ตัว)</h3>
+    <table class="guide-table">
+      <tr><th>รายการ</th><th>คำอธิบาย</th></tr>
+      <tr><td>📋 การจองทั้งหมด</td><td>จำนวนการจองทั้งหมดในระบบ</td></tr>
+      <tr><td>⏳ รอตรวจสอบวินัย</td><td>จำนวนที่รอ Vinai ตรวจสอบ</td></tr>
+      <tr><td>✅ อนุมัติ / รอชำระ</td><td>จำนวนที่ผ่านการตรวจสอบแล้ว</td></tr>
+      <tr><td>❌ ไม่อนุมัติ</td><td>จำนวนที่ถูกปฏิเสธ</td></tr>
+    </table>
+
+    <h3>กราฟแนวโน้ม (Trend Chart)</h3>
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: กราฟแท่งแนวโน้ม 14 วัน</strong>
+      กราฟแท่งสีน้ำเงินพร้อมยอดทอง แสดงจำนวนการจองในแต่ละวัน ย้อนหลัง 14 วัน — ชี้เมาส์เพื่อดูรายละเอาย
+    </div>
+    <p>แสดงจำนวนการจองในแต่ละวัน ย้อนหลัง 14 วัน สามารถชี้เมาส์เพื่อดูจำนวนในแต่ละวันได้</p>
+
+    <h3>สถานะ Pipeline</h3>
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: แถบ Pipeline</strong>
+      แถบสีต่าง ๆ แสดงสัดส่วนของแต่ละสถานะ: ฟ้า (วินัย), ส้ม (ผู้เข้าร่วม), เหลือง (ชำระเงิน), เขียว (ชำระแล้ว), ม่วง (เสร็จสิ้น), แดง (ปฏิเสธ), เทา (ยกเลิก)
+    </div>
+    <p>แสดงสัดส่วนของแต่ละสถานะเป็นเปอร์เซ็นต์ของทั้งหมด</p>
+
+    <h3>สรุปการเงิน (Finance Overview)</h3>
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: แผงสรุปการเงิน + กราฟเส้น</strong>
+      แสดง KPI การเงิน 3 ตัว (ยอดจอง, ชำระแล้ว, ยังไม่ชำระ) พร้อมกราฟเส้นแนวโน้ม 14 วัน
+    </div>
+    <table class="guide-table">
+      <tr><th>ตัวชี้วัด</th><th>คำอธิบาย</th></tr>
+      <tr><td>💰 ยอดจองทั้งหมด</td><td>รวมมูลค่าการจองทั้งหมด</td></tr>
+      <tr><td>✅ ชำระแล้ว</td><td>ยอดที่ชำระเงินแล้ว + เปอร์เซ็นต์</td></tr>
+      <tr><td>⏳ ยังไม่ชำระ</td><td>ยอดที่รอชำระ + เปอร์เซ็นต์</td></tr>
+    </table>
+  </div>
+
+  <!-- ===== SECTION 3 ===== -->
+  <div class="section" id="s3">
+    <h2><i class="ti ti-list-details"></i> 3. จัดการการจอง (Reservations)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: ตารางรายการจองทั้งหมด</strong>
+      แสดง Search bar, ตัวกรอง, ตารางพร้อม Checkbox, สถานะ badge, ปุ่มดำเนินการ
+    </div>
+
+    <h3>การค้นหาและกรอง</h3>
+    <ul>
+      <li><strong>🔍 ช่องค้นหา</strong> — พิมพ์ชื่อผู้จอง / Ref No. / ชื่อผู้ต้องขัง เพื่อค้นหา</li>
+      <li><strong>📌 กรองสถานะ</strong> — เลือกสถานะที่ต้องการดู</li>
+      <li><strong>📅 กรองวันที่</strong> — เลือกวันที่ต้องการดู</li>
+      <li><strong>🏢 กรองแดน</strong> — เลือกแดนที่ต้องการดู</li>
+    </ul>
+
+    <h3>การดำเนินการกับรายการจอง</h3>
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: แถบปุ่มดำเนินการในแต่ละแถว</strong>
+      แสดงปุ่ม 🧾 สลิป, 📋 รายละเอียด, ✏️ แก้ไข, ✓ อนุมัติ, 💳 ยืนยันชำระ, ✗ ปฏิเสธ, 🚫 ยกเลิก
+    </div>
+
+    <table class="guide-table">
+      <tr><th>ปุ่ม</th><th>การทำงาน</th><th>บทบาทที่ใช้ได้</th></tr>
+      <tr><td><span class="btn-sample slip">🧾 สลิป</span></td><td>ดูรูปสลิปโอนเงิน</td><td>ทุกบทบาท</td></tr>
+      <tr><td><span class="btn-sample slip">📋 รายละเอียด</span></td><td>ดูข้อมูลทั้งหมดของรายการนี้</td><td>ทุกบทบาท</td></tr>
+      <tr><td><span class="btn-sample edit">✏️ แก้ไข</span></td><td>แก้ไขข้อมูลการจอง</td><td>Superadmin, Admin</td></tr>
+      <tr><td><span class="btn-sample approve">✓ อนุมัติวินัย</span></td><td>อนุมัติผ่าน Vinai</td><td>Superadmin, Admin, Vinai</td></tr>
+      <tr><td><span class="btn-sample approve">✓ อนุมัติผู้เข้าร่วม</span></td><td>อนุมัติผู้เข้าร่วม</td><td>Superadmin, Admin, Tadtel</td></tr>
+      <tr><td><span class="btn-sample pay">💳 ยืนยันชำระเงิน</span></td><td>ยืนยันการชำระเงิน / เสร็จสิ้น</td><td>Superadmin, Admin, Finance</td></tr>
+      <tr><td><span class="btn-sample reject">✗ ปฏิเสธ</span></td><td>ปฏิเสธการจอง</td><td>Superadmin, Admin, Vinai, Tadtel</td></tr>
+      <tr><td><span class="btn-sample cancel">🚫 ยกเลิก</span></td><td>ยกเลิกการจอง</td><td>Superadmin, Admin</td></tr>
+    </table>
+
+    <h3>การทำ Bulk Actions (เลือกทีละหลายรายการ)</h3>
+    <ul>
+      <li>เลือก Checkbox ด้านหน้าแถวที่ต้องการ</li>
+      <li>แถบ Bulk Action จะแสดงด้านล่างตาราง</li>
+      <li>สามารถเปลี่ยนสถานะทีละหลายรายการได้พร้อมกัน</li>
+    </ul>
+
+    <h3>Pagination (แบ่งหน้า)</h3>
+    <ul>
+      <li>เลือกจำนวนรายการต่อหน้า: 5 / 10 / 20 / 50</li>
+      <li>ปุ่ม <strong>← →</strong> สำหรับเปลี่ยนหน้า</li>
+      <li>แสดงจำนวนรายการทั้งหมด</li>
+    </ul>
+  </div>
+
+  <!-- ===== SECTION 4 ===== -->
+  <div class="section" id="s4">
+    <h2><i class="ti ti-plus-circle"></i> 4. สร้างการจองใหม่ (New Booking)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: Modal สร้างการจองใหม่ (เต็ม)</strong>
+      แสดงฟอร์มทั้งหมด: ข้อมูลผู้จอง, ผู้เข้าร่วมเพิ่มเติม, ค้นหาผู้ต้องขัง, เลือกวันที่
+    </div>
+
+    <div class="callout">
+      <strong>🔒 เฉพาะ:</strong> Superadmin และ Admin เท่านั้นที่สร้างการจองใหม่ได้
+    </div>
+
+    <h3>ขั้นตอนการสร้างการจอง</h3>
+
+    <h4>4.1 กรอกข้อมูลผู้จอง</h4>
+    <ul>
+      <li><strong>ชื่อ-นามสกุล</strong> (required)</li>
+      <li><strong>เลขประจำตัว</strong> — บัตร ปชช. รูปแบบ <code>X-XXXX-XXXXX-XX-X</code> หรือ Passport No.</li>
+      <li><strong>เบอร์โทรศัพท์</strong> — 10 หลัก</li>
+      <li><strong>ความสัมพันธ์</strong> — เลือกจาก dropdown</li>
+      <li><strong>ศาสนา</strong> — พุทธ / อิสลาม / คริสต์ / อื่น ๆ</li>
+      <li><strong>การแพ้อาหาร</strong> — กรอกรายละเอียด หรือ "ไม่มี"</li>
+    </ul>
+
+    <h4>4.2 ผู้เข้าร่วมเพิ่มเติม</h4>
+    <ul>
+      <li>เลือกจำนวนผู้เข้าร่วม (รวมผู้จอง) จาก dropdown</li>
+      <li>กรอกข้อมูลของแต่ละคน: ชื่อ, เลขประจำตัว, ศาสนา, แพ้อาหาร, ความสัมพันธ์, อายุ</li>
+      <li>หากเลือกความสัมพันธ์เป็น "บุตร / ธิดา" ต้องกรอกอายุ</li>
+    </ul>
+
+    <h4>4.3 ค้นหาผู้ต้องขัง</h4>
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: ช่องค้นหาผู้ต้องขังพร้อม dropdown suggestions</strong>
+      แสดงช่องค้นหา, Dropdown รายการที่ตรงกัน, กรอบสีเขียวแสดงข้อมูลที่เลือกแล้ว
+    </div>
+    <ol class="step-list">
+      <li>พิมพ์เลขผู้ต้องขัง หรือชื่อ-นามสกุล ในช่องค้นหา</li>
+      <li>ระบบจะแสดงรายการที่ตรงกัน (สูงสุด 8 รายการ)</li>
+      <li>คลิกเลือกผู้ต้องขังจาก dropdown</li>
+      <li>ข้อมูลจะแสดงในกรอบสีเขียวยืนยัน — ชื่อถูกปิดบัง (mask) เพื่อความเป็นส่วนตัว</li>
+      <li>คลิกพื้นที่ว่างเพื่อปิด dropdown</li>
+    </ol>
+    <p>หากระบบไม่พบผู้ต้องขังที่ต้องการ แสดงว่าข้อมูลในฐานข้อมูลยังไม่มี — สามารถป้อนข้อมูลผ่านหน้า "จัดการผู้ต้องขัง" ก่อน</p>
+
+    <div class="callout warn">
+      <strong>⚠️ ความเป็นส่วนตัว:</strong> ชื่อผู้ต้องขังจะถูกปิดบัง (แสดงเฉพาะชื่อต้น + 4 ตัวแรกของนามสกุล) เพื่อป้องกันข้อมูลส่วนบุคคล
+    </div>
+
+    <h4>4.4 เลือกวันที่</h4>
+    <ul>
+      <li>เลือกวันที่ต้องการเข้าร่วมกิจกรรมจาก input date</li>
+      <li>ค่าบริการรวมจะคำนวณอัตโนมัติ</li>
+    </ul>
+
+    <h4>4.5 บันทึก</h4>
+    <ul>
+      <li>กดปุ่ม <strong>💾 บันทึกการจอง</strong></li>
+      <li>ระบบจะบันทึกไปยัง Google Sheet ทันที</li>
+      <li>สถานะเริ่มต้น: <span class="role-badge vinai">รอตรวจสอบวินัย</span></li>
+      <li>เลขอ้างอิง (Ref) จะถูกสร้างอัตโนมัติ</li>
+    </ul>
+  </div>
+
+  <!-- ===== SECTION 5 ===== -->
+  <div class="section" id="s5">
+    <h2><i class="ti ti-edit"></i> 5. แก้ไขการจอง (Edit Booking)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: Modal แก้ไขการจอง</strong>
+      แสดงฟอร์มแก้ไขข้อมูลผู้จอง ผู้เข้าร่วม ผู้ต้องขัง และวันที่
+    </div>
+
+    <ol class="step-list">
+      <li>คลิกปุ่ม <span class="btn-sample edit">✏️ แก้ไข</span> ในแถวที่ต้องการ</li>
+      <li>Modal จะแสดงพร้อมข้อมูลเดิม</li>
+      <li>สามารถแก้ไข:
+        <ul>
+          <li>ข้อมูลผู้จอง (ชื่อ, ID, เบอร์โทร, ความสัมพันธ์, ศาสนา, แพ้อาหาร)</li>
+          <li>ผู้เข้าร่วมเพิ่มเติม (เพิ่ม/ลบ/แก้ไข)</li>
+          <li>ผู้ต้องขัง (ชื่อ, ID, แดน)</li>
+          <li>วันที่เข้าร่วม</li>
+        </ul>
+      </li>
+      <li>กด <strong>💾 บันทึก</strong> เพื่อบันทึก</li>
+      <li>กด <strong>✕ ยกเลิก</strong> เพื่อยกเลิก</li>
+    </ol>
+
+    <div class="callout warn">
+      <strong>⚠️ ข้อควรระวัง:</strong> การแก้ไขข้อมูลผู้ต้องขังจะไม่ตรวจสอบกับฐานข้อมูลผู้ต้องขังอีกครั้ง — ตรวจสอบให้แน่ใจก่อนบันทึก
+    </div>
+  </div>
+
+  <!-- ===== SECTION 6 ===== -->
+  <div class="section" id="s6">
+    <h2><i class="ti ti-lock"></i> 6. จัดการผู้ต้องขัง (Prisoners)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: หน้าจัดการผู้ต้องขัง</strong>
+      แสดงฟอร์มอัปโหลด CSV, ปุ่มแสดงตัวอย่าง, ปุ่ม Sync Wings
+    </div>
+
+    <h3>นำเข้าข้อมูลจากไฟล์ CSV</h3>
+    <ol class="step-list">
+      <li>เลือกว่าไฟล์ CSV ที่มีรูปแบบ: <code>prisonerId, prisonerName, wing</code></li>
+      <li>กดปุ่ม <strong>👁️ แสดงตัวอย่าง</strong> เพื่อดูตัวอย่างข้อมูล</li>
+      <li>ตรวจสอบความถูกต้องของตัวอย่าง</li>
+      <li>กดปุ่ม <strong>💾 ยืนยันนำเข้า</strong> เพื่อบันทึก</li>
+    </ol>
+    <p>ระบบจะ <strong>อัปเดตอัตโนมัติ (Upsert)</strong> ถ้า <code>prisonerId</code> ซ้ำ — ไม่ต้องกังวลเรื่องข้อมูลซ้ำ</p>
+
+    <div class="callout">
+      <strong>💡 แนะนำ:</strong> นำเข้าข้อมูลผู้ต้องขังก่อนเปิดใช้ระบบครั้งแรก เพื่อให้ช่องค้นหาผู้ต้องขังทำงานได้อย่างสมบูรณ์
+    </div>
+
+    <h3>Sync Wings</h3>
+    <p>ปุ่ม <strong>🔄 Sync Wings</strong> — ใช้สำหรับอัปเดตแดน (wing) ในรายการจองทั้งหมด ตามข้อมูลผู้ต้องขังล่าสุด</p>
+    <ul>
+      <li>มีประโยชน์เมื่อผู้ต้องขังถูกย้ายแดน</li>
+      <li>ระบบจะอัปเดตแดนในทุกรายการจองที่อ้างถึงผู้ต้องขังนั้น</li>
+    </ul>
+  </div>
+
+  <!-- ===== SECTION 7 ===== -->
+  <div class="section" id="s7">
+    <h2><i class="ti ti-report"></i> 7. รายงาน (Reports)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: หน้ารายงาน</strong>
+      แสดงตารางข้อมูลการจองพร้อมช่องค้นหาและปุ่มส่งออก
+    </div>
+
+    <h3>ฟังก์ชันที่มี</h3>
+    <ul>
+      <li><strong>ค้นหา</strong> — พิมพ์ชื่อ / Ref / ผู้ต้องขัง</li>
+      <li><strong>ส่งออก CSV</strong> — ดาวน์โหลดข้อมูลเป็นไฟล์ CSV</li>
+      <li><strong>ส่งออก CSV มีเบอร์</strong> — ส่งออกรวมเบอร์โทรศัพท์</li>
+      <li><strong>ส่งออก CSV ตามช่วงวันที่</strong> — เลือกวันที่เริ่มต้น-สิ้นสุด</li>
+      <li><strong>🖨️ พิมพ์</strong> — พิมพ์รายงาน</li>
+    </ul>
+  </div>
+
+  <!-- ===== SECTION 8 ===== -->
+  <div class="section" id="s8">
+    <h2><i class="ti ti-file-report"></i> 8. รายงานทางการ (Formal Reports)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: หน้ารายงานทางการ</strong>
+      แสดงรายงานรูปแบบทางการพร้อมตัวเลือกพิมพ์และส่งออก
+    </div>
+
+    <ul>
+      <li>รายงานรูปแบบทางการพร้อมหัวเอกสารและตราประทับ</li>
+      <li>เลือกแดนเพื่อกรอง</li>
+      <li>สามารถพิมพ์และส่งออกได้</li>
+    </ul>
+  </div>
+
+  <!-- ===== SECTION 9 ===== -->
+  <div class="section" id="s9">
+    <h2><i class="ti ti-history"></i> 9. บันทึกการทำงาน (Event Log)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: หน้า Event Log</strong>
+      แสดงตารางประวัติการดำเนินการ: เวลา, ผู้ใช้, บทบาท, การกระทำ, รายละเอียด
+    </div>
+
+    <table class="guide-table">
+      <tr><th>คอลัมน์</th><th>คำอธิบาย</th></tr>
+      <tr><td>🕐 เวลา</td><td>วันที่และเวลาที่ดำเนินการ</td></tr>
+      <tr><td>👤 ผู้ใช้</td><td>Username ที่ดำเนินการ (พร้อมบทบาท)</td></tr>
+      <tr><td>📝 การกระทำ</td><td>ประเภทของการกระทำ เช่น update_status, confirm_payment</td></tr>
+      <tr><td>📋 รายละเอียด</td><td>รายละเอียดเพิ่มเติม เช่น Ref No., ข้อมูลที่เปลี่ยน</td></tr>
+    </table>
+
+    <div class="callout">
+      <strong>💡 ใช้สำหรับ:</strong> ตรวจสอบ Audit Trail — ดูว่าใครทำอะไร เมื่อไหร่ ในระบบ
+    </div>
+    <p>แสดงสูงสุด 100 รายการล่าสุด บันทึกอยู่ใน LocalStorage ของเบราว์เซอร์</p>
+  </div>
+
+  <!-- ===== SECTION 10 ===== -->
+  <div class="section" id="s10">
+    <h2><i class="ti ti-users"></i> 10. จัดการผู้ใช้ (Users)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: หน้าจัดการผู้ใช้</strong>
+      แสดงตารางผู้ใช้ พร้อมปุ่มเพิ่ม/แก้ไข/ลบ
+    </div>
+
+    <div class="callout">
+      <strong>🔒 เฉพาะ:</strong> Superadmin เท่านั้นที่เข้าถึงหน้านี้ได้
+    </div>
+
+    <ul>
+      <li><strong>เพิ่มผู้ใช้ใหม่</strong> — กรอก Username, Password, เลือกบทบาท</li>
+      <li><strong>แก้ไขผู้ใช้</strong> — เปลี่ยนชื่อผู้ใช้, รหัสผ่าน, บทบาท</li>
+      <li><strong>ลบผู้ใช้</strong> — ลบผู้ใช้ออกจากระบบ</li>
+    </ul>
+
+    <h3>บทบาทในระบบ</h3>
+    <table class="guide-table">
+      <tr><th>บทบาท</th><th>คำอธิบาย</th></tr>
+      <tr><td><span class="role-badge superadmin">Superadmin</span></td><td>จัดการทั้งหมด — มีสิทธิ์สูงสุด</td></tr>
+      <tr><td><span class="role-badge admin">Admin</span></td><td>จัดการการจอง, รายงาน, ผู้ต้องขัง</td></tr>
+      <tr><td><span class="role-badge finance">Finance</span></td><td>ยืนยัน/ปฏิเสธการชำระเงิน</td></tr>
+      <tr><td><span class="role-badge vinai">Vinai</span></td><td>ตรวจสอบวินัยผู้ต้องขัง</td></tr>
+      <tr><td><span class="role-badge tadtel">Tadtel</span></td><td>ตรวจสอบผู้เข้าร่วม</td></tr>
+      <tr><td><span class="role-badge user">User</span></td><td>ดูและพิมพ์ข้อมูลเท่านั้น</td></tr>
+    </table>
+  </div>
+
+  <!-- ===== SECTION 11 ===== -->
+  <div class="section" id="s11">
+    <h2><i class="ti ti-key"></i> 11. สิทธิ์ในแต่ละบทบาท (Permissions)</h2>
+
+    <table class="guide-table">
+      <tr>
+        <th>ความสามารถ</th>
+        <th><span class="role-badge superadmin">Superadmin</span></th>
+        <th><span class="role-badge admin">Admin</span></th>
+        <th><span class="role-badge finance">Finance</span></th>
+        <th><span class="role-badge vinai">Vinai</span></th>
+        <th><span class="role-badge tadtel">Tadtel</span></th>
+        <th><span class="role-badge user">User</span></th>
+      </tr>
+      <tr>
+        <td>ดูรายการจองทั้งหมด</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td>เฉพาะการเงิน</td>
+        <td>เฉพาะวินัย</td>
+        <td>เฉพาะผู้เข้าร่วม</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>อนุมัติวินัย</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>อนุมัติผู้เข้าร่วม</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>ยืนยันชำระเงิน</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>ยกเลิกการจอง</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>แก้ไขการจอง</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>จัดการผู้ใช้</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>จัดการผู้ต้องขัง</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>ดู/ส่งออกรายงาน</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-no">❌</td>
+      </tr>
+      <tr>
+        <td>พิมพ์รายงาน</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+        <td class="perm-yes">✅</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ===== SECTION 12 ===== -->
+  <div class="section" id="s12">
+    <h2><i class="ti ti-settings"></i> 12. จัดการตั้งค่า (Settings)</h2>
+
+    <div class="img-placeholder">
+      <strong>📸 ภาพ: หน้าตั้งค่า</strong>
+      แสดงฟอร์มกำหนดค่าต่าง ๆ ของระบบ
+    </div>
+
+    <div class="callout">
+      <strong>🔒 เฉพาะ:</strong> Superadmin เท่านั้นที่เข้าถึงได้
+    </div>
+
+    <ul>
+      <li>กำหนดค่า <strong>URL ของ Google Apps Script</strong></li>
+      <li>ปรับปรุง <strong>ค่าบริการ</strong> ต่อคน</li>
+      <li>กำหนด <strong>จำนวนโควต้า</strong> สูงสุดต่อวัน</li>
+      <li>ตั้งค่า <strong>การแจ้งเตือน</strong> (Notification)</li>
+    </ul>
+  </div>
+
+  <!-- ===== SECTION 13 ===== -->
+  <div class="section" id="s13">
+    <h2><i class="ti ti-bulb"></i> 13. เคล็ดลับการใช้งาน</h2>
+
+    <h3>การรีเฟรชข้อมูล</h3>
+    <ul>
+      <li>ข้อมูลจะอัปเดตอัตโนมัติทุก <strong>30 วินาที</strong></li>
+      <li>หรือกดปุ่มรีเฟรช (🔄) ที่มุมบนขวา</li>
+      <li>บนมือถือสามารถใช้ <strong>Pull-to-Refresh</strong> (ดึงลง) เพื่อรีเฟรช</li>
+    </ul>
+
+    <h3>การแจ้งเตือน</h3>
+    <ul>
+      <li>🔔 กระดิ่งแจ้งเตือนจะแสดงเมื่อมีรายการจองใหม่ในสถานะ "รอตรวจสอบ"</li>
+      <li>คลิกที่กระดิ่งเพื่อดูรายละเอียด</li>
+      <li>คลิกที่รายการในแผงแจ้งเตือนเพื่อไปที่รายการนั้น</li>
+    </ul>
+
+    <h3>ปุ่มคู่มือ</h3>
+    <ul>
+      <li>คลิก <strong>📖 คู่มือ</strong> ที่มุมบนขวาของหน้า Admin เพื่อเปิดคู่มือนี้ในแท็บใหม่</li>
+      <li>ใช้ปุ่ม <strong>🖨️ พิมพ์</strong> ที่มุมบนขวาของคู่มือเพื่อพิมพ์</li>
+    </ul>
+
+    <h3>การจัดการหน้าจอบนมือถือ</h3>
+    <ul>
+      <li>ระบบปรับขนาดอัตโนมัติตามหน้าจอ (Responsive)</li>
+      <li>บนมือถือเมนูด้านข้างจะถูกซ่อนและแสดงปุ่ม <strong>☰</strong> เพื่อเปิด</li>
+      <li>แถบนำทางด้านล่าง (Bottom Nav) แสดงบนมือถือเพื่อการเข้าถึงที่รวดเร็ว</li>
+    </ul>
+  </div>
+
+  <!-- ===== SECTION 14 ===== -->
+  <div class="section" id="s14">
+    <h2><i class="ti ti-tool"></i> 14. การแก้ไขปัญหาเบื้องต้น</h2>
+
+    <table class="guide-table">
+      <tr><th>ปัญหา</th><th>สาเหตุ</th><th>วิธีแก้</th></tr>
+      <tr>
+        <td>🔴 เข้าสู่ระบบไม่ได้</td>
+        <td>ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</td>
+        <td>ตรวจสอบข้อมูลประจำตัวและลองใหม่ — ติดต่อ Superadmin ถ้าลืมรหัสผ่าน</td>
+      </tr>
+      <tr>
+        <td>🟡 โหลดข้อมูลไม่สำเร็จ</td>
+        <td>ไม่สามารถเชื่อมต่อ Google Sheet หรืออินเทอร์เน็ต</td>
+        <td>ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต รอสักครู่แล้วกดรีเฟรช</td>
+      </tr>
+      <tr>
+        <td>🟡 ข้อมูลไม่แสดง</td>
+        <td>ตัวกรอง (Filter) อาจซ่อนข้อมูล</td>
+        <td>ล้างตัวกรองทั้งหมด: สถานะ = "ทุกสถานะ", วันที่ = "ทุกวัน", แดน = "ทุกแดน"</td>
+      </tr>
+      <tr>
+        <td>🔴 บันทึกข้อมูลไม่สำเร็จ</td>
+        <td>ลิงก์ Google Apps Script ขาด หรือมีปัญหาเซิร์ฟเวอร์</td>
+        <td>ตรวจสอบ URL Apps Script ในหน้าตั้งค่า ติดต่อผู้ดูแลระบบ</td>
+      </tr>
+      <tr>
+        <td>🟡 ค้นหาผู้ต้องขังไม่เจอ</td>
+        <td>ข้อมูลผู้ต้องขังยังไม่ได้นำเข้า หรือยังไม่โหลด</td>
+        <td>ไปที่หน้า "ผู้ต้องขัง" → นำเข้า CSV → กด Sync Wings</td>
+      </tr>
+      <tr>
+        <td>🟡 Modal ไม่แสดง หรือแสดงผิดปกติ</td>
+        <td>อาจมี CSS ขัดกัน หรือ Cache เดิม</td>
+        <td>กด <kbd>Ctrl+F5</kbd> (Hard Refresh) เพื่อล้าง Cache</td>
+      </tr>
+    </table>
+
+    <div class="callout error">
+      <strong>🚨 หากปัญหายังไม่หาย:</strong> กรุณาติดต่อผู้ดูแลระบบ (Superadmin) หรือแจ้งที่ทีมพัฒนาผ่านช่องทางที่กำหนด
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:24px 0 12px;border-top:1px solid var(--border);margin-top:12px;">
+    <p style="font-size:12px;color:var(--text-muted);">
+      จัดทำโดย ทัณฑสถานบำบัดพิเศษกลาง · ระบบ CC Cafe Reservation<br>
+      เวอร์ชัน 2.0 — มิถุนายน 2569
+    </p>
+  </div>
+
+</div>
+
+<!-- Scroll to top -->
+<button class="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="กลับด้านบน">
+  <i class="ti ti-arrow-up"></i>
+</button>
+
+</body>
+</html>

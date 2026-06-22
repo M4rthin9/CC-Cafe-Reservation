@@ -371,6 +371,13 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     const newRow  = headers.map(h => body[h] !== undefined ? body[h] : '');
     sheet.appendRow(newRow);
 
+    // Force phone column as text to prevent leading zero stripping
+    const phoneIdx = headers.indexOf('visitorPhone');
+    if (phoneIdx >= 0) {
+      const lastRow = sheet.getLastRow();
+      sheet.getRange(lastRow, phoneIdx + 1).setNumberFormat('@');
+    }
+
     logEvent('public', 'booking_submitted', body.ref || '', { visitorName: body.visitorName, prisonerName: body.prisonerName, visitDate: body.visitDate }, 'success');
 
     // Optional email notification (kept from original)
@@ -678,7 +685,9 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
           if (body[field] !== undefined) {
             const colIdx = headers.indexOf(field);
             if (colIdx >= 0) {
-              sheet.getRange(row, colIdx + 1).setValue(body[field]);
+              const range = sheet.getRange(row, colIdx + 1);
+              if (field === 'visitorPhone') range.setNumberFormat('@');
+              range.setValue(body[field]);
               changes[field] = body[field];
             }
           }

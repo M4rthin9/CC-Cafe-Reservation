@@ -105,6 +105,7 @@ let allRows = [];
 let currentPage = 1;
 let pageSize = 10;
 let currentUser = null;
+let prisonerMaster = [];
 
 // ===== TOAST NOTIFICATIONS =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -235,6 +236,7 @@ async function doLogin() {
     renderDashboardHome();
     loadData();
     startPolling();
+    loadPrisonerMaster();
     showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณ ' + (currentUser.displayName || currentUser.username), 'success');
 
   } catch (e) {
@@ -950,7 +952,7 @@ if (financeCanvasEl) {
   });
 }
 
-function renderDashboardHome() {
+let renderDashboardHome = function () {
   // Role‑based KPI visibility
   const role = currentUser && currentUser.role;
   const visible = {
@@ -1395,6 +1397,15 @@ function initPullToRefresh() {
     }
   }, { passive: true });
 }
+
+// Close prisoner suggestions when clicking outside
+document.addEventListener('click', (e) => {
+  const searchBox = document.getElementById('nbPrisonerSearch');
+  const suggBox = document.getElementById('nbPrisonerSuggestions');
+  if (searchBox && suggBox && !searchBox.contains(e.target) && !suggBox.contains(e.target)) {
+    suggBox.style.display = 'none';
+  }
+});
 
 // Initialize mobile features on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -4593,6 +4604,116 @@ function renderDashboardHomeV2() {
   renderFloorPlan();
 }
 
+// ===== VALIDATION HELPERS =====
+function validateIdFormat(val) {
+  if (!val) return { valid: true };
+  if (val.includes('-')) {
+    const isValid = /^\d{1}-\d{4}-\d{5}-\d{2}-\d{1}$/.test(val);
+    return { valid: isValid, error: 'รูปแบบเลขบัตรประชาชนไม่ถูกต้อง (X-XXXX-XXXXX-XX-X)' };
+  }
+  const isValid = /^[A-Za-z0-9]{6,20}$/.test(val);
+  return { valid: isValid, error: 'รูปแบบ Passport ไม่ถูกต้อง (ตัวอักษร/ตัวเลข 6-20 หลัก)' };
+}
+
+function validatePhone(val) {
+  const cleaned = val.replace(/[^0-9]/g, '');
+  return { cleaned, valid: cleaned.length === 10, error: 'เบอร์โทรศัพท์ต้องมี 10 ตัวเลข' };
+}
+
+// ===== PRISONER MASTER DATA =====
+function maskPrisonerName(name) {
+  if (!name) return name;
+  const trimmed = name.trim();
+  const lastSpace = trimmed.lastIndexOf(' ');
+  if (lastSpace > 0) {
+    const firstName = trimmed.substring(0, lastSpace + 1);
+    const lastName = trimmed.substring(lastSpace + 1);
+    const maskedLast = lastName.slice(0, 4);
+    return firstName + maskedLast;
+  }
+  return trimmed.length > 3 ? trimmed.slice(0, 3) : trimmed;
+}
+
+async function loadPrisonerMaster() {
+  const statusEl = document.getElementById('nbPrisonerLoadStatus');
+  if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขัง...';
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL + '?action=getPrisoners');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    if (data.status === 'ok' && Array.isArray(data.prisoners)) {
+      prisonerMaster = data.prisoners;
+      if (statusEl) {
+        statusEl.textContent = `✓ โหลดสำเร็จ (${prisonerMaster.length} คน)`;
+        statusEl.style.color = 'var(--green)';
+      }
+    } else {
+      throw new Error('Invalid response');
+    }
+  } catch (e) {
+    console.error('[PrisonerMaster]', e);
+    if (statusEl) {
+      statusEl.textContent = '⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้ — กรอกเองไม่ได้';
+      statusEl.style.color = 'var(--red)';
+    }
+  }
+}
+
+function nbFilterPrisonerSuggestions() {
+  const q = document.getElementById('nbPrisonerSearch').value.trim().toLowerCase();
+  const container = document.getElementById('nbPrisonerSuggestions');
+  container.innerHTML = '';
+  container.style.display = 'none';
+
+  if (!q || prisonerMaster.length === 0) return;
+
+  const matches = prisonerMaster.filter(p =>
+    p.prisonerId.toLowerCase().includes(q) ||
+    p.prisonerName.toLowerCase().includes(q)
+  ).slice(0, 8);
+
+  if (matches.length === 0) return;
+
+  matches.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'suggestion-item';
+    div.innerHTML = `
+      <div style="flex:1">
+        <strong style="font-size:15px;">${maskPrisonerName(p.prisonerName)}</strong>
+      </div>
+      <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
+        #${p.prisonerId}<br>
+        <span style="color:var(--blue);font-weight:600;">${p.wing || ''}</span>
+      </div>
+    `;
+    div.onclick = () => nbSelectPrisoner(p);
+    container.appendChild(div);
+  });
+  container.style.display = 'block';
+}
+
+function nbSelectPrisoner(p) {
+  document.getElementById('nbPrisonerId').value = p.prisonerId;
+  document.getElementById('nbPrisonerName').value = p.prisonerName;
+  document.getElementById('nbWing').value = p.wing || '';
+
+  document.getElementById('nbDispPrisonerName').textContent = maskPrisonerName(p.prisonerName);
+  document.getElementById('nbDispPrisonerId').textContent = p.prisonerId;
+  document.getElementById('nbDispWing').textContent = p.wing || '';
+  document.getElementById('nbSelectedPrisonerDisplay').style.display = 'block';
+
+  document.getElementById('nbPrisonerSearch').value = '';
+  document.getElementById('nbPrisonerSuggestions').innerHTML = '';
+  document.getElementById('nbPrisonerSuggestions').style.display = 'none';
+
+  const statusEl = document.getElementById('nbPrisonerMatchStatus');
+  statusEl.textContent = `✓ เลือกจากฐานข้อมูล: ${maskPrisonerName(p.prisonerName)} (#${p.prisonerId}) — ${p.wing}`;
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--green)';
+}
+
 // ===== NEW BOOKING MODAL (Superadmin/Admin) =====
 function openNewBookingModal() {
   const today = new Date();
@@ -4603,6 +4724,17 @@ function openNewBookingModal() {
   document.getElementById('nbVisitorCount').value = '1';
   document.getElementById('nbExtraVisitorsContainer').style.display = 'none';
   document.getElementById('nbExtraVisitorsList').innerHTML = '';
+
+  // Reset prisoner state
+  document.getElementById('nbPrisonerName').value = '';
+  document.getElementById('nbPrisonerId').value = '';
+  document.getElementById('nbWing').value = '';
+  document.getElementById('nbPrisonerSearch').value = '';
+  document.getElementById('nbPrisonerSuggestions').innerHTML = '';
+  document.getElementById('nbPrisonerSuggestions').style.display = 'none';
+  document.getElementById('nbSelectedPrisonerDisplay').style.display = 'none';
+  document.getElementById('nbPrisonerMatchStatus').style.display = 'none';
+
   updateNbTotal();
   document.getElementById('newBookingModalBg').classList.add('show');
 }
@@ -4639,8 +4771,8 @@ function nbUpdateExtraVisitors() {
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
         '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>' +
           '<input type="text" id="nbExtraName' + i + '" class="search-box" style="width:100%;"></div>' +
-        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขบัตร <span style="color:var(--red)">*</span></label>' +
-          '<input type="text" id="nbExtraId' + i + '" class="search-box" style="width:100%;"></div>' +
+        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขประจำตัว <span style="color:var(--red)">*</span></label>' +
+          '<input type="text" id="nbExtraId' + i + '" class="search-box" placeholder="ปชช. X-XXXX-XXXXX-XX-X หรือ Passport" style="width:100%;"></div>' +
         '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ศาสนา <span style="color:var(--red)">*</span></label>' +
           '<select id="nbExtraReligion' + i + '" class="filter-select" style="width:100%;">' + religionOpts + '</select></div>' +
         '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">แพ้อาหาร <span style="color:var(--red)">*</span></label>' +
@@ -4691,6 +4823,14 @@ async function submitNewBooking() {
   if (!visitorName || !visitorId || !visitorPhone || !relation || !visitorReligion || !visitorAllergy) {
     showToast('กรุณากรอกข้อมูลผู้จองให้ครบถ้วน', 'error'); return;
   }
+
+  const idResult = validateIdFormat(visitorId);
+  if (!idResult.valid) { showToast(idResult.error, 'error'); return; }
+
+  const phoneResult = validatePhone(visitorPhone);
+  if (!phoneResult.valid) { showToast(phoneResult.error, 'error'); return; }
+  visitorPhone = phoneResult.cleaned;
+
   if (!prisonerName || !prisonerId || !wing) {
     showToast('กรุณากรอกข้อมูลผู้ต้องขังให้ครบถ้วน', 'error'); return;
   }
@@ -4797,7 +4937,7 @@ function editBooking(idx) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล</label>
             <input type="text" class="edit-extra-name search-box" value="${esc(e.name)}" style="width:100%;"></div>
-          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขบัตร</label>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขประจำตัว</label>
             <input type="text" class="edit-extra-id search-box" value="${esc(e.id)}" style="width:100%;"></div>
           <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ความสัมพันธ์</label>
             <select class="edit-extra-relation filter-select" style="width:100%;" onchange="toggleEditExtraAge(this)">
@@ -4840,7 +4980,7 @@ function editBooking(idx) {
           <input type="text" id="editVisitorPhone" class="search-box" value="${esc(r.visitorPhone)}" style="width:100%;">
         </div>
         <div>
-          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🪪 บัตรประชาชน</label>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🪪 เลขประจำตัว (บัตร ปชช. / Passport)</label>
           <input type="text" id="editVisitorId" class="search-box" value="${esc(r.visitorId)}" style="width:100%;">
         </div>
         <div>
@@ -4944,8 +5084,8 @@ function addEditExtra() {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล</label>
         <input type="text" class="edit-extra-name search-box" style="width:100%;"></div>
-      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขบัตร</label>
-        <input type="text" class="edit-extra-id search-box" style="width:100%;"></div>
+      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขประจำตัว</label>
+        <input type="text" class="edit-extra-id search-box" placeholder="ปชช. X-XXXX-XXXXX-XX-X หรือ Passport" style="width:100%;"></div>
       <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ความสัมพันธ์</label>
         <select class="edit-extra-relation filter-select" style="width:100%;" onchange="toggleEditExtraAge(this)">${relOptsAll}</select></div>
       <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">อายุ</label>
