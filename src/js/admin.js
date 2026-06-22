@@ -4744,12 +4744,35 @@ function closeNewBookingModal(event) {
   document.getElementById('newBookingModalBg').classList.remove('show');
 }
 
-function updateNbTotal() {
+function nbCalculateTotal() {
   const n = parseInt(document.getElementById('nbVisitorCount').value) || 1;
-  const totalPersons = n + 1;
-  const price = 1500;
-  let total = totalPersons * price;
-  document.getElementById('nbTotalDisplay').textContent = total.toLocaleString() + ' บาท';
+  const extras = nbGetExtraVisitors();
+  let extraFees = 0;
+  let adults = 1;
+  let kids5_8 = 0, kidsUnder5 = 0;
+
+  extras.forEach(v => {
+    let fee = 1000;
+    let isChild = false;
+    if (v.relation === 'บุตร / ธิดา') {
+      const a = parseInt(v.age, 10);
+      if (!isNaN(a)) {
+        if (a < 5) { fee = 0; isChild = true; kidsUnder5++; }
+        else if (a <= 8) { fee = 500; isChild = true; kids5_8++; }
+      }
+    }
+    extraFees += fee;
+    if (!isChild) adults++;
+  });
+
+  const total = 1000 + 1000 + extraFees;
+  return { total, extraFees, adults, kids5_8, kidsUnder5, numVisitors: n };
+}
+
+function updateNbTotal() {
+  const c = nbCalculateTotal();
+  const feeNote = c.extraFees > 0 ? ` (รวมค่าพิเศษ ${c.extraFees.toLocaleString()} บาท)` : '';
+  document.getElementById('nbTotalDisplay').textContent = c.total.toLocaleString() + ' บาท' + feeNote;
 }
 
 function nbUpdateExtraVisitors() {
@@ -4810,7 +4833,7 @@ function nbGetExtraVisitors() {
 async function submitNewBooking() {
   const visitorName = document.getElementById('nbVisitorName').value.trim();
   const visitorId = document.getElementById('nbVisitorId').value.trim();
-  const visitorPhone = document.getElementById('nbVisitorPhone').value.trim();
+  let visitorPhone = document.getElementById('nbVisitorPhone').value.trim();
   const relation = document.getElementById('nbRelation').value;
   const visitorReligion = document.getElementById('nbVisitorReligion').value;
   const visitorAllergy = document.getElementById('nbVisitorAllergy').value.trim();
@@ -4843,9 +4866,9 @@ async function submitNewBooking() {
   const extraReligionsStr = extras.map(v => v.religion || '').join(';;');
   const extraAllergiesStr = extras.map(v => v.allergy || '').join(';;');
 
+  const calc = nbCalculateTotal();
   const totalPersons = n + 1;
-  const price = 1500;
-  const total = totalPersons * price;
+  const total = calc.total;
 
   const ref = 'VIS-' + Math.floor(10000 + Math.random() * 90000);
   const d = new Date(visitDateISO + 'T00:00:00');
@@ -4873,9 +4896,9 @@ async function submitNewBooking() {
     visitorCount: n,
     totalPersons,
     total,
-    adultCount: 0,
-    child5to8Count: 0,
-    childUnder5Count: 0,
+    adultCount: calc.adults,
+    child5to8Count: calc.kids5_8,
+    childUnder5Count: calc.kidsUnder5,
     status: 'รอตรวจสอบวินัย',
     slipImage: ''
   };
