@@ -634,6 +634,11 @@ button:active:not(:disabled), .refresh-btn:active:not(:disabled), .btn-approve:a
   box-shadow: 0 0 0 3px rgba(11, 37, 69, 0.1);
 }
 
+input[type="date"], #filterDate {
+  font-family: 'Sarabun', sans-serif;
+  font-size: 15px;
+}
+
 .visitor-approval { margin-top:6px; font-size:11px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
 .visitor-approval .lbl { color:var(--text2); font-size:10px; flex-shrink:0; }
 .approval-badge { padding:1px 6px; border-radius:10px; font-size:10px; font-weight:600; white-space:nowrap; }
