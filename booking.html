@@ -5,11 +5,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title data-i18n="bookingTitle">จองคิวเพื่อร่วมกิจกรรม</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
   <link rel="stylesheet" href="src/css/base.css">
   <link rel="stylesheet" href="src/css/booking.css">
   
+  <script src="src/js/config.js" defer></script>
+  <script src="src/js/utils.js" defer></script>
   <script src="src/js/i18n.js" defer></script>
 </head>
 
@@ -170,9 +174,9 @@
         <div class="section-title"><i class="ti ti-calendar"></i> <span
             data-i18n="selectDate">วันที่ต้องการเข้าร่วมกิจกรรม</span></div>
         <div class="cal-header">
-          <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
+          <button class="cal-nav" onclick="changeMonth(-1)" aria-label="เดือนก่อนหน้า">&#8249;</button>
           <span id="calTitle" style="font-size:14px;font-weight:600;color:var(--text)"></span>
-          <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
+          <button class="cal-nav" onclick="changeMonth(1)" aria-label="เดือนถัดไป">&#8250;</button>
         </div>
         <div class="day-names">
           <div class="day-name">อา</div>

@@ -243,8 +243,6 @@
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
-
 /* ===== RESULT SECTION ===== */
 .result-section {
   display: none;
@@ -1113,7 +1111,6 @@
 
 .overlay p { color: #fff; font-size: var(--text-base); font-weight: var(--weight-medium); }
 
-@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ===== BOOKING SUMMARY ===== */

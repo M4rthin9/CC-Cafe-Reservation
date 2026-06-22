@@ -5,8 +5,6 @@ const USERS_SHEET = 'Users';
 const NOTES_SHEET = 'Notes';
 const SETTINGS_SHEET = 'Settings';
 
-const LEGACY_STAFF_PASS = '10900';
-
 const ROLES = {
   SUPERADMIN: 'superadmin',
   ADMIN: 'admin',
@@ -38,10 +36,8 @@ function doGet(e) {
   const pass   = params.pass  || '';
   const username = params.username || '';
 
-  // Legacy support for old getAll calls
   if (action === 'getAll') {
-    const isPublicAccess = !username && !pass || username === 'public';
-    if (!isPublicAccess && !isAuthorized(username, pass)) {
+    if (!isAuthorized(username, pass)) {
       return jsonResp({ status: 'error', message: 'Unauthorized' });
     }
     const sheet = getMainSheet();
@@ -1167,10 +1163,6 @@ function hasPermission(username, perm) {
 }
 
 function isAuthorized(username, pass) {
-  // Legacy password-only auth for backward compatibility
-  if (String(pass) === String(LEGACY_STAFF_PASS)) return true;
-  
-  // RBAC auth
   const user = getUserByUsername(username);
   if (!user) return false;
   

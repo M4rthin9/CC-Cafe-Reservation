@@ -99,10 +99,6 @@ function formatI18n(key, params = {}, lang = getLang()) {
   return text;
 }
 
-// ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzv7yvxTM9F_UM1Ch8bNP7EV0uD02U0h8afbzqwK4zhvTGqCTI6v6DVPBJDZ-qhv3HYOA/exec';
-const STAFF_PASS = '10900';
-
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptGet(params) {
   const qs = new URLSearchParams(params).toString();
@@ -136,14 +132,6 @@ function getStatusPill(status, lang = getLang()) {
   if (s.includes('เสร็จสิ้น')) return `<span class="status-pill" style="background:rgba(74,222,128,0.15);color:#4ADE80;border:1px solid rgba(74,222,128,0.3)">${getI18n('statusCompleted', lang)}</span>`;
   if (s.includes('ยกเลิก')) return `<span class="status-pill" style="background:rgba(255,255,255,0.06);color:#A3A3A3;border:1px solid rgba(255,255,255,0.1)">${getI18n('statusCancelled', lang)}</span>`;
   return `<span class="status-pill status-pending">${getI18n('statusPending', lang)}</span>`;
-}
-
-function escHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 // ===== DEMO DATA =====
@@ -192,7 +180,7 @@ function getDemoRows() {
 async function fetchBookingByRef(ref) {
   let rows = [];
   try {
-    const data = await appsScriptGet({ action: 'getAll', pass: STAFF_PASS });
+    const data = await appsScriptGet({ action: 'getAll' });
     if (data.status === 'ok') rows = data.rows || [];
   } catch (err) {
     console.error('Fetch error:', err);

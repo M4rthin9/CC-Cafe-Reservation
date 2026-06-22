@@ -1,11 +1,3 @@
-// ===== HELPER: Date formatting =====
-function toLocalDateStr(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
 // ===== CONFIG =====
 const PERMISSIONS = {
   Superadmin: ['approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'manage_settings', 'view_eventlog'],
@@ -25,8 +17,6 @@ const SIDEBAR_MENU = {
   Tadtel: ['reservations', 'reports'],
   User: ['home']
 };
-
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzv7yvxTM9F_UM1Ch8bNP7EV0uD02U0h8afbzqwK4zhvTGqCTI6v6DVPBJDZ-qhv3HYOA/exec';
 
 // ===== POLLING FOR REALTIME UPDATES =====
 let pollInterval = null;
@@ -487,23 +477,23 @@ function renderTable() {
 
     return `<tr data-idx="${rowIdx}">
            <td data-label="" style="width:32px;text-align:center;"><input type="checkbox" class="row-select" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer;"></td>
-           <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
+           <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${escHtml(r.ref)}</b></td>
 <td data-label="ผู้เข้าร่วม">
-              <div style="font-weight:600">${r.visitorName}</div>
-              <div style="font-size:11px;color:var(--text2)">${r.visitorPhone || ''}</div>
+              <div style="font-weight:600">${escHtml(r.visitorName)}</div>
+              <div style="font-size:11px;color:var(--text2)">${escHtml(r.visitorPhone || '')}</div>
               <div style="font-size:11px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);display:none" class="mobile-show-prisoner">
-                <span style="font-weight:600;color:var(--text2)">👤 ผู้ต้องขัง:</span> ${r.prisonerName || ''} (#${r.prisonerId || ''})
+                <span style="font-weight:600;color:var(--text2)">👤 ผู้ต้องขัง:</span> ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})
               </div>
             </td>
            <td data-label="ผู้ต้องขัง" class="hide-mobile">
-             <div style="font-weight:600">${r.prisonerName}</div>
-             <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
+             <div style="font-weight:600">${escHtml(r.prisonerName)}</div>
+             <div style="font-size:11px;color:var(--text2)">#${escHtml(r.prisonerId)}</div>
            </td>
-           <td data-label="แดน">${r.wing || '—'}</td>
+           <td data-label="แดน">${escHtml(r.wing) || '—'}</td>
            <td data-label="จำนวน/ยอด">
-             <div>${r.visitorCount} คน • ${(r.total || 0).toLocaleString()} บ.</div>
+             <div>${escHtml(r.visitorCount)} คน • ${(r.total || 0).toLocaleString()} บ.</div>
            </td>
-           <td data-label="สถานะ"><span class="badge ${badgeClass}">${r.status}</span></td>
+           <td data-label="สถานะ"><span class="badge ${badgeClass}">${escHtml(r.status)}</span></td>
            <td data-label="ตรวจสอบ">
              <div style="display:flex;gap:4px;align-items:center;justify-content:center">
                <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
@@ -652,11 +642,11 @@ function renderEventlog() {
 
   container.innerHTML = displayEvents.map(e => `
     <tr>
-      <td style="white-space:nowrap;font-size:12px;">${e.timestamp}</td>
-      <td style="font-size:12px;">${e.user} <span style="color:var(--text2);">(${e.role})</span></td>
-      <td style="font-size:12px;color:var(--text2);">${e.displayName || '-'}</td>
-      <td style="font-size:12px;">${e.action}</td>
-      <td style="font-size:12px;">${e.details}</td>
+      <td style="white-space:nowrap;font-size:12px;">${escHtml(e.timestamp)}</td>
+      <td style="font-size:12px;">${escHtml(e.user)} <span style="color:var(--text2);">(${escHtml(e.role)})</span></td>
+      <td style="font-size:12px;color:var(--text2);">${escHtml(e.displayName || '-')}</td>
+      <td style="font-size:12px;">${escHtml(e.action)}</td>
+      <td style="font-size:12px;">${escHtml(e.details)}</td>
     </tr>
   `).join('');
 }
@@ -1705,8 +1695,8 @@ function viewSlip(idx) {
   const slip = (row.slipImage || '').trim();
 
   const infoBox = `<div style="margin-top:10px;font-size:13px;color:var(--text2);padding:10px;background:var(--bg);border-radius:6px;">
-    <b>${row.ref}</b> · ${row.visitorName}<br>
-    ยอด: <b>${(row.total || 0).toLocaleString()} บาท</b> · สถานะ: <b>${row.status}</b>
+    <b>${escHtml(row.ref)}</b> · ${escHtml(row.visitorName)}<br>
+    ยอด: <b>${(row.total || 0).toLocaleString()} บาท</b> · สถานะ: <b>${escHtml(row.status)}</b>
   </div>`;
 
   // ✅ ดึง fileId จาก Drive URL ทุกรูปแบบ (?id=, /d/, /open?id=)
@@ -1804,9 +1794,9 @@ function viewDetail(idx) {
   const visitor1Html = `
      <div class="visitor-card">
        <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ 1 (ผู้จอง)</div>
-       <div class="vc-name">${r.visitorName || '—'}</div>
-       <div class="vc-info">บัตร: ${r.visitorId || '—'} · โทร: ${r.visitorPhone || '—'} · ความสัมพันธ์: ${r.relation || '—'}</div>
-       <div class="vc-info">ศาสนา: ${r.religion || '—'} · แพ้อาหาร: ${r.allergy || '—'}</div>
+       <div class="vc-name">${escHtml(r.visitorName) || '—'}</div>
+       <div class="vc-info">บัตร: ${escHtml(r.visitorId) || '—'} · โทร: ${escHtml(r.visitorPhone) || '—'} · ความสัมพันธ์: ${escHtml(r.relation) || '—'}</div>
+       <div class="vc-info">ศาสนา: ${escHtml(r.religion) || '—'} · แพ้อาหาร: ${escHtml(r.allergy) || '—'}</div>
         <div class="visitor-approval">
           <span class="lbl">สถานะ:</span>
           <span class="approval-badge ${va === 'yes' ? 'yes' : va === 'no' ? 'no' : 'pending'}">${getApprLabel(va)}</span>
@@ -1848,7 +1838,7 @@ function viewDetail(idx) {
       extraHtml += `
          <div class="visitor-card">
            <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ ${i + 2}</div>
-           <div class="vc-name">${v.name}</div>
+           <div class="vc-name">${escHtml(v.name)}</div>
            ${infoParts.length ? '<div class="vc-info">' + infoParts.join(' · ') + '</div>' : ''}
             <div class="visitor-approval">
               <span class="lbl">สถานะ:</span>
@@ -1867,7 +1857,7 @@ function viewDetail(idx) {
     <div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
       <div>
         <div style="font-size:11px;color:var(--text2);margin-bottom:2px;">เลขอ้างอิง</div>
-        <div style="font-size:20px;font-weight:700;color:var(--blue);letter-spacing:2px;">${r.ref || '—'}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--blue);letter-spacing:2px;">${escHtml(r.ref) || '—'}</div>
       </div>
       <span class="badge ${badgeClass}" style="font-size:13px;padding:6px 14px;">${s}</span>
     </div>
@@ -1879,15 +1869,15 @@ function viewDetail(idx) {
     <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-top:8px;">
       <div class="detail-row">
         <span class="dlbl">🔒 ผู้ต้องขัง</span>
-        <span class="dval">${r.prisonerName || '—'} <span style="color:var(--text2);font-weight:400">(#${r.prisonerId || '—'})</span></span>
+        <span class="dval">${escHtml(r.prisonerName) || '—'} <span style="color:var(--text2);font-weight:400">(#${escHtml(r.prisonerId) || '—'})</span></span>
       </div>
       <div class="detail-row">
         <span class="dlbl">🏢 แดน</span>
-        <span class="dval">${r.wing || '—'}</span>
+        <span class="dval">${escHtml(r.wing) || '—'}</span>
       </div>
       <div class="detail-row">
         <span class="dlbl">📅 วันที่เยี่ยม</span>
-        <span class="dval">${r.visitDate || '—'}</span>
+        <span class="dval">${escHtml(r.visitDate) || '—'}</span>
       </div>
       <div class="detail-row">
         <span class="dlbl">👥 จำนวนรวม</span>
@@ -1899,7 +1889,7 @@ function viewDetail(idx) {
       </div>
 <div class="detail-row">
          <span class="dlbl">🕐 จองเมื่อ</span>
-         <span class="dval">${r.timestamp || '—'}</span>
+         <span class="dval">${escHtml(r.timestamp) || '—'}</span>
        </div>
 ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
@@ -4621,19 +4611,6 @@ function validatePhone(val) {
 }
 
 // ===== PRISONER MASTER DATA =====
-function maskPrisonerName(name) {
-  if (!name) return name;
-  const trimmed = name.trim();
-  const lastSpace = trimmed.lastIndexOf(' ');
-  if (lastSpace > 0) {
-    const firstName = trimmed.substring(0, lastSpace + 1);
-    const lastName = trimmed.substring(lastSpace + 1);
-    const maskedLast = lastName.slice(0, 4);
-    return firstName + maskedLast;
-  }
-  return trimmed.length > 3 ? trimmed.slice(0, 3) : trimmed;
-}
-
 async function loadPrisonerMaster() {
   const statusEl = document.getElementById('nbPrisonerLoadStatus');
   if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขัง...';
@@ -4681,11 +4658,11 @@ function nbFilterPrisonerSuggestions() {
     div.className = 'suggestion-item';
     div.innerHTML = `
       <div style="flex:1">
-        <strong style="font-size:15px;">${maskPrisonerName(p.prisonerName)}</strong>
+        <strong style="font-size:15px;">${escHtml(maskPrisonerName(p.prisonerName))}</strong>
       </div>
       <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
-        #${p.prisonerId}<br>
-        <span style="color:var(--blue);font-weight:600;">${p.wing || ''}</span>
+        #${escHtml(p.prisonerId)}<br>
+        <span style="color:var(--blue);font-weight:600;">${escHtml(p.wing || '')}</span>
       </div>
     `;
     div.onclick = () => nbSelectPrisoner(p);
@@ -5401,10 +5378,10 @@ function renderNotifications() {
         return `<div onclick="viewDetail(${allRows.indexOf(r)});switchView('reservations');toggleNotifPanel()" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;align-items:center;transition:background 0.15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
           <span style="font-size:18px;">${icon}</span>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);">${r.ref} · ${r.visitorName || ''}</div>
-            <div style="font-size:11px;color:var(--text2);">${s} · ${r.wing || ''}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);">${escHtml(r.ref)} · ${escHtml(r.visitorName || '')}</div>
+            <div style="font-size:11px;color:var(--text2);">${escHtml(s)} · ${escHtml(r.wing || '')}</div>
           </div>
-          <span class="badge badge-payment-pending" style="font-size:10px;white-space:nowrap;">${s}</span>
+          <span class="badge badge-payment-pending" style="font-size:10px;white-space:nowrap;">${escHtml(s)}</span>
         </div>`;
       }).join('');
       if (pending.length > 20) {
