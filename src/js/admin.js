@@ -3571,7 +3571,7 @@ function getReportsFilteredRows() {
 
   return allRows.filter(r => {
     if (fs && normalizeStatus(r.status) !== fs) return false;
-    if (fd && (r.visitDate !== fd && r.visitDateISO !== fd)) return false;
+    if (fd && r.visitDate !== fd) return false;
     if (fw && (r.wing || '') !== fw) return false;
 
     if (q) {
@@ -3590,15 +3590,24 @@ function populateReportsDateFilter() {
   const select = document.getElementById('reportsFilterDate');
   if (!select || !allRows.length) return;
 
-  const dates = [...new Set(allRows.map(r => r.visitDate || r.visitDateISO).filter(Boolean))].sort();
+  const dateMap = {};
+  allRows.forEach(r => {
+    if (r.visitDate && r.visitDateISO && !dateMap[r.visitDate]) {
+      dateMap[r.visitDate] = r.visitDateISO;
+    }
+  });
+  const dates = Object.keys(dateMap).sort((a, b) => {
+    if (dateMap[a] < dateMap[b]) return -1;
+    if (dateMap[a] > dateMap[b]) return 1;
+    return 0;
+  });
 
-  // Keep current selection if possible
   const current = select.value;
   select.innerHTML = '<option value="">ทุกวัน</option>';
   dates.forEach(d => {
     const opt = document.createElement('option');
     opt.value = d;
-    opt.textContent = d;
+    opt.textContent = stripDayPrefix(d);
     select.appendChild(opt);
   });
   if (dates.includes(current)) select.value = current;
