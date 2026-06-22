@@ -664,9 +664,10 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     const refIdx = headers.indexOf('ref');
 
     const updatableFields = [
-      'visitorName', 'visitorPhone', 'visitorId', 'relation',
+      'visitorName', 'visitorPhone', 'visitorId', 'relation', 'religion', 'allergy',
       'prisonerName', 'prisonerId', 'wing', 'visitDate',
-      'visitorCount', 'total', 'status'
+      'visitorCount', 'total', 'status',
+      'extraVisitorNames', 'extraVisitorReligions', 'extraVisitorAllergies', 'extraVisitorApproved'
     ];
 
     for (let i = 1; i < data.length; i++) {

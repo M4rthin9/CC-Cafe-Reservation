@@ -272,6 +272,7 @@
               <option value="">ทุกแดน</option>
             </select>
            <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄 โหลดใหม่</button>
+           <button class="btn-approve" onclick="openNewBookingModal()" id="btnNewBooking" style="display:none;background:var(--green);">➕ จองใหม่</button>
            <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤 Export CSV</button>
            <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️ พิมพ์รายงาน</button>
             <button class="btn-print-vinai" onclick="printPrisonerVinaiList()" aria-label="พิมพ์รายชื่อผู้ต้องขัง" id="btnPrintVinai" style="display:none">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
@@ -581,6 +582,87 @@
      </div>
    </div>
  </div>
+
+<!-- NEW BOOKING MODAL -->
+<div class="modal-bg" id="newBookingModalBg" onclick="closeNewBookingModal(event)">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-head">
+      <h3>➕ จองใหม่</h3>
+      <button class="modal-close" onclick="closeNewBookingModal()">×</button>
+    </div>
+    <div class="modal-body" id="newBookingModalBody" style="max-height:75vh;overflow-y:auto;">
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">📋 ข้อมูลผู้เข้าร่วมกิจกรรม</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">👤 ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbVisitorName" class="search-box" placeholder="เช่น สมชาย ใจดี" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🪪 เลขบัตรประชาชน <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbVisitorId" class="search-box" placeholder="X-XXXX-XXXXX-XX-X" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">📞 เบอร์โทรศัพท์ <span style="color:var(--red)">*</span></label>
+            <input type="tel" id="nbVisitorPhone" class="search-box" placeholder="08X-XXX-XXXX" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🤝 ความสัมพันธ์ <span style="color:var(--red)">*</span></label>
+            <select id="nbRelation" class="filter-select" style="width:100%;">
+              <option value="">-- เลือก --</option>
+              <option>บิดา / มารดา</option><option>แฟน/ภรรยา</option><option>บุตร / ธิดา</option>
+              <option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>
+            </select></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🛐 ศาสนา <span style="color:var(--red)">*</span></label>
+            <select id="nbVisitorReligion" class="filter-select" style="width:100%;">
+              <option value="">-- เลือก --</option>
+              <option>พุทธ</option><option>อิสลาม</option><option>คริสต์</option><option>อื่น ๆ</option>
+            </select></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">⚠️ การแพ้อาหาร <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbVisitorAllergy" class="search-box" placeholder="ระบุอาการแพ้ หรือ 'ไม่มี'" style="width:100%;"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">👥 ผู้เข้าร่วมเพิ่มเติม</div>
+        <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">จำนวนผู้เข้าร่วม (รวมผู้จอง)</label>
+          <select id="nbVisitorCount" class="filter-select" onchange="nbUpdateExtraVisitors()" style="width:100%;">
+            <option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option>
+            <option value="4">4 คน</option><option value="5">5 คน</option><option value="6">6 คน</option>
+            <option value="7">7 คน</option><option value="8">8 คน</option><option value="9">9 คน</option>
+            <option value="10">10 คน</option>
+          </select>
+        </div>
+        <div id="nbExtraVisitorsContainer" style="display:none;margin-top:8px;">
+          <div id="nbExtraVisitorsList"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">🔒 ข้อมูลผู้ต้องขัง</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">ชื่อผู้ต้องขัง <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbPrisonerName" class="search-box" placeholder="ชื่อ-นามสกุล" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">เลขผู้ต้องขัง <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbPrisonerId" class="search-box" placeholder="หมายเลข" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🏢 แดน <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbWing" class="search-box" placeholder="แดน" style="width:100%;"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">📅 วันที่ต้องการเข้าร่วม</div>
+        <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">เลือกวันที่</label>
+          <input type="date" id="nbVisitDate" class="search-box" style="width:100%;"></div>
+      </div>
+
+      <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:13px;color:var(--text2);">💰 ค่าบริการรวม:</span>
+          <span style="font-size:22px;font-weight:700;color:var(--green);" id="nbTotalDisplay">3,000 บาท</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
+        <button class="btn-cancel" onclick="closeNewBookingModal()">ยกเลิก</button>
+        <button class="btn-approve" onclick="submitNewBooking()">💾 บันทึกการจอง</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Slip Modal -->
 <div class="modal-bg" id="modalBg" onclick="closeModal(event)">
