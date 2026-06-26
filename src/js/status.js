@@ -1,3 +1,8 @@
+// ===== CONFIG =====
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_nDP6wByWIUgSpb8oJoESkF1ISKsZ5eQy4B5R76uehGGsyS-N5bkpWTAQ52s8hwpE8A/exec';
+const STAFF_PASS = '10900';
+const PROMPTPAY_ID = '0994000160208';
+
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptPost(payload) {
   const resp = await fetch(APPS_SCRIPT_URL, {
@@ -291,8 +296,8 @@ function renderResult(row) {
           📱 PromptPay QR Code
         </div>
         
-        <div style="margin: 10px auto 15px; width: 200px; height: 200px; background: var(--white); padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-          <img src="src/asset/promptpay-qr.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;">
+        <div id="qrcode" style="margin:10px auto 15px;width:200px;height:200px;background:var(--white);padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;">
+          <div style="font-size:12px;color:var(--text-tertiary)">กำลังสร้าง QR Code...</div>
         </div>
 
         <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
@@ -300,7 +305,7 @@ function renderResult(row) {
 
         <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text-secondary);line-height:1.8;">
           💰 ยอดที่ต้องชำระ: <strong style="font-size:18px;color:var(--text);">${total.toLocaleString()} บาท</strong><br>
-          <span style="font-size:12px;color:var(--text-tertiary);">${totalPersons} คน × 1,000 บาท</span>
+          <span style="font-size:12px;color:var(--text-tertiary);">จำนวน ${totalPersons} คน</span>
         </div>
         <div style="margin-top:10px;background:rgba(255,255,255,0.8);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text-secondary);">
           📝 กรุณาระบุเลขอ้างอิง <strong>${escHtml(row.ref)}</strong> ในช่องหมายเหตุเมื่อโอน
@@ -370,9 +375,20 @@ function getStatusPill(status) {
 }
 
 // ===== SHOW/HIDE PAYMENT =====
-function showPayment() {
+async function showPayment() {
   document.getElementById('paymentArea').style.display = 'none';
   document.getElementById('paymentForm').style.display = 'block';
+
+  const total = parseInt(currentBooking.total) || 0;
+  const qrContainer = document.getElementById('qrcode');
+
+  if (!PROMPTPAY_ID) {
+    qrContainer.innerHTML = '<div style="font-size:11px;color:#ef4444;text-align:center;">⚠️ ยังไม่ได้ตั้งค่า PromptPay ID<br><span style="font-size:10px;">กรุณาแจ้งเจ้าหน้าที่</span></div>';
+  } else {
+    const qrUrl = 'https://promptpay.io/' + PROMPTPAY_ID + '/' + total + '.png';
+    qrContainer.innerHTML = '<img src="' + qrUrl + '" alt="PromptPay QR" style="width:100%;height:100%;object-fit:contain;">';
+  }
+
   setTimeout(() => {
     const el = document.getElementById('paymentForm');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -481,6 +497,33 @@ function animateProgress(from, to) {
   setTimeout(() => { bar.style.width = to + '%'; }, 50);
 }
 
+// ===== SCAN QR FROM SLIP IMAGE =====
+async function scanSlipQR(file) {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        URL.revokeObjectURL(img.src);
+        resolve(code ? code.data : null);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        resolve(null);
+      };
+      img.src = URL.createObjectURL(file);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 // ===== SUBMIT PAYMENT =====
 async function submitPayment() {
   if (!slipUploaded || !slipFile) {
@@ -491,6 +534,20 @@ async function submitPayment() {
 
   const submitBtn = document.getElementById('paySubmitBtn');
   submitBtn.disabled = true;
+  setOverlay(true, 'กำลังตรวจสอบสลิป...');
+
+  // Try to decode QR on the slip image to extract bank transaction reference
+  let transRef = '';
+  try {
+    const qrData = await scanSlipQR(slipFile);
+    if (qrData) {
+      const slipInfo = promptparse.validate.slipVerify(qrData);
+      if (slipInfo && slipInfo.transRef) {
+        transRef = slipInfo.transRef.trim();
+      }
+    }
+  } catch { }
+
   setOverlay(true, 'กำลังอัปโหลดสลิป...');
 
   let slipUrl = '';
@@ -514,11 +571,21 @@ async function submitPayment() {
       action: 'updateSlipAndStatus',
       ref: currentBooking.ref,
       status: 'ชำระแล้ว',
-      slipImage: slipUrl
+      slipImage: slipUrl,
+      transRef: transRef
     });
-    if (result.status !== 'ok') throw new Error(result.message || 'บันทึกไม่สำเร็จ');
+    if (result.status !== 'ok') {
+      if (result.message && (result.message.includes('ซ้ำ') || result.message.includes('duplicate') || result.message.includes('สลิป'))) {
+        throw new Error('❌ สลิปนี้ถูกใช้ในการชำระเงินอื่นแล้ว');
+      }
+      throw new Error(result.message || 'บันทึกไม่สำเร็จ');
+    }
   } catch (err) {
     console.error('Update status error:', err);
+    setOverlay(false);
+    submitBtn.disabled = false;
+    showUploadAlert('err', '❌ ' + (err.message || 'บันทึกไม่สำเร็จ'));
+    return;
   } finally {
     setOverlay(false);
   }

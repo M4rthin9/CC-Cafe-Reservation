@@ -1,4 +1,4 @@
-// ===== CONFIG =====
+
 const PERMISSIONS = {
   Superadmin: ['approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'manage_settings', 'view_eventlog'],
   Admin: ['approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'view_eventlog'],
@@ -4526,18 +4526,18 @@ function nbUpdateExtraVisitors() {
     div.innerHTML =
       '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;">ผู้เข้าร่วมคนที่ ' + i + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>' +
-          '<input type="text" id="nbExtraName' + i + '" class="search-box" style="width:100%;"></div>' +
-        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขประจำตัว <span style="color:var(--red)">*</span></label>' +
-          '<input type="text" id="nbExtraId' + i + '" class="search-box" placeholder="ปชช. X-XXXX-XXXXX-XX-X หรือ Passport" style="width:100%;"></div>' +
-        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ศาสนา <span style="color:var(--red)">*</span></label>' +
-          '<select id="nbExtraReligion' + i + '" class="filter-select" style="width:100%;">' + religionOpts + '</select></div>' +
-        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">แพ้อาหาร <span style="color:var(--red)">*</span></label>' +
-          '<input type="text" id="nbExtraAllergy' + i + '" class="search-box" style="width:100%;"></div>' +
-        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ความสัมพันธ์ <span style="color:var(--red)">*</span></label>' +
-          '<select id="nbExtraRelation' + i + '" class="filter-select" style="width:100%;">' + relOpts + '</select></div>' +
-        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">อายุ <span style="color:var(--text2);font-size:10px;">(ถ้าเป็นบุตร)</span></label>' +
-          '<input type="number" id="nbExtraAge' + i + '" class="search-box" min="0" max="120" style="width:100%;"></div>' +
+      '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>' +
+      '<input type="text" id="nbExtraName' + i + '" class="search-box" style="width:100%;"></div>' +
+      '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขประจำตัว <span style="color:var(--red)">*</span></label>' +
+      '<input type="text" id="nbExtraId' + i + '" class="search-box" placeholder="ปชช. X-XXXX-XXXXX-XX-X หรือ Passport" style="width:100%;"></div>' +
+      '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ศาสนา <span style="color:var(--red)">*</span></label>' +
+      '<select id="nbExtraReligion' + i + '" class="filter-select" style="width:100%;">' + religionOpts + '</select></div>' +
+      '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">แพ้อาหาร <span style="color:var(--red)">*</span></label>' +
+      '<input type="text" id="nbExtraAllergy' + i + '" class="search-box" style="width:100%;"></div>' +
+      '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ความสัมพันธ์ <span style="color:var(--red)">*</span></label>' +
+      '<select id="nbExtraRelation' + i + '" class="filter-select" style="width:100%;">' + relOpts + '</select></div>' +
+      '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">อายุ <span style="color:var(--text2);font-size:10px;">(ถ้าเป็นบุตร)</span></label>' +
+      '<input type="number" id="nbExtraAge' + i + '" class="search-box" min="0" max="120" style="width:100%;"></div>' +
       '</div>';
     list.appendChild(div);
   }
@@ -4698,14 +4698,14 @@ function editBooking(idx) {
             <input type="text" class="edit-extra-id search-box" value="${esc(e.id)}" style="width:100%;"></div>
           <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ความสัมพันธ์</label>
             <select class="edit-extra-relation filter-select" style="width:100%;" onchange="toggleEditExtraAge(this)">
-              <option value="">-- เลือก --</option>${['บิดา / มารดา','แฟน/ภรรยา','บุตร / ธิดา','พี่ / น้อง','ญาติ','เพื่อน','ทนายความ','อื่น ๆ'].map(o =>
+              <option value="">-- เลือก --</option>${['บิดา / มารดา', 'แฟน/ภรรยา', 'บุตร / ธิดา', 'พี่ / น้อง', 'ญาติ', 'เพื่อน', 'ทนายความ', 'อื่น ๆ'].map(o =>
       `<option value="${o}" ${rel === o ? 'selected' : ''}>${o}</option>`
     ).join('')}</select></div>
           <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">อายุ</label>
             <input type="number" class="edit-extra-age search-box" value="${esc(e.age)}" min="0" max="120" style="width:100%;${relAge === 'none' ? 'display:none;' : ''}"></div>
           <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ศาสนา</label>
             <select class="edit-extra-religion filter-select" style="width:100%;">
-              <option value="">-- เลือก --</option>${['พุทธ','อิสลาม','คริสต์','อื่น ๆ'].map(o =>
+              <option value="">-- เลือก --</option>${['พุทธ', 'อิสลาม', 'คริสต์', 'อื่น ๆ'].map(o =>
       `<option value="${o}" ${extraReligions[i] === o ? 'selected' : ''}>${o}</option>`
     ).join('')}</select></div>
           <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">แพ้อาหาร</label>
@@ -4822,11 +4822,11 @@ function removeEditExtra(btn) {
 function addEditExtra() {
   const list = document.getElementById('editExtraList');
   const idx = list.querySelectorAll('.edit-extra-row').length;
-  const relOpts = ['บิดา / มารดา','แฟน/ภรรยา','บุตร / ธิดา','พี่ / น้อง','ญาติ','เพื่อน','ทนายความ','อื่น ๆ'].map(o =>
+  const relOpts = ['บิดา / มารดา', 'แฟน/ภรรยา', 'บุตร / ธิดา', 'พี่ / น้อง', 'ญาติ', 'เพื่อน', 'ทนายความ', 'อื่น ๆ'].map(o =>
     `<option value="${o}">${o}</option>`
   ).join('');
   const relOptsAll = '<option value="">-- เลือก --</option>' + relOpts;
-  const relOptsRel = ['พุทธ','อิสลาม','คริสต์','อื่น ๆ'].map(o =>
+  const relOptsRel = ['พุทธ', 'อิสลาม', 'คริสต์', 'อื่น ๆ'].map(o =>
     `<option value="${o}">${o}</option>`
   ).join('');
   const relOptsRelAll = '<option value="">-- เลือก --</option>' + relOptsRel;

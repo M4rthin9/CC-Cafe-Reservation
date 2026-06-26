@@ -1,3 +1,5 @@
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_nDP6wByWIUgSpb8oJoESkF1ISKsZ5eQy4B5R76uehGGsyS-N5bkpWTAQ52s8hwpE8A/exec';
+
 // ===== CALENDAR =====
 const HOLIDAYS = {
   '2026-01-01': 'วันขึ้นปีใหม่', '2026-02-13': 'มาฆบูชา', '2026-04-06': 'จักรี',

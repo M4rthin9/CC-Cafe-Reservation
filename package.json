@@ -1,0 +1,24 @@
+{
+  "name": "cc-cafe-reservation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "fix-final.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/M4rthin9/CC-Cafe-Reservation.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/M4rthin9/CC-Cafe-Reservation/issues"
+  },
+  "homepage": "https://github.com/M4rthin9/CC-Cafe-Reservation#readme",
+  "devDependencies": {
+    "eslint": "^10.5.0"
+  }
+}

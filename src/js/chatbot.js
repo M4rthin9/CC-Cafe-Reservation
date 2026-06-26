@@ -1,4 +1,5 @@
 // ===== i18n TRANSLATIONS =====
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_nDP6wByWIUgSpb8oJoESkF1ISKsZ5eQy4B5R76uehGGsyS-N5bkpWTAQ52s8hwpE8A/exec';
 const i18n = {
   th: {
     chatGreeting: '🤖 สวัสดี! ฉันเป็น M4RTHIN9 AI ผู้ช่วยตอบคำถามเกี่ยวกับการจองเข้ากิจกรรม ลองถามมาได้เลย',
@@ -98,6 +99,9 @@ function formatI18n(key, params = {}, lang = getLang()) {
   });
   return text;
 }
+
+// ===== CONFIG =====
+const STAFF_PASS = '10900';
 
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptGet(params) {
