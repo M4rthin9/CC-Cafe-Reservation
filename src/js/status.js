@@ -38,7 +38,8 @@ function switchTab(tab) {
 }
 
 // ===== Pre-fill from sessionStorage =====
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  await initBackendUrl();
   try {
     const lastRef = sessionStorage.getItem('lastRef');
     const lastPId = sessionStorage.getItem('lastPrisonerId');
@@ -163,11 +164,11 @@ let currentBooking = null;
 let slipFile = null;
 let slipUploaded = false;
 
+
 function renderResult(row) {
   currentBooking = row;
   slipFile = null;
   slipUploaded = false;
-
   const status = row.status || 'รอตรวจสอบ';
   const statusPill = getStatusPill(status);
   const visitorCount = parseInt(row.visitorCount) || 1;
@@ -292,7 +293,7 @@ function renderResult(row) {
         </div>
         
         <div style="margin: 10px auto 15px; width: 200px; height: 200px; background: var(--white); padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-          <img src="src/asset/promptpay-qr.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;">
+          <img src="https://promptpay.io/${PROMPTPAY_ID}/${total}.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.onerror=null;this.src='src/asset/promptpay-qr.png'">
         </div>
 
         <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
@@ -404,7 +405,7 @@ function handleUpload(e) {
   if (file) processFile(file);
 }
 
-function processFile(file) {
+async function processFile(file) {
   if (file.size > 10 * 1024 * 1024) {
     showUploadAlert('err', '❌ ไฟล์ใหญ่เกิน 10MB กรุณาเลือกไฟล์ที่เล็กกว่า');
     return;
@@ -431,13 +432,13 @@ function processFile(file) {
   document.getElementById('uploadInner').style.opacity = '0.4';
   document.getElementById('uploadStatus').innerHTML =
     `✓ เลือกไฟล์แล้ว: <strong>${escHtml(file.name)}</strong><br>` +
-    `<span style="font-size:11px;color:var(--text2)">ขนาด: ${(file.size / 1024).toFixed(1)} KB · จะอัปโหลดเมื่อกดยืนยัน</span>`;
+    `<span style="font-size:11px;color:var(--text2)">ขนาด: ${(file.size / 1024).toFixed(1)} KB</span>`;
 }
 
 function showUploadAlert(type, msg) {
   const el = document.getElementById('uploadAlert');
   el.className = 'alert-strip ' + type;
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.style.display = 'block';
 }
 function hideUploadAlert() {

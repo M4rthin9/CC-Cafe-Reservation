@@ -729,6 +729,34 @@
       .top-bar .logo span { display: none; }
       .container { padding: 16px 12px 40px; }
     }
+
+    /* === QUICK REFERENCE CARD === */
+    .quickref-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .quickref-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      text-align: center;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .quickref-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .quickref-card .qr-icon { font-size: 28px; margin-bottom: 8px; }
+    .quickref-card .qr-title { font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+    .quickref-card .qr-action { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+    .quickref-card .qr-who { font-size: 10px; color: var(--text-muted); }
+
+    @media (max-width: 600px) {
+      .quickref-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -788,6 +816,47 @@
 
     <div class="callout">
       <strong>💡 ไม่แน่ใจว่าบทบาทตัวเองทำอะไรได้บ้าง?</strong> ดูตารางสิทธิ์ใน <a href="#s11">หมวด 11 สิทธิ์ในแต่ละบทบาท</a>
+    </div>
+  </div>
+
+  <!-- ===== QUICK REFERENCE CARD ===== -->
+  <div class="section" id="s-quickref">
+    <h2><i class="ti ti-bookmark"></i> สรุปด่วน (Quick Reference)</h2>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:12px;">สรุปสิ่งที่ต้องทำและปุ่มหลักที่ใช้บ่อย</p>
+
+    <div class="quickref-grid">
+      <div class="quickref-card">
+        <div class="qr-icon">🔍</div>
+        <div class="qr-title">รอวินัย</div>
+        <div class="qr-action">คลิก "ดำเนินการ" → อนุมัติ/ปฏิเสธ</div>
+        <div class="qr-who">Vinai / Admin</div>
+      </div>
+      <div class="quickref-card">
+        <div class="qr-icon">👥</div>
+        <div class="qr-title">รอผู้เข้าร่วม</div>
+        <div class="qr-action">คลิก "ดำเนินการ" → อนุมัติ/ปฏิเสธ</div>
+        <div class="qr-who">Tadtel / Admin</div>
+      </div>
+      <div class="quickref-card">
+        <div class="qr-icon">💳</div>
+        <div class="qr-title">รอชำระ</div>
+        <div class="qr-action">ดูสลิป → ยืนยัน/ปฏิเสธ</div>
+        <div class="qr-who">Finance / Admin</div>
+      </div>
+    </div>
+
+    <h3>ปุ่มหลักในหน้ารายการจอง</h3>
+    <table class="guide-table">
+      <tr><th>ปุ่ม</th><th>ใช้เมื่อ</th><th>สี</th></tr>
+      <tr><td>👁️ ดู</td><td>ดูรายละเอียด + สลิป</td><td style="color:#2563eb;">น้ำเงิน</td></tr>
+      <tr><td>✏️ แก้ไข</td><td>แก้ไขข้อมูลการจอง</td><td style="color:#64748b;">เทา</td></tr>
+      <tr><td>✅ อนุมัติ</td><td>ผ่านการตรวจสอบ</td><td style="color:#16a34a;">เขียว</td></tr>
+      <tr><td>❌ ปฏิเสธ</td><td>ไม่ผ่านการตรวจสอบ</td><td style="color:#dc2626;">แดง</td></tr>
+      <tr><td>🚫 ยกเลิก</td><td>ยกเลิกการจองทั้งหมด</td><td style="color:#64748b;">เทา</td></tr>
+    </table>
+
+    <div class="callout">
+      <strong>💡 เคล็ดลับ:</strong> บนหน้า Dashboard จะมีการ์ด "สิ่งที่ต้องทำ" แสดงจำนวนรายการที่รอการดำเนินการ — คลิกเพื่อไปที่รายการเหล่านั้นได้ทันที
     </div>
   </div>
 
@@ -879,6 +948,7 @@
     <h2><i class="ti ti-list"></i> สารบัญ</h2>
     <ol class="toc-list">
       <li><a href="#s-quickstart">🚀 เริ่มต้นใช้งานสำหรับ Admin ใหม่</a></li>
+      <li><a href="#s-quickref">📝 สรุปด่วน (Quick Reference)</a></li>
       <li><a href="#s-overview">🏗️ ภาพรวมระบบ (System Overview)</a></li>
       <li><a href="#s-workflow">🔄 ขั้นตอนการทำงานของระบบ (Workflow)</a></li>
       <li><a href="#s1">🔐 หน้าเข้าสู่ระบบ (Login)</a></li>
@@ -1985,41 +2055,49 @@
         <span style="opacity:0.6;font-size:11px;">Settings — ตั้งค่าระบบ</span>
       </div>
       <div class="mockup-screen-body">
-        <div class="mockup-form">
-          <div class="mockup-form-group" style="margin-bottom:12px;">
-            <label>🔗 URL Google Apps Script</label>
-            <div class="mockup-input" style="color:var(--text-muted);font-size:11px;word-break:break-all;">
-              https://script.google.com/macros/s/xxxxxxxxxx/exec
-            </div>
+        <div style="margin-bottom:16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📊 การแสดงผล</div>
+          <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">จำนวนรายการต่อหน้า</label>
+          <select class="mockup-select" style="width:120px;">
+            <option>5</option><option selected>10</option><option>20</option><option>50</option>
+          </select>
+        </div>
+        <div style="margin-bottom:16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🔔 การแจ้งเตือน</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <label style="font-size:12px;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" checked style="cursor:pointer;"> แสดงการแจ้งเตือนในแถบด้านบน
+            </label>
+            <label style="font-size:12px;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" style="cursor:pointer;"> แจ้งเตือนทางอีเมล (เมื่อมีการจองใหม่)
+            </label>
+            <label style="font-size:12px;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" style="cursor:pointer;"> เสียงแจ้งเตือน
+            </label>
           </div>
-          <div class="mockup-form-row">
-            <div class="mockup-form-group">
-              <label>💰 ค่าบริการต่อคน</label>
-              <div class="mockup-input" style="color:var(--text);">300 บาท</div>
-            </div>
-            <div class="mockup-form-group">
-              <label>📊 โควต้าสูงสุดต่อวัน</label>
-              <div class="mockup-input" style="color:var(--text);">50 รายการ</div>
-            </div>
-          </div>
-          <div class="mockup-form-group">
-            <label>🔔 การแจ้งเตือน</label>
-            <div class="mockup-select" style="color:var(--text);">เปิดใช้งาน</div>
-          </div>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🎨 การแสดงผล</div>
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" style="cursor:pointer;"> โหมดมืด
+          </label>
         </div>
       </div>
     </div>
 
     <div class="callout">
-      <strong>🔒 เฉพาะ:</strong> Superadmin เท่านั้นที่เข้าถึงได้
+      <strong>🔒 เฉพาะ:</strong> Superadmin เท่านั้นที่เข้าถึงหน้านี้ได้
     </div>
 
-    <ul>
-      <li>กำหนดค่า <strong>URL ของ Google Apps Script</strong> — ใช้เชื่อมต่อกับฐานข้อมูล</li>
-      <li>ปรับปรุง <strong>ค่าบริการ</strong> ต่อคน — คำนวณยอดเงินอัตโนมัติ</li>
-      <li>กำหนด <strong>จำนวนโควต้า</strong> สูงสุดต่อวัน — ระบบจะแจ้งเตือนเมื่อใกล้ถึง</li>
-      <li>ตั้งค่า <strong>การแจ้งเตือน</strong> (Notification) — เปิด/ปิด เสียง และความถี่</li>
-    </ul>
+    <h3>ตัวเลือกที่มี</h3>
+    <table class="guide-table">
+      <tr><th>ตั้งค่า</th><th>คำอธิบาย</th></tr>
+      <tr><td>จำนวนรายการต่อหน้า</td><td>กำหนดจำนวนรายการที่แสดงในตาราง (5/10/20/50)</td></tr>
+      <tr><td>แสดงการแจ้งเตือน</td><td>เปิด/ปิด กระดิ่งแจ้งเตือนในแถบด้านบน</td></tr>
+      <tr><td>แจ้งเตือนทางอีเมล</td><td>รับอีเมลเมื่อมีการจองใหม่</td></tr>
+      <tr><td>เสียงแจ้งเตือน</td><td>เล่นเสียงเมื่อมีการแจ้งเตือนใหม่</td></tr>
+      <tr><td>โหมดมืด</td><td>เปลี่ยนธีมเป็นสีเข้มสำหรับการใช้งานในที่มืด</td></tr>
+    </table>
   </div>
 
   <!-- ===== SECTION 13 ===== -->

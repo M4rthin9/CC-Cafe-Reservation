@@ -1032,6 +1032,12 @@
   color: var(--text);
 }
 
+.alert-strip.warn {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+}
+
 /* ===== BUTTONS ===== */
 .btn-primary {
   width: 100%;

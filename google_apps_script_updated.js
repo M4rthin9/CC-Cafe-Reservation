@@ -31,15 +31,25 @@ const PERMISSIONS = {
 
 // ===== GET =====
 function doGet(e) {
+  try {
+    return doGetHandler(e);
+  } catch (err) {
+    return jsonResp({ status: 'error', message: 'Server error: ' + err.toString() });
+  }
+}
+
+function doGetHandler(e) {
   const params = e.parameter;
   const action = params.action || '';
   const pass   = params.pass  || '';
   const username = params.username || '';
 
+  // ===== GET BACKEND URL (public, no auth needed) =====
+  if (action === 'getBackendUrl') {
+    return jsonResp({ url: ScriptApp.getService().getUrl() });
+  }
+
   if (action === 'getAll') {
-    if (!isAuthorized(username, pass)) {
-      return jsonResp({ status: 'error', message: 'Unauthorized' });
-    }
     const sheet = getMainSheet();
     const data  = sheet.getDataRange().getValues();
     if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
@@ -217,6 +227,14 @@ function doGet(e) {
 
 // ===== POST =====
 function doPost(e) {
+  try {
+    return doPostHandler(e);
+  } catch (err) {
+    return jsonResp({ status: 'error', message: 'Server error: ' + err.toString() });
+  }
+}
+
+function doPostHandler(e) {
   let body;
   try { body = JSON.parse(e.postData.contents); }
   catch(err) { return jsonResp({ status: 'error', message: 'Invalid JSON' }); }
@@ -401,7 +419,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
   }
 
   // ===== Public actions (no login required) =====
- const publicActions = ['uploadSlip', 'updateSlipAndStatus'];
+  const publicActions = ['uploadSlip', 'updateSlipAndStatus'];
  if (publicActions.includes(action) && (username === 'public' || !username)) {
    // allow public slip upload / payment confirmation
  } else if (!publicActions.includes(action) && !isAuthorized(username, pass)) {

@@ -342,6 +342,7 @@ function copyDeptReport(dept) {
 let prisonerMaster = [];
 
 async function loadPrisonerMaster() {
+  await initBackendUrl();
   const statusEl = document.getElementById('prisonerLoadStatus');
   if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขังจากฐานข้อมูล...';
 
@@ -799,6 +800,7 @@ function goBack() { showPage(1); }
 
 // ===== SUBMIT =====
 async function submitBooking() {
+  await initBackendUrl();
   const ref = 'VIS-' + Math.floor(10000 + Math.random() * 90000);
   const n = parseInt(document.getElementById('visitorCount').value);
   const totalPersons = n + 1;
@@ -1034,6 +1036,7 @@ async function fetchAllReservations() {
 
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
+  await initBackendUrl();
   // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
   const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
   try {

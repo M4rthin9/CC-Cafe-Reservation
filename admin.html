@@ -88,103 +88,86 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->
-        <!-- ROW 1: PRIMARY KPI CARDS (4 cards)             -->
+        <!-- ACTION REQUIRED: Quick access to pending tasks  -->
         <!-- ═══════════════════════════════════════════════ -->
-        <div class="metrics-row primary">
-          <div class="stat-card blue">
-            <div class="stat-card-icon">📋</div>
-            <div class="stat-label">การจองทั้งหมด</div>
-            <div class="stat-val" id="statTotal">0</div>
-            <div class="stat-sub">รายการทั้งหมดในระบบ</div>
-          </div>
-          <div class="stat-card yellow">
-            <div class="stat-card-icon">⏳</div>
-            <div class="stat-label">รอตรวจสอบวินัย</div>
-            <div class="stat-val" id="statWait">0</div>
-            <div class="stat-sub">ต้องตรวจสอบก่อนดำเนินการ</div>
-          </div>
-          <div class="stat-card green">
-            <div class="stat-card-icon">✅</div>
-            <div class="stat-label">อนุมัติ / รอชำระ</div>
-            <div class="stat-val" id="statOk">0</div>
-            <div class="stat-sub">ผ่านการตรวจสอบแล้ว</div>
-          </div>
-          <div class="stat-card red">
-            <div class="stat-card-icon">❌</div>
-            <div class="stat-label">ไม่อนุมัติ</div>
-            <div class="stat-val" id="statReject">0</div>
-            <div class="stat-sub">ถูกปฏิเสธ / ยกเลิก</div>
-          </div>
-        </div>
-
-        <!-- ═══════════════════════════════════════════════ -->
-        <!-- ROW 2: FINANCE KPI RIBBON                      -->
-        <!-- ═══════════════════════════════════════════════ -->
-        <div class="finance-ribbon">
-          <div class="finance-ribbon-item">
-            <div class="fr-icon">💰</div>
-            <div class="fr-body">
-              <div class="fr-label">ยอดจองรวม</div>
-              <div class="fr-value" id="financeTotalBooked">฿0</div>
+        <div class="action-required-section">
+          <h3>⚡ สิ่งที่ต้องทำ</h3>
+          <div class="action-required-grid">
+            <div class="action-card" onclick="switchView('reservations');filterByStatus('รอตรวจสอบวินัย')">
+              <div class="action-icon">🔍 <span class="action-icon-name">วินัย</span></div>
+              <div class="action-count" id="actionPending">0</div>
+              <div class="action-label">รอตรวจสอบวินัย</div>
+              <button class="action-btn" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอตรวจสอบวินัย')">ดำเนินการ →</button>
             </div>
-          </div>
-          <div class="finance-ribbon-divider"></div>
-          <div class="finance-ribbon-item">
-            <div class="fr-icon paid">✅</div>
-            <div class="fr-body">
-              <div class="fr-label">ชำระแล้ว</div>
-              <div class="fr-value paid" id="financePaid">฿0</div>
+            <div class="action-card" onclick="switchView('reservations');filterByStatus('รอตรวจสอบผู้เข้าร่วม')">
+              <div class="action-icon">👥 <span class="action-icon-name">ผู้เข้าร่วม</span></div>
+              <div class="action-count" id="actionParticipant">0</div>
+              <div class="action-label">รอตรวจสอบผู้เข้าร่วม</div>
+              <button class="action-btn" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอตรวจสอบผู้เข้าร่วม')">ดำเนินการ →</button>
             </div>
-          </div>
-          <div class="finance-ribbon-divider"></div>
-          <div class="finance-ribbon-item">
-            <div class="fr-icon unpaid">⚠️</div>
-            <div class="fr-body">
-              <div class="fr-label">ค้างชำระ</div>
-              <div class="fr-value unpaid" id="financeUnpaid">฿0</div>
+            <div class="action-card" onclick="switchView('reservations');filterByStatus('รอชำระเงิน')">
+              <div class="action-icon">💳 <span class="action-icon-name">ชำระเงิน</span></div>
+              <div class="action-count" id="actionPayment">0</div>
+              <div class="action-label">รอชำระเงิน</div>
+              <button class="action-btn" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอชำระเงิน')">ดำเนินการ →</button>
             </div>
-          </div>
-          <div class="finance-ribbon-divider"></div>
-          <div class="finance-ribbon-item">
-            <div class="fr-icon avg">📊</div>
-            <div class="fr-body">
-              <div class="fr-label">เฉลี่ยต่อรายการ</div>
-              <div class="fr-value" id="financeAvg">฿0</div>
-            </div>
-          </div>
-          <div class="finance-ribbon-divider"></div>
-          <div class="finance-ribbon-item">
-            <div class="fr-icon rate">📈</div>
-            <div class="fr-body">
-              <div class="fr-label">อัตราการชำระ</div>
-              <div class="fr-value" id="financeRate">0%</div>
+            <div class="action-card" onclick="switchView('reservations');filterByStatus('ชำระแล้ว')">
+              <div class="action-icon">✅ <span class="action-icon-name">ชำระแล้ว</span></div>
+              <div class="action-count" id="actionPaid">0</div>
+              <div class="action-label">ชำระแล้ว</div>
+              <button class="action-btn" onclick="event.stopPropagation();switchView('reservations');filterByStatus('ชำระแล้ว')">ดูรายการ →</button>
             </div>
           </div>
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->
-        <!-- ROW 3: SECONDARY METRICS (Contextual)          -->
+        <!-- FINANCE SUMMARY: Clean horizontal layout        -->
         <!-- ═══════════════════════════════════════════════ -->
-        <div class="metrics-row secondary">
-          <div class="stat-card">
-            <div class="stat-card-icon">👥</div>
-            <div class="stat-label">ผู้ต้องขังไม่ซ้ำ</div>
-            <div class="stat-val" id="statUniquePrisoners">0</div>
+        <div class="finance-summary-clean">
+          <div class="fs-item">
+            <span class="fs-icon">💰</span>
+            <span class="fs-label">ยอดจอง</span>
+            <span class="fs-value" id="financeTotalBooked">฿0</span>
           </div>
-          <div class="stat-card">
-            <div class="stat-card-icon">📅</div>
-            <div class="stat-label">จองสัปดาห์นี้</div>
-            <div class="stat-val" id="statThisWeek">0</div>
+          <div class="fs-divider"></div>
+          <div class="fs-item">
+            <span class="fs-icon paid">✅</span>
+            <span class="fs-label">ชำระแล้ว</span>
+            <span class="fs-value paid" id="financePaid">฿0</span>
           </div>
-          <div class="stat-card">
-            <div class="stat-card-icon">📆</div>
-            <div class="stat-label">จองเดือนนี้</div>
-            <div class="stat-val" id="statThisMonth">0</div>
+          <div class="fs-divider"></div>
+          <div class="fs-item">
+            <span class="fs-icon unpaid">⚠️</span>
+            <span class="fs-label">ค้างชำระ</span>
+            <span class="fs-value unpaid" id="financeUnpaid">฿0</span>
           </div>
-          <div class="stat-card">
-            <div class="stat-card-icon">🧑‍🤝‍🧑</div>
-            <div class="stat-label">ผู้เยี่ยมไม่ซ้ำ</div>
-            <div class="stat-val" id="statUniqueVisitors">0</div>
+          <div class="fs-divider"></div>
+          <div class="fs-item">
+            <span class="fs-icon">📈</span>
+            <span class="fs-label">อัตราชำระ</span>
+            <span class="fs-value" id="financeRate">0%</span>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- QUICK STATS ROW: Simplified metrics            -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="quick-stats-row">
+          <div class="quick-stat">
+            <div class="qs-label">📅 วันนี้</div>
+            <div class="qs-value" id="statToday">0</div>
+          </div>
+          <div class="quick-stat">
+            <div class="qs-label">📆 สัปดาห์นี้</div>
+            <div class="qs-value" id="statThisWeek">0</div>
+          </div>
+          <div class="quick-stat">
+            <div class="qs-label">📊 เดือนนี้</div>
+            <div class="qs-value" id="statThisMonth">0</div>
+          </div>
+          <div class="quick-stat">
+            <div class="qs-label">📋 ทั้งหมด</div>
+            <div class="qs-value" id="statTotal">0</div>
           </div>
         </div>
 
@@ -258,31 +241,39 @@
 
       <!-- RESERVATIONS VIEW -->
       <div id="view-reservations" class="view" style="display:none" role="main">
-<div class="controls">
-           <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
-           <select class="filter-select" id="filterStatus" aria-label="กรองตามสถานะ" onchange="resetToFirstPage();renderTable()" style="display:none">
-             <option value="">ทุกสถานะ</option>
-              <option value="รอตรวจสอบวินัย">รอตรวจสอบวินัย</option>
-             <option value="รอตรวจสอบผู้เข้าร่วม">รอตรวจสอบผู้เข้าร่วม</option>
-             <option value="รอชำระเงิน">รอชำระเงิน</option>
-             <option value="ชำระแล้ว">ชำระแล้ว</option>
-             <option value="เสร็จสิ้น">เสร็จสิ้น</option>
-             <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
-           </select>
-             <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
-              <option value="">ทุกวัน</option>
-            </select>
-            <select class="filter-select" id="filterWing" aria-label="กรองตามแดน" onchange="resetToFirstPage();renderTable()">
-              <option value="">ทุกแดน</option>
-            </select>
-           <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄 โหลดใหม่</button>
-           <button class="btn-approve" onclick="openNewBookingModal()" id="btnNewBooking" style="display:none;background:var(--green);">➕ จองใหม่</button>
-           <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤 Export CSV</button>
-           <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️ พิมพ์รายงาน</button>
+        <!-- Search Bar -->
+        <div class="controls">
+          <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
+          <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄</button>
+        </div>
 
-            <button class="btn-export" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤 Export CSV (มีเบอร์)</button>
-            <button class="refresh-btn" onclick="syncPrisonerWings()" id="btnSyncWings" style="display:none;background:#7c3aed;">🔄 Sync Wings</button>
-         </div>
+        <!-- Filters Row (Always visible) -->
+        <div class="controls" style="margin-top:8px;">
+          <select class="filter-select" id="filterStatus" aria-label="กรองตามสถานะ" onchange="resetToFirstPage();renderTable()">
+            <option value="">📌 ทุกสถานะ</option>
+            <option value="รอตรวจสอบวินัย">🔍 รอวินัย</option>
+            <option value="รอตรวจสอบผู้เข้าร่วม">👥 รอผู้เข้าร่วม</option>
+            <option value="รอชำระเงิน">💳 รอชำระ</option>
+            <option value="ชำระแล้ว">✅ ชำระแล้ว</option>
+            <option value="เสร็จสิ้น">✔️ เสร็จสิ้น</option>
+            <option value="ไม่อนุมัติ">❌ ไม่อนุมัติ</option>
+          </select>
+          <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
+            <option value="">📅 ทุกวัน</option>
+          </select>
+          <select class="filter-select" id="filterWing" aria-label="กรองตามแดน" onchange="resetToFirstPage();renderTable()">
+            <option value="">🏢 ทุกแดน</option>
+          </select>
+        </div>
+
+        <!-- Action Buttons Row -->
+        <div class="controls" style="margin-top:8px;">
+          <button class="btn-approve" onclick="openNewBookingModal()" id="btnNewBooking" style="display:none;">➕ จองใหม่</button>
+          <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤 Export</button>
+          <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️ พิมพ์</button>
+          <button class="btn-export" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤 มีเบอร์</button>
+          <button class="refresh-btn" onclick="syncPrisonerWings()" id="btnSyncWings" style="display:none;background:#7c3aed;">🔄 Sync</button>
+        </div>
          <div class="controls" style="margin-top:8px;flex-wrap:wrap;">
             <label style="font-size:12px;color:var(--text2);white-space:nowrap;">ตั้งแต่:</label>
             <input type="date" id="exportStartDate" class="search-box" style="width:auto;padding:6px 8px;font-size:12px;">
@@ -301,7 +292,7 @@
                 <tr>
                   <th scope="col" style="width:32px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()" style="cursor:pointer;"></th>
                   <th scope="col">เลขอ้างอิง</th>
-                  <th scope="col">คู่เยี่ยม</th>
+                  <th scope="col">ผู้ต้องขัง / คู่เยี่ยม</th>
                   <th scope="col">แดน</th>
                   <th scope="col">ยอด</th>
                   <th scope="col">สถานะ</th>

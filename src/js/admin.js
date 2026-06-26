@@ -369,10 +369,10 @@ function updateStats() {
     return true;
   });
 
-  document.getElementById('statTotal').textContent = statsRows.length;
-  document.getElementById('statWait').textContent = statsRows.filter(r => normalizeStatus(r.status) === 'รอตรวจสอบวินัย').length;
-  document.getElementById('statOk').textContent = statsRows.filter(r => normalizeStatus(r.status) === 'รอชำระเงิน' || normalizeStatus(r.status) === 'ชำระแล้ว' || normalizeStatus(r.status) === 'เสร็จสิ้น').length;
-  document.getElementById('statReject').textContent = statsRows.filter(r => normalizeStatus(r.status) === 'ไม่อนุมัติ').length;
+  const elTotal = document.getElementById('statTotal'); if (elTotal) elTotal.textContent = statsRows.length;
+  const elWait = document.getElementById('statWait'); if (elWait) elWait.textContent = statsRows.filter(r => normalizeStatus(r.status) === 'รอตรวจสอบวินัย').length;
+  const elOk = document.getElementById('statOk'); if (elOk) elOk.textContent = statsRows.filter(r => normalizeStatus(r.status) === 'รอชำระเงิน' || normalizeStatus(r.status) === 'ชำระแล้ว' || normalizeStatus(r.status) === 'เสร็จสิ้น').length;
+  const elReject = document.getElementById('statReject'); if (elReject) elReject.textContent = statsRows.filter(r => normalizeStatus(r.status) === 'ไม่อนุมัติ').length;
 }
 
 // ===== DATE FILTER =====
@@ -527,17 +527,18 @@ function renderTable() {
 
     return `<tr data-idx="${rowIdx}">
       <td data-label="" style="width:32px;text-align:center;"><input type="checkbox" class="row-select" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer;"></td>
-      <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${escHtml(r.ref)}</b></td>
-      <td data-label="คู่เยี่ยม">
-        <div style="font-weight:600">${escHtml(r.visitorName)}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.visitorPhone || '')}</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:4px;padding-top:4px;border-top:1px dashed var(--border)">
-          👤 ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})
+      <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:13px;cursor:pointer;text-decoration:underline" onclick="viewDetail(${rowIdx})">${escHtml(r.ref)}</b></td>
+      <td data-label="ผู้ต้องขัง/คู่เยี่ยม" style="white-space:normal">
+        <div style="font-weight:700;font-size:15px;color:var(--blue)">${escHtml(r.prisonerName || '—')}</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px">#${escHtml(r.prisonerId || '')}</div>
+        <div style="border-top:1px dashed var(--border);padding-top:4px">
+          <span style="font-size:13px;font-weight:600">${escHtml(r.visitorName)}</span>
+          <span style="font-size:11px;color:var(--text2);margin-left:3px">${escHtml(r.visitorPhone || '')}</span>
         </div>
       </td>
-      <td data-label="แดน">${escHtml(r.wing) || '—'}</td>
-      <td data-label="ยอด"><div>${escHtml(r.visitorCount)} คน • ${(r.total || 0).toLocaleString()} บ.</div></td>
-      <td data-label="สถานะ"><span class="badge ${badgeClass}">${escHtml(r.status)}</span></td>
+      <td data-label="แดน" style="font-size:14px;font-weight:600">${escHtml(r.wing) || '—'}</td>
+      <td data-label="ยอด" style="font-size:13px">${escHtml(r.visitorCount)} คน · ${(r.total || 0).toLocaleString()} บ.</td>
+      <td data-label="สถานะ" style="white-space:nowrap"><span class="badge ${badgeClass}" style="font-size:12px">${escHtml(r.status)}</span></td>
       <td data-label="ความคืบหน้า"><div class="progress-bar-compact">${stepsHtml}</div></td>
       <td data-label="จัดการ"><div class="action-btns" style="flex-wrap:nowrap;">${actionsHtml}</div></td>
     </tr>`;
@@ -1000,10 +1001,10 @@ let renderDashboardHome = function () {
   // recent 5
   if (!total) {
     recentEl.innerHTML = '<div style="color:#888;font-size:12px">ยังไม่มีข้อมูล</div>';
-    document.getElementById('statUniquePrisoners').textContent = '0';
-    document.getElementById('statThisWeek').textContent = '0';
-    document.getElementById('statThisMonth').textContent = '0';
-    document.getElementById('statUniqueVisitors').textContent = '0';
+    const elP = document.getElementById('statUniquePrisoners'); if (elP) elP.textContent = '0';
+    const elW = document.getElementById('statThisWeek'); if (elW) elW.textContent = '0';
+    const elM = document.getElementById('statThisMonth'); if (elM) elM.textContent = '0';
+    const elV = document.getElementById('statUniqueVisitors'); if (elV) elV.textContent = '0';
     const chartEl = document.getElementById('trendChart');
     if (chartEl) chartEl.getContext && chartEl.getContext('2d').clearRect(0, 0, chartEl.width, chartEl.height);
     return;
@@ -1420,7 +1421,8 @@ document.addEventListener('click', (e) => {
 });
 
 // Initialize mobile features on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await initBackendUrl();
   loadFilterState();
   setupChartTouchInteractions();
   initPullToRefresh();
@@ -4199,35 +4201,7 @@ function renderFloorPlan() {
 const _origRenderDashboardHome = typeof renderDashboardHome === 'function' ? renderDashboardHome : null;
 
 function renderDashboardHomeV2() {
-  // Call original if exists
-  if (_origRenderDashboardHome) {
-    // We need to patch in the new elements after the original renders
-  }
-
-  // Role-based KPI visibility
   const role = currentUser && currentUser.role;
-  const visible = {
-    Superadmin: ['statTotal', 'statWait', 'statOk', 'statReject', 'statUniquePrisoners', 'statThisWeek', 'statThisMonth', 'statUniqueVisitors'],
-    Admin: ['statTotal', 'statWait', 'statOk', 'statReject', 'statUniquePrisoners', 'statThisWeek', 'statThisMonth', 'statUniqueVisitors'],
-    Vinai: ['statWait', 'statThisWeek'],
-    Tadtel: ['statOk', 'statThisWeek'],
-    Finance: ['statOk', 'statThisWeek', 'statUniqueVisitors']
-  }[role] || [];
-
-  ['statTotal', 'statWait', 'statOk', 'statReject', 'statUniquePrisoners', 'statThisWeek', 'statThisMonth', 'statUniqueVisitors'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.parentElement && el.parentElement.parentElement) {
-      el.parentElement.parentElement.style.display = visible.includes(id) ? '' : 'none';
-    }
-  });
-
-  // Show pipeline for admin roles
-  const pipeline = document.getElementById('statusPipeline');
-  if (pipeline && (role === 'Superadmin' || role === 'Admin')) {
-    pipeline.style.display = 'block';
-  } else if (pipeline) {
-    pipeline.style.display = 'none';
-  }
 
   const recentEl = document.getElementById('recentBookings');
   if (!recentEl) return;
@@ -4237,15 +4211,10 @@ function renderDashboardHomeV2() {
 
   const total = allRows.length;
 
-  // recent 5
   if (!total) {
     recentEl.innerHTML = '<div style="color:#888;font-size:12px">ยังไม่มีข้อมูล</div>';
-    document.getElementById('statUniquePrisoners').textContent = '0';
-    document.getElementById('statThisWeek').textContent = '0';
-    document.getElementById('statThisMonth').textContent = '0';
-    document.getElementById('statUniqueVisitors').textContent = '0';
     const chartEl = document.getElementById('trendChart');
-    if (chartEl) chartEl.getContext && chartEl.getContext('2d').clearRect(0, 0, chartEl.width, chartEl.height);
+    if (chartEl && chartEl.getContext) chartEl.getContext('2d').clearRect(0, 0, chartEl.width, chartEl.height);
     return;
   }
 
@@ -4277,80 +4246,22 @@ function renderDashboardHomeV2() {
 
   recentEl.innerHTML = rhtml || '<div style="color:#888;font-size:13px;padding:12px;text-align:center">ยังไม่มีข้อมูล</div>';
 
-  // Status Pipeline Visualization
-  const statusOrder = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
-  const statusLabels = { 'รอตรวจสอบวินัย': 'วินัย', 'รอตรวจสอบผู้เข้าร่วม': 'ผู้เข้าร่วม', 'รอชำระเงิน': 'ชำระเงิน', 'ชำระแล้ว': 'ชำระแล้ว', 'เสร็จสิ้น': 'เสร็จ', 'ไม่อนุมัติ': 'ปฏิเสธ', 'ยกเลิก': 'ยกเลิก' };
-  const statusCounts = {}; statusOrder.forEach(s => statusCounts[s] = 0);
-  allRows.forEach(r => { const s = normalizeStatus(r.status); if (statusCounts[s] !== undefined) statusCounts[s]++; });
-  const grandTotal = allRows.length;
-  let pipelineHtml = '<div class="status-pipeline">';
-  statusOrder.forEach(status => {
-    const pct = grandTotal ? Math.round(statusCounts[status] / grandTotal * 100) : 0;
-    const colors = { 'รอตรวจสอบวินัย': 'var(--status-discipline)', 'รอตรวจสอบผู้เข้าร่วม': 'var(--status-participant)', 'รอชำระเงิน': 'var(--status-payment)', 'ชำระแล้ว': 'var(--status-paid)', 'เสร็จสิ้น': 'var(--status-completed)', 'ไม่อนุมัติ': 'var(--status-rejected)', 'ยกเลิก': 'var(--status-cancelled)' };
-    pipelineHtml += `<div class="status-pipeline-item" style="flex:1;min-width:55px;padding:6px 4px;border-radius:8px;background:${colors[status]}22;border:1px solid ${colors[status]}33;text-align:center">
-        <div style="font-size:10px;color:var(--text2);margin-bottom:2px">${statusLabels[status]}</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${statusCounts[status]}</div>
-        <div style="font-size:9px;color:var(--text2)" class="status-pct">${pct}% ของทั้งหมด</div>
-      </div>`;
-  });
-  pipelineHtml += '</div>';
-  const pipelineEl = document.getElementById('statusPipeline');
-  if (pipelineEl) pipelineEl.innerHTML = pipelineHtml;
-
-  // Additional metrics
-  const uniquePrisoners = new Set();
-  const uniqueVisitors = new Set();
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  startOfWeek.setHours(0, 0, 0, 0);
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  let weekCount = 0, monthCount = 0;
-
-  allRows.forEach(r => {
-    if (r.prisonerId) uniquePrisoners.add(String(r.prisonerId).trim());
-    const vid = r.visitorId || r.visitorName;
-    if (vid) uniqueVisitors.add(String(vid).trim());
-
-    let visitKey = r.visitDateISO;
-    if (!visitKey && r.visitDate) {
-      const ts = r.timestamp ? new Date(r.timestamp.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1')) : null;
-      if (ts && !isNaN(ts)) visitKey = ts.toISOString().slice(0, 10);
-    }
-    if (visitKey) {
-      const vDate = new Date(visitKey);
-      if (!isNaN(vDate)) {
-        if (vDate >= startOfWeek) weekCount++;
-        if (vDate >= startOfMonth) monthCount++;
-      }
-    }
-  });
-
-  const uniqueP = document.getElementById('statUniquePrisoners');
-  const thisWeekEl = document.getElementById('statThisWeek');
-  const thisMonthEl = document.getElementById('statThisMonth');
-  const uniqueV = document.getElementById('statUniqueVisitors');
-
-  if (uniqueP) uniqueP.textContent = uniquePrisoners.size;
-  if (thisWeekEl) thisWeekEl.textContent = weekCount;
-  if (thisMonthEl) thisMonthEl.textContent = monthCount;
-  if (uniqueV) uniqueV.textContent = uniqueVisitors.size;
-
   const lastUpdatedEl = document.getElementById('overviewLastUpdated');
   if (lastUpdatedEl) {
     lastUpdatedEl.textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   }
 
-  // Trend Chart
   drawReservationTrendChart();
-
-  // NEW: Donut chart, Wing revenue, Floor plan
   drawStatusDonutChart();
   drawWingRevenueChart();
   buildFloorPlanDateFilter();
   renderFloorPlan();
+
+  updateDashboardActionCards();
 }
+
+// Override the original function with V2
+renderDashboardHome = renderDashboardHomeV2;
 
 // ===== VALIDATION HELPERS =====
 function validateIdFormat(val) {
@@ -5259,3 +5170,82 @@ function addNote(ref, text) {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeEditModal(); } });
 document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('userInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// === UX/UI UPGRADE FUNCTIONS ===
+
+/**
+ * Filter reservations by status and switch to reservations view
+ * @param {string} status - The status to filter by
+ */
+function filterByStatus(status) {
+  const filterSelect = document.getElementById('filterStatus');
+  if (filterSelect) {
+    filterSelect.value = status;
+    resetToFirstPage();
+    renderTable();
+  }
+}
+
+/**
+ * Update Action Required cards and Quick Stats on dashboard
+ * Call this after loading data in renderDashboard
+ */
+function updateDashboardActionCards() {
+  if (!allRows || !allRows.length) return;
+  
+  const bookings = allRows;
+  const counts = {};
+  
+  bookings.forEach(b => {
+    const status = normalizeStatus(b.status);
+    counts[status] = (counts[status] || 0) + 1;
+  });
+  
+  // Action Required cards
+  const actionPending = document.getElementById('actionPending');
+  const actionParticipant = document.getElementById('actionParticipant');
+  const actionPayment = document.getElementById('actionPayment');
+  const actionPaid = document.getElementById('actionPaid');
+  
+  if (actionPending) actionPending.textContent = counts['รอตรวจสอบวินัย'] || 0;
+  if (actionParticipant) actionParticipant.textContent = counts['รอตรวจสอบผู้เข้าร่วม'] || 0;
+  if (actionPayment) actionPayment.textContent = counts['รอชำระเงิน'] || 0;
+  if (actionPaid) actionPaid.textContent = counts['ชำระแล้ว'] || 0;
+  
+  // Quick stats
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  let todayCount = 0;
+  let weekCount = 0;
+  let monthCount = 0;
+  
+  bookings.forEach(b => {
+    let visitKey = b.visitDateISO;
+    if (!visitKey && b.visitDate) {
+      const ts = b.timestamp ? new Date(b.timestamp.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1')) : null;
+      if (ts && !isNaN(ts)) visitKey = ts.toISOString().slice(0, 10);
+    }
+    if (visitKey) {
+      const vDate = new Date(visitKey);
+      if (!isNaN(vDate)) {
+        if (visitKey === todayStr) todayCount++;
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        if (vDate >= weekAgo) weekCount++;
+        if (vDate.getMonth() === today.getMonth() && vDate.getFullYear() === today.getFullYear()) {
+          monthCount++;
+        }
+      }
+    }
+  });
+  
+  const statToday = document.getElementById('statToday');
+  const statThisWeek = document.getElementById('statThisWeek');
+  const statThisMonth = document.getElementById('statThisMonth');
+  const statTotal = document.getElementById('statTotal');
+  
+  if (statToday) statToday.textContent = todayCount;
+  if (statThisWeek) statThisWeek.textContent = weekCount;
+  if (statThisMonth) statThisMonth.textContent = monthCount;
+  if (statTotal) statTotal.textContent = bookings.length;
+}
