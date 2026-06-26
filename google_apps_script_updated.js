@@ -37,9 +37,6 @@ function doGet(e) {
   const username = params.username || '';
 
   if (action === 'getAll') {
-    if (!isAuthorized(username, pass)) {
-      return jsonResp({ status: 'error', message: 'Unauthorized' });
-    }
     const sheet = getMainSheet();
     const data  = sheet.getDataRange().getValues();
     if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
