@@ -1,7 +1,7 @@
 // ===== CONFIG =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpgMWA1ARyZKdHz3fkjSXj3CLoufCGweggthl4g-iyvnrr-7wQ_Bj9S70aTs2h8wN2Ww/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_nDP6wByWIUgSpb8oJoESkF1ISKsZ5eQy4B5R76uehGGsyS-N5bkpWTAQ52s8hwpE8A/exec';
 const STAFF_PASS = '10900';
-const PROMPTPAY_ID = '0994000160208'; // กรอกเลขบัตรประชาชน 13 หลัก หรือเบอร์โทร 10 หลักของร้าน
+const PROMPTPAY_ID = '0994000160208';
 
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptPost(payload) {
