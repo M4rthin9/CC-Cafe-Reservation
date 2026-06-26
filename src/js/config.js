@@ -1,6 +1,5 @@
 let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwF_nqJE_R_DSMEQOV1tsP7L9adLsUt2FuqQzSNEC_-W2ySiG2kZMcNg_puHQBQSf9T9w/exec';
 const QUOTA = 20;
-const PROMPTPAY_ID = '0994000160208';
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
 
 async function initBackendUrl() {

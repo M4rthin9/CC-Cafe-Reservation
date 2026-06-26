@@ -293,7 +293,7 @@ function renderResult(row) {
         </div>
         
         <div style="margin: 10px auto 15px; width: 200px; height: 200px; background: var(--white); padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-          <img src="https://promptpay.io/${PROMPTPAY_ID}/${total}.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.onerror=null;this.src='src/asset/promptpay-qr.png'">
+          <img src="src/asset/promptpay-qr.png" alt="PromptPay QR Code" style="width: 100%; height: 100%; object-fit: contain;">
         </div>
 
         <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">ทัณฑสถานบำบัดพิเศษกลาง</div>
