@@ -4,6 +4,7 @@ const PRISONER_SHEET = 'ผู้ต้องขัง';
 const USERS_SHEET = 'Users';
 const NOTES_SHEET = 'Notes';
 const SETTINGS_SHEET = 'Settings';
+const PAYMENTS_SHEET = 'UsedPayments';
 
 const LEGACY_STAFF_PASS = '10900';
 
@@ -567,6 +568,18 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
 
   // ── UPDATE SLIP + STATUS ──
   if (action === 'updateSlipAndStatus') {
+    // Check for duplicate payment transaction reference
+    const transRef = (body.transRef || '').trim();
+    if (transRef) {
+      const usedSheet = getUsedPaymentsSheet();
+      const usedData = usedSheet.getDataRange().getValues();
+      for (let r = 1; r < usedData.length; r++) {
+        if (String(usedData[r][0]).trim() === transRef) {
+          return jsonResp({ status: 'error', message: 'สลิปนี้ถูกใช้ในการชำระเงินอื่นแล้ว (เลขที่รายการ: ' + transRef + ')' });
+        }
+      }
+    }
+
     const sheet = getMainSheet();
     const data  = sheet.getDataRange().getValues();
     const headers    = data[0];
@@ -582,6 +595,11 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
             try { slipVal = saveSlipToDrive(body.ref, slipVal); } catch(e) { slipVal = 'SLIP_UPLOADED:' + new Date().toISOString(); }
           }
           sheet.getRange(i + 1, slipIdx + 1).setValue(slipVal);
+        }
+        // Save used payment reference
+        if (transRef) {
+          const usedSheet = getUsedPaymentsSheet();
+          usedSheet.appendRow([transRef, body.ref, body.status || 'ชำระแล้ว', username || 'public', new Date().toISOString()]);
         }
         logEvent(username, 'slip_and_status_updated', body.ref, { status: body.status }, 'success');
         return jsonResp({ status: 'ok' });
@@ -1233,6 +1251,28 @@ function getSettingsSheet() {
 function ensureSettingsHeaders(sheet) {
   if (sheet.getLastRow() > 0) return;
   const headers = ['key', 'value', 'savedBy', 'savedAt'];
+  sheet.appendRow(headers);
+  const range = sheet.getRange(1, 1, 1, headers.length);
+  range.setFontWeight('bold');
+  range.setBackground('#185FA5');
+  range.setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
+}
+
+// ===== USED PAYMENTS SHEET (anti-duplicate) =====
+function getUsedPaymentsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(PAYMENTS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(PAYMENTS_SHEET);
+    ensureUsedPaymentsHeaders(sheet);
+  }
+  return sheet;
+}
+
+function ensureUsedPaymentsHeaders(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  const headers = ['transRef', 'bookingRef', 'status', 'submittedBy', 'submittedAt'];
   sheet.appendRow(headers);
   const range = sheet.getRange(1, 1, 1, headers.length);
   range.setFontWeight('bold');
