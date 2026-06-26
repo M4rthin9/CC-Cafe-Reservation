@@ -99,13 +99,10 @@ function formatI18n(key, params = {}, lang = getLang()) {
   return text;
 }
 
-<<<<<<< HEAD
 // ===== CONFIG =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpgMWA1ARyZKdHz3fkjSXj3CLoufCGweggthl4g-iyvnrr-7wQ_Bj9S70aTs2h8wN2Ww/exec';
 const STAFF_PASS = '10900';
 
-=======
->>>>>>> cebccbf96b7aa022520ab573071c6abdc968135e
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptGet(params) {
   const qs = new URLSearchParams(params).toString();

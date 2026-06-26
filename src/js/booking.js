@@ -1,10 +1,7 @@
-<<<<<<< HEAD
 // ===== CONFIG =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpgMWA1ARyZKdHz3fkjSXj3CLoufCGweggthl4g-iyvnrr-7wQ_Bj9S70aTs2h8wN2Ww/exec';
 const QUOTA = 20;
 
-=======
->>>>>>> cebccbf96b7aa022520ab573071c6abdc968135e
 // ===== CALENDAR =====
 const HOLIDAYS = {
   '2026-01-01': 'วันขึ้นปีใหม่', '2026-02-13': 'มาฆบูชา', '2026-04-06': 'จักรี',
