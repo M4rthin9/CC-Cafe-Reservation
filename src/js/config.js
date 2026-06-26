@@ -1,2 +1,2 @@
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_nDP6wByWIUgSpb8oJoESkF1ISKsZ5eQy4B5R76uehGGsyS-N5bkpWTAQ52s8hwpE8A/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxgcR7guDOIvhYGcxbu9uUuxHI3X-y2zkenSbXQd5bnjcFcElQt70-NM4J14Zwm5bEswA/exec';
 const QUOTA = 20;
