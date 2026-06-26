@@ -260,10 +260,10 @@
       <div class="card-subtitle">กรอกรายละเอียดเพื่อสร้าง QR Code</div>
 
       <div class="form-group">
-        <label for="ppId">หมายเลขโทรศัพท์ หรือ เลขบัตรประชาชน</label>
-        <input type="text" id="ppId" maxlength="13" placeholder="เช่น 0812345678 หรือ 1234567890123"
-          oninput="formatPPId(this)" onkeydown="if(event.key==='Enter') generateQR()">
-        <div class="form-hint">กรอก 10 หลัก (เบอร์โทร) หรือ 13 หลัก (เลขบัตรประชาชน)</div>
+        <label for="ppId">หมายเลข PromptPay</label>
+        <input type="text" id="ppId" value="0994000160208" readonly
+          style="background:var(--gray-100);color:var(--text-secondary);cursor:not-allowed;">
+        <div class="form-hint">หมายเลขประจำตัว 13 หลัก (คงที่)</div>
       </div>
 
       <div class="form-group">
@@ -297,31 +297,18 @@
 <script>
 let currentQRUrl = '';
 
-function formatPPId(input) {
-  input.value = input.value.replace(/[^0-9]/g, '');
-}
-
 function showError(msg) {
   const el = document.getElementById('ppError');
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
 }
 
+const PROMPTPAY_ID = '0994000160208';
+
 function generateQR() {
   showError('');
-  const id = document.getElementById('ppId').value.trim();
   const amountVal = document.getElementById('ppAmount').value.trim();
   const amount = amountVal ? parseFloat(amountVal) : undefined;
-
-  if (!id) {
-    showError('กรุณากรอกหมายเลขโทรศัพท์หรือเลขบัตรประชาชน');
-    return;
-  }
-
-  if (id.length !== 10 && id.length !== 13) {
-    showError('กรุณากรอกเบอร์โทร 10 หลัก หรือเลขบัตร 13 หลัก');
-    return;
-  }
 
   if (amount !== undefined && (isNaN(amount) || amount < 0)) {
     showError('กรุณากรอกจำนวนเงินที่ถูกต้อง');
@@ -329,8 +316,8 @@ function generateQR() {
   }
 
   const qrUrl = amount !== undefined
-    ? 'https://promptpay.io/' + id + '/' + amount + '.png'
-    : 'https://promptpay.io/' + id + '.png';
+    ? 'https://promptpay.io/' + PROMPTPAY_ID + '/' + amount + '.png'
+    : 'https://promptpay.io/' + PROMPTPAY_ID + '.png';
   currentQRUrl = qrUrl;
 
   const container = document.getElementById('qrContainer');
