@@ -10,12 +10,34 @@ const PERMISSIONS = {
 
 // Sidebar menu visibility by role
 const SIDEBAR_MENU = {
-  Superadmin: ['home', 'reservations', 'reports', 'formal-reports', 'eventlog', 'users', 'prisoners', 'settings'],
-  Admin: ['home', 'reservations', 'reports', 'formal-reports', 'eventlog', 'prisoners'],
+  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'users', 'prisoners', 'settings'],
+  Admin: ['home', 'reservations', 'reports', 'eventlog', 'prisoners'],
   Finance: ['reservations', 'reports'],
   Vinai: ['reservations', 'reports'],
   Tadtel: ['reservations', 'reports'],
   User: ['home']
+};
+
+const PRICING = {
+  MAIN_VISITOR: 1000,
+  PRISONER: 1000,
+  EXTRA_VISITOR: 1000,
+  CHILD_FREE_AGE: 5,
+  CHILD_HALF_AGE: 8,
+  CHILD_HALF_PRICE: 500,
+  CHILD_FREE_PRICE: 0,
+  computeExtraFee(relation, age) {
+    const childValues = ['บุตร / ธิดา', 'Child', '子女', 'Son/Daughter'];
+    if (childValues.includes(relation)) {
+      const a = parseInt(age, 10);
+      if (!isNaN(a)) {
+        if (a < this.CHILD_FREE_AGE) return this.CHILD_FREE_PRICE;
+        if (a <= this.CHILD_HALF_AGE) return this.CHILD_HALF_PRICE;
+      }
+    }
+    return this.EXTRA_VISITOR;
+  },
+  baseTotal() { return this.MAIN_VISITOR + this.PRISONER; }
 };
 
 // ===== POLLING FOR REALTIME UPDATES =====
@@ -61,7 +83,7 @@ async function pollData() {
       if (viewId === 'home') renderDashboardHome();
       else if (viewId === 'reservations') renderTable();
       else if (viewId === 'reports') renderReportsView();
-      else if (viewId === 'formal-reports') renderFormalReportsView();
+
     }
   } catch (e) { /* silent */ }
 }
@@ -282,7 +304,7 @@ function doLogout() {
 
 // ===== LOAD DATA =====
 async function loadData() {
-  document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -304,7 +326,7 @@ async function loadData() {
       document.getElementById('lastUpdated').textContent = 'โหมด Demo (ยังไม่ได้เชื่อม Google Sheet)';
       showToast('ไม่สามารถเชื่อมต่อระบบได้ กำลังแสดงโหมดทดสอบ (Demo)', 'warning');
     } else {
-      document.getElementById('tableBody').innerHTML = `<tr><td colspan="9" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
+      document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
       showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
       return;
     }
@@ -312,7 +334,6 @@ async function loadData() {
   updateStats();
   buildDateFilter();
   buildWingFilter();
-  setDefaultFormalDate();
   renderTable();
   logEvent('load_data', 'โหลดข้อมูลการจอง');
 }
@@ -436,89 +457,93 @@ function renderTable() {
   const pageRows = rows.slice(startIdx, startIdx + pageSize);
 
   if (!totalFiltered) {
-    document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="empty-state">ไม่พบข้อมูล</td></tr>';
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="empty-state">ไม่พบข้อมูล</td></tr>';
     renderPagination(0, 0);
     return;
   }
   document.getElementById('tableBody').innerHTML = pageRows.map((r, idx) => {
     const s = normalizeStatus(r.status);
-    let badgeClass = 'badge-discipline-check';
-    if (s === 'รอตรวจสอบวินัย') badgeClass = 'badge-discipline-check';
-    else if (s === 'รอตรวจสอบผู้เข้าร่วม') badgeClass = 'badge-participant-check';
-    else if (s === 'รอชำระเงิน') badgeClass = 'badge-payment-pending';
-    else if (s === 'ชำระแล้ว') badgeClass = 'badge-paid';
-    else if (s === 'เสร็จสิ้น') badgeClass = 'badge-completed';
-    else if (s === 'ไม่อนุมัติ') badgeClass = 'badge-rejected';
-    else if (s === 'ยกเลิก') badgeClass = 'badge-cancelled';
+    const badgeClass = {
+      'รอตรวจสอบวินัย': 'badge-discipline-check',
+      'รอตรวจสอบผู้เข้าร่วม': 'badge-participant-check',
+      'รอชำระเงิน': 'badge-payment-pending',
+      'ชำระแล้ว': 'badge-paid',
+      'เสร็จสิ้น': 'badge-completed',
+      'ไม่อนุมัติ': 'badge-rejected',
+      'ยกเลิก': 'badge-cancelled'
+    }[s] || 'badge-discipline-check';
 
-    const isDiscipline = s === 'รอตรวจสอบวินัย';
-    const isParticipant = s === 'รอตรวจสอบผู้เข้าร่วม';
-    const isPaymentPending = s === 'รอชำระเงิน';
-    const isPaid = s === 'ชำระแล้ว';
-    const isCompleted = s === 'เสร็จสิ้น';
     const isCancelled = s === 'ยกเลิก';
+    const isRejected = s === 'ไม่อนุมัติ';
     const rowIdx = allRows.indexOf(r);
 
-    // Status checkmarks - 3 steps of verification (updated workflow)
-    const disciplineApproved = r.status !== 'รอตรวจสอบวินัย';
-    const participantApproved = r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
-    const financeConfirmed = r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น';
+    // 3-step progress status
+    function stepState(step) {
+      if (isRejected) return step === 1 ? 'rejected' : 'skipped';
+      if (isCancelled) return 'skipped';
+      if (step === 1) return r.status !== 'รอตรวจสอบวินัย' ? 'done' : 'pending';
+      if (step === 2) return (r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น') ? 'done' : 'pending';
+      if (step === 3) return (r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น') ? 'done' : 'pending';
+      return 'pending';
+    }
+    function stepLabel(step) {
+      return ['', 'ตรวจสอบวินัย', 'ตรวจสอบผู้เข้าร่วม', 'ยืนยันการเงิน'][step];
+    }
+    function stepContent(state, st) {
+      if (state === 'done') return '✓';
+      if (state === 'rejected') return '✗';
+      if (state === 'skipped') return '—';
+      return ['', '1', '2', '3'][st];
+    }
+
+    // Progress bar HTML
+    const stepsHtml = [1, 2, 3].map(st => {
+      const stCls = stepState(st);
+      return `<span class="progress-step ${stCls}" title="${stepLabel(st)}">${stepContent(stCls, st)}</span>`;
+    }).join('<span class="progress-connector"></span>');
 
     const role = currentUser ? currentUser.role : 'User';
     const isAdminOrSuper = role === 'Superadmin' || role === 'Admin';
 
-    // Permission helper for button visibility
     const canApproveDiscipline = isAdminOrSuper || hasPermission('approve_discipline');
     const canRejectDiscipline = isAdminOrSuper || hasPermission('reject_discipline');
     const canApproveParticipant = isAdminOrSuper || hasPermission('approve_participant');
     const canConfirmPayment = (role === 'Superadmin' || role === 'Admin' || hasPermission('confirm_payment'));
-    const canRejectPayment = isAdminOrSuper || hasPermission('reject_payment');
     const canCancel = isAdminOrSuper || hasPermission('cancel');
 
+    // Build compact action icons (always visible)
+    const actions = [];
+    actions.push(`<button class="action-icon-btn" title="ดูสลิป" onclick="viewSlip(${rowIdx})">🧾</button>`);
+    actions.push(`<button class="action-icon-btn" title="รายละเอียด" onclick="viewDetail(${rowIdx})">📋</button>`);
+    if (isAdminOrSuper) actions.push(`<button class="action-icon-btn" title="แก้ไข" onclick="editBooking(${rowIdx})">✏️</button>`);
+    if (canConfirmPayment && s === 'รอชำระเงิน') actions.push(`<button class="action-icon-btn btn-approve-icon" title="ยืนยันชำระเงิน" onclick="confirmPayment(${rowIdx})">💳</button>`);
+    if (canConfirmPayment && s === 'ชำระแล้ว') actions.push(`<button class="action-icon-btn btn-approve-icon" title="เสร็จสิ้น" onclick="confirmPayment(${rowIdx})">✅</button>`);
+    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="action-icon-btn btn-approve-icon" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓</button>`);
+    if (canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="action-icon-btn btn-reject-icon" title="ปฏิเสธวินัย" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
+    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="action-icon-btn btn-approve-icon" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
+    if (canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="action-icon-btn btn-cancel-icon" title="ยกเลิก" onclick="cancelBooking(${rowIdx})">🚫</button>`);
+
+    const actionsHtml = actions.join('');
+
     return `<tr data-idx="${rowIdx}">
-           <td data-label="" style="width:32px;text-align:center;"><input type="checkbox" class="row-select" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer;"></td>
-           <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${escHtml(r.ref)}</b></td>
-<td data-label="ผู้เข้าร่วม">
-              <div style="font-weight:600">${escHtml(r.visitorName)}</div>
-              <div style="font-size:11px;color:var(--text2)">${escHtml(r.visitorPhone || '')}</div>
-              <div style="font-size:11px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);display:none" class="mobile-show-prisoner">
-                <span style="font-weight:600;color:var(--text2)">👤 ผู้ต้องขัง:</span> ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})
-              </div>
-            </td>
-           <td data-label="ผู้ต้องขัง" class="hide-mobile">
-             <div style="font-weight:600">${escHtml(r.prisonerName)}</div>
-             <div style="font-size:11px;color:var(--text2)">#${escHtml(r.prisonerId)}</div>
-           </td>
-           <td data-label="แดน">${escHtml(r.wing) || '—'}</td>
-           <td data-label="จำนวน/ยอด">
-             <div>${escHtml(r.visitorCount)} คน • ${(r.total || 0).toLocaleString()} บ.</div>
-           </td>
-           <td data-label="สถานะ"><span class="badge ${badgeClass}">${escHtml(r.status)}</span></td>
-           <td data-label="ตรวจสอบ">
-             <div style="display:flex;gap:4px;align-items:center;justify-content:center">
-               <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
-               <span class="status-check ${participantApproved ? 'done' : 'pending'}" title="อนุมัติโดย Tadtel (ผู้เข้าร่วม)">✓</span>
-               <span class="status-check ${financeConfirmed ? 'done' : 'pending'}" title="ยืนยันโดย Finance (การเงิน)">✓</span>
-             </div>
-           </td>
-<td data-label="จัดการ">
-              <div class="action-btns">
-                <button class="btn-slip" onclick="viewSlip(${rowIdx})">🧾 สลิป</button>
-                <button class="btn-slip" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" onclick="viewDetail(${rowIdx})">📋 รายละเอียด</button>
-                ${isAdminOrSuper ? `<button class="btn-slip" style="background:#f0fdf4;color:var(--green);border-color:var(--green)" onclick="editBooking(${rowIdx})">✏️ แก้ไข</button>` : ''}
-              </div>
-              <div class="mobile-actions-expanded" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:${s === 'รอตรวจสอบวินัย' || s === 'รอตรวจสอบผู้เข้าร่วม' || s === 'รอชำระเงิน' || s === 'ชำระแล้ว' ? 'flex' : 'none'};flex-wrap:wrap;gap:6px">
-                ${canConfirmPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-confirm-pay" onclick="confirmPayment(${rowIdx})">${s === 'ชำระแล้ว' ? '✅ เสร็จสิ้น' : '💳 ยืนยันชำระเงิน'}</button>` : ''}
-                ${canApproveDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓ อนุมัติวินัย</button>` : ''}
-                ${canRejectDiscipline && s === 'รอตรวจสอบวินัย' ? `<button class="btn-reject" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗ ปฏิเสธ</button>` : ''}
-                ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `<button class="btn-approve" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓ อนุมัติผู้เข้าร่วม</button>` : ''}
-                ${canRejectPayment && (s === 'รอชำระเงิน' || s === 'ชำระแล้ว') ? `<button class="btn-reject-pay" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✗ ปฏิเสธการชำระ</button>` : ''}
-                ${canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s) ? `<button class="btn-cancel" onclick="cancelBooking(${rowIdx})">🚫 ยกเลิก</button>` : ''}
-              </div>
-           </td>
-         </tr>`;
+      <td data-label="" style="width:32px;text-align:center;"><input type="checkbox" class="row-select" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer;"></td>
+      <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${escHtml(r.ref)}</b></td>
+      <td data-label="คู่เยี่ยม">
+        <div style="font-weight:600">${escHtml(r.visitorName)}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(r.visitorPhone || '')}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;padding-top:4px;border-top:1px dashed var(--border)">
+          👤 ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})
+        </div>
+      </td>
+      <td data-label="แดน">${escHtml(r.wing) || '—'}</td>
+      <td data-label="ยอด"><div>${escHtml(r.visitorCount)} คน • ${(r.total || 0).toLocaleString()} บ.</div></td>
+      <td data-label="สถานะ"><span class="badge ${badgeClass}">${escHtml(r.status)}</span></td>
+      <td data-label="ความคืบหน้า"><div class="progress-bar-compact">${stepsHtml}</div></td>
+      <td data-label="จัดการ"><div class="action-btns" style="flex-wrap:nowrap;">${actionsHtml}</div></td>
+    </tr>`;
   }).join('');
   renderPagination(totalPages, totalFiltered);
+  renderNotifications();
 }
 
 function changePage(p) {
@@ -608,9 +633,6 @@ function switchView(v) {
     populateReportsDateFilter();
     populateReportsWingFilter();
     renderReportsView();
-  } else if (v === 'formal-reports') {
-    populateFormalWingFilter();
-    renderFormalReportsView();
   } else if (v === 'eventlog') {
     renderEventlog();
   } else if (v === 'users') {
@@ -998,14 +1020,14 @@ let renderDashboardHome = function () {
     else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
     else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
     rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:10px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;flex-direction:column;gap:6px;">
-       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-         <b style="font-size:13px;color:var(--blue)">${r.ref}</b>
-         <span class="badge ${bcls}" style="font-size:11px;padding:2px 8px;white-space:nowrap">${s}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+         <b style="font-size:13px;color:var(--blue)">${escHtml(r.ref)}</b>
+         <span class="badge ${bcls}" style="font-size:11px;padding:2px 8px;white-space:nowrap">${escHtml(s)}</span>
        </div>
        <div style="display:flex;flex-direction:column;gap:2px;font-size:12px">
-         <span><strong style="color:var(--text2)">👤</strong> ${r.visitorName || ''}</span>
-         <span><strong style="color:var(--text2)">🏢</strong> ${r.prisonerName || ''} (#${r.prisonerId || ''})</span>
-         <span><strong style="color:var(--text2)">📅</strong> ${r.visitDate || ''} • <strong style="color:var(--blue)">${(r.total || 0).toLocaleString()} บ.</strong></span>
+         <span><strong style="color:var(--text2)">👤</strong> ${escHtml(r.visitorName || '')}</span>
+         <span><strong style="color:var(--text2)">🏢</strong> ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})</span>
+         <span><strong style="color:var(--text2)">📅</strong> ${escHtml(r.visitDate || '')} • <strong style="color:var(--blue)">${(r.total || 0).toLocaleString()} บ.</strong></span>
        </div>
      </div>`;
   });
@@ -1015,7 +1037,7 @@ let renderDashboardHome = function () {
 
   recentEl.innerHTML = rhtml || '<div style="color:#888;font-size:13px;padding:12px;text-align:center">ยังไม่มีข้อมูล</div>';
 
-  // ===== Status Pipeline Visualization =====
+  // Status Pipeline Visualization
   const statusOrder = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
   const statusLabels = { 'รอตรวจสอบวินัย': 'วินัย', 'รอตรวจสอบผู้เข้าร่วม': 'ผู้เข้าร่วม', 'รอชำระเงิน': 'ชำระเงิน', 'ชำระแล้ว': 'ชำระแล้ว', 'เสร็จสิ้น': 'เสร็จ', 'ไม่อนุมัติ': 'ปฏิเสธ', 'ยกเลิก': 'ยกเลิก' };
   const statusCounts = {}; statusOrder.forEach(s => statusCounts[s] = 0);
@@ -1625,20 +1647,13 @@ async function updateVisitorApproval(idx, pidx, val) {
   const oldTotal = row.total;
 
   let approvedRel = ((row.visitorApproved || '') === 'yes' ? 1 : 0);
-  let total = 2000; // main visitor (1000) + prisoner (1000)
+  let total = PRICING.baseTotal();
   if (row.extraVisitorApproved && row.extraVisitorNames) {
     const extras = parseExtraVisitors(row);
     const approvals = String(row.extraVisitorApproved).split(';;');
     extras.forEach((v, idx) => {
       if ((approvals[idx] || '').trim().toLowerCase() === 'yes') {
-        let fee = 1000;
-        if (v.relation === 'บุตร / ธิดา') {
-          const a = parseInt(v.age, 10);
-          if (!isNaN(a)) {
-            if (a < 5) fee = 0;
-            else if (a <= 8) fee = 500;
-          }
-        }
+        const fee = PRICING.computeExtraFee(v.relation, v.age);
         total += fee;
         approvedRel++;
       }
@@ -1828,12 +1843,12 @@ function viewDetail(idx) {
     }
     extras.forEach((v, i) => {
       const infoParts = [];
-      if (v.id) infoParts.push('บัตร: ' + v.id);
-      if (v.relation) infoParts.push('ความสัมพันธ์: ' + v.relation);
+      if (v.id) infoParts.push('บัตร: ' + escHtml(v.id));
+      if (v.relation) infoParts.push('ความสัมพันธ์: ' + escHtml(v.relation));
       const er = String(r.extraVisitorReligions || '').split(';;')[i] || '';
       const ea2 = String(r.extraVisitorAllergies || '').split(';;')[i] || '';
-      if (er) infoParts.push('ศาสนา: ' + er);
-      if (ea2) infoParts.push('แพ้อาหาร: ' + ea2);
+      if (er) infoParts.push('ศาสนา: ' + escHtml(er));
+      if (ea2) infoParts.push('แพ้อาหาร: ' + escHtml(ea2));
       const ea = String(r.extraVisitorApproved || '').split(';;')[i] || '';
       extraHtml += `
          <div class="visitor-card">
@@ -2028,16 +2043,9 @@ async function approveAllVisitorsInDetail(idx) {
   }
 
   // Calculate visitor count and total with child pricing
-  let total = 2000; // main visitor (1000) + prisoner (1000)
+  let total = PRICING.baseTotal();
   extras.forEach(v => {
-    let fee = 1000;
-    if (v.relation === 'บุตร / ธิดา') {
-      const a = parseInt(v.age, 10);
-      if (!isNaN(a)) {
-        if (a < 5) fee = 0;
-        else if (a <= 8) fee = 500;
-      }
-    }
+    const fee = PRICING.computeExtraFee(v.relation, v.age);
     total += fee;
   });
   const approvedRel = 1 + extras.length;
@@ -2211,7 +2219,6 @@ async function syncPrisonerWings() {
       await loadData();
       renderTable();
       renderReportsView();
-      renderFormalReportsView();
     } else {
       showToast('Sync Wings ล้มเหลว: ' + (data.message || ''), 'error');
     }
@@ -2889,144 +2896,6 @@ function printReport() {
   w.focus();
 }
 
-// ===== PRINT PRISONER LIST FOR วินัย CHECK (only name, ID, Wing) =====
-function printPrisonerVinaiList() {
-  const filtered = getCurrentFilteredSorted();
-  if (!filtered.length) {
-    showToast('ไม่มีข้อมูลตาม filter ที่เลือก', 'warning');
-    return;
-  }
-
-  const now = new Date().toLocaleString('th-TH');
-  const filterDate = document.getElementById('filterDate').value || 'ทุกวัน';
-
-  let html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>รายชื่อผู้ต้องขัง - ตรวจสอบวินัย ${filterDate}</title>
-<style>${PRINT_SHARED_CSS}
-  .num { width:42px; text-align:center; }
-</style></head><body>`;
-
-  html += `<div class="no-print print-preview-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:'Sarabun',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-    <span style="font-weight:600;">📋 ตัวอย่างก่อนพิมพ์</span>
-    <div style="display:flex;gap:8px;">
-      <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;">🖨️ พิมพ์</button>
-      <button onclick="window.close()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;">✕ ปิด</button>
-    </div>
-  </div>`;
-  html += `<div style="margin-top:50px;"></div>`;
-  html += `<div class="print-header"><h1>ทัณฑสถานบำบัดพิเศษกลาง</h1><h2>Chance & Change Cafe</h2></div>`;
-  html += `<div class="print-title">รายชื่อผู้ต้องขัง - ตรวจสอบวินัย<br><span style="font-size:14px; font-weight:500;">วันที่ ${filterDate}</span></div>`;
-  html += `<div class="meta">พิมพ์เมื่อ ${now}</div>`;
-
-  html += `<table>`;
-  html += `<thead><tr>`;
-  html += `<th class="num">ลำดับ</th>`;
-  html += `<th>ชื่อผู้ต้องขัง</th>`;
-  html += `<th>เลขประจำตัว</th>`;
-  html += `<th>แดนที่อยู่</th>`;
-  html += `</tr></thead><tbody>`;
-
-  filtered.forEach((r, i) => {
-    html += `<tr>`;
-    html += `<td class="num">${i + 1}</td>`;
-    html += `<td><b>${r.prisonerName || '-'}</b></td>`;
-    html += `<td>${r.prisonerId || '-'}</td>`;
-    html += `<td>${r.wing || '-'}</td>`;
-    html += `</tr>`;
-  });
-
-  html += `</tbody></table>`;
-
-  html += `<div class="note">สำหรับใช้ตรวจสอบวินัย • ข้อมูลจากระบบการจอง CC Cafe</div>`;
-  const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
-  html += `<div class="print-footer">ผู้ปริ้น: ${printerName} · พิมพ์เมื่อ ${now}</div>`;
-  html += `</body></html>`;
-
-  const w = window.open('', '_blank', 'width=900,height=700');
-  if (!w) {
-    showToast('กรุณาอนุญาต Popup เพื่อเปิดหน้าพิมพ์', 'warning');
-    return;
-  }
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-}
-
-// ===== DAILY AGGREGATED DEPARTMENT REPORTS (respects current filters) =====
-function renderDailyDeptReports() {
-  const container = document.getElementById('dailyReportsContent');
-  const section = document.getElementById('dailyReportsSection');
-  if (!container || !section) return;
-
-  const filtered = getCurrentFilteredSorted();
-  if (filtered.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
-
-  const byDate = {};
-  filtered.forEach(r => {
-    const dateKey = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
-    if (!byDate[dateKey]) byDate[dateKey] = [];
-    byDate[dateKey].push(r);
-  });
-
-  let html = '';
-
-  Object.keys(byDate).sort().forEach(date => {
-    const rows = byDate[date];
-
-    let totalAdults = 0, totalKids5_8 = 0, totalKidsUnder5 = 0;
-    let prisoners = [];
-    let totalTables = rows.length;
-
-    rows.forEach(r => {
-      const d = computeDeptReportData(r);
-      totalAdults += d.adults;
-      totalKids5_8 += d.kids5_8;
-      totalKidsUnder5 += d.kidsUnder5;
-
-      if (r.prisonerName && !prisoners.includes(r.prisonerName)) {
-        prisoners.push(r.prisonerName);
-      }
-    });
-
-    const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
-    const totalPeople = totalRelatives + rows.length;
-
-    html += `
-      <div style="border:1px solid var(--border); border-radius:8px; padding:12px; background:var(--bg2);">
-        <div style="font-weight:700; font-size:14px; margin-bottom:6px; color:var(--blue);">${date}</div>
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:8px; font-size:12px;">
-          <div style="background:#fff5f5; border:1px solid #c62828; border-radius:6px; padding:8px;">
-            <strong style="color:#c62828">🚨 ส่วนทัณฑ์</strong><br>
-            <div style="margin-top:4px;">${prisoners.length} คน</div>
-            <div style="font-size:11px; color:#666; margin-top:2px;">${prisoners.slice(0, 3).join(', ')}${prisoners.length > 3 ? ' ...' : ''}</div>
-          </div>
-          <div style="background:#fff8f0; border:1px solid #ff9800; border-radius:6px; padding:8px;">
-            <strong style="color:#e65100">🪑 โต๊ะ</strong><br>
-            <div style="margin-top:4px; font-weight:700;">${totalTables} โต๊ะ</div>
-            <div style="font-size:11px;">รวม ${totalPeople} คน</div>
-          </div>
-          <div style="background:#f0fff0; border:1px solid #2e7d32; border-radius:6px; padding:8px;">
-            <strong style="color:#1b5e20">🍽️ ครัว</strong><br>
-            ผู้ใหญ่: <strong>${totalAdults}</strong><br>
-            เด็ก 5-8: <strong>${totalKids5_8}</strong><br>
-            ต่ำกว่า 5: <strong>${totalKidsUnder5}</strong>
-          </div>
-          <div style="background:#fffdf5; border:1px solid #c8922a; border-radius:6px; padding:8px;">
-            <strong style="color:#8d6e00">🍰 เบเกอรี่</strong><br>
-            ผู้ใหญ่: <strong>${totalAdults}</strong><br>
-            เด็ก 5-8: <strong>${totalKids5_8}</strong><br>
-            ต่ำกว่า 5: <strong>${totalKidsUnder5}</strong>
-          </div>
-        </div>
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
-  section.style.display = 'block';
-}
 
 function fetchRolesList() {
   const select = document.getElementById('addUserRole');
@@ -3383,18 +3252,18 @@ async function editUser(username) {
     const modal = document.getElementById('editModalBody');
     modal.innerHTML = `
       <div style="margin-bottom:16px;">
-        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">แก้ไขผู้ใช้: ${user.username}</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">แก้ไขผู้ใช้: ${escHtml(user.username)}</div>
         <div style="margin-bottom:10px;">
           <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">บทบาท</label>
           <select id="editUserRole" class="filter-select" style="width:100%;">
             ${roles.map(r =>
-      `<option value="${r}" ${r === user.role ? 'selected' : ''}>${r}</option>`
+      `<option value="${escHtml(r)}" ${r === user.role ? 'selected' : ''}>${escHtml(r)}</option>`
     ).join('')}
           </select>
         </div>
         <div style="margin-bottom:10px;">
           <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">ชื่อที่แสดง</label>
-          <input type="text" id="editUserDisplayName" class="search-box" value="${user.displayName || ''}" style="width:100%;">
+          <input type="text" id="editUserDisplayName" class="search-box" value="${escHtml(user.displayName || '')}" style="width:100%;">
         </div>
         <div style="margin-bottom:10px;">
           <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)</label>
@@ -3403,7 +3272,7 @@ async function editUser(username) {
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
         <button class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
-        <button class="btn-approve" onclick="saveEditUser('${user.username}')">💾 บันทึก</button>
+        <button class="btn-approve" onclick="saveEditUser('${escHtml(user.username)}')">💾 บันทึก</button>
       </div>
     `;
     document.getElementById('editModalBg').classList.add('show');
@@ -3463,105 +3332,6 @@ function closeEditModal(e) {
   if (!e || e.target === document.getElementById('editModalBg')) {
     document.getElementById('editModalBg').classList.remove('show');
   }
-}
-
-function printDailyDeptReports() {
-  const filtered = getCurrentFilteredSorted();
-  if (filtered.length === 0) {
-    showToast('ไม่มีข้อมูลตาม filter ที่เลือก', 'warning');
-    return;
-  }
-
-  const byDate = {};
-  filtered.forEach(r => {
-    const dateKey = r.visitDate || r.visitDateISO || 'ไม่ระบุวันที่';
-    if (!byDate[dateKey]) byDate[dateKey] = [];
-    byDate[dateKey].push(r);
-  });
-
-  const now = new Date().toLocaleString('th-TH');
-  const printerName = currentUser?.displayName || currentUser?.username || 'ไม่ระบุ';
-
-  let html = `
-    <html><head><meta charset="UTF-8">
-    <title>รายงานประจำวัน - แยกตามฝ่าย</title>
-    <style>
-      ${PRINT_SHARED_CSS}
-      .date-block { border:2px solid #333; margin-bottom:20px; padding:12px; page-break-inside:avoid; }
-      .date-title { font-size:16px; font-weight:700; border-bottom:1px solid #ccc; padding-bottom:4px; margin-bottom:8px; }
-      .dept { margin-bottom:8px; padding:6px; border:1px solid #aaa; border-radius:4px; }
-      .dept strong { display:block; margin-bottom:4px; }
-    </style>
-    </head><body>
-    <div class="no-print print-preview-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:'Sarabun',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-      <span style="font-weight:600;">📋 ตัวอย่างก่อนพิมพ์</span>
-      <div style="display:flex;gap:8px;">
-        <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;">🖨️ พิมพ์</button>
-        <button onclick="window.close()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;">✕ ปิด</button>
-      </div>
-    </div>
-    <div style="margin-top:50px;"></div>
-    <div class="print-header"><h1>ทัณฑสถานบำบัดพิเศษกลาง</h1><h2>Chance & Change Cafe</h2></div>
-    <div class="print-title">รายงานสรุปประจำวัน (แยกตามฝ่าย)</div>
-    <div class="meta">ผู้ปริ้น: ${printerName} • พิมพ์เมื่อ ${now}</div>
-  `;
-
-  Object.keys(byDate).sort().forEach(date => {
-    const rows = byDate[date];
-    let totalAdults = 0, total5_8 = 0, totalUnder5 = 0, prisoners = [];
-
-    rows.forEach(r => {
-      const d = computeDeptReportData(r);
-      totalAdults += d.adults;
-      total5_8 += d.kids5_8;
-      totalUnder5 += d.kidsUnder5;
-      if (r.prisonerName && !prisoners.includes(r.prisonerName)) prisoners.push(r.prisonerName);
-    });
-
-    const totalTables = rows.length;
-    const totalRel = rows.reduce((s, r) => s + (parseInt(r.visitorCount) || 1), 0);
-
-    html += `<div class="date-block">`;
-    html += `<div class="date-title">${date}</div>`;
-
-    // ส่วนทัณฑ์
-    html += `<div class="dept" style="border-color:#c62828;">`;
-    html += `<strong style="color:#c62828">🚨 ส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</strong>`;
-    html += `จำนวน: <strong>${prisoners.length} คน</strong><br>`;
-    html += prisoners.map((p, i) => `${i + 1}. ${p}`).join('<br>');
-    html += `</div>`;
-
-    // Table
-    html += `<div class="dept" style="border-color:#ff9800;">`;
-    html += `<strong style="color:#e65100">🪑 การจัดโต๊ะ</strong>`;
-    html += `จำนวนโต๊ะ: <strong>${totalTables} โต๊ะ</strong><br>`;
-    html += `รวมผู้เข้าร่วม: ${totalRel + totalTables} คน (ญาติ ${totalRel} + ผู้ต้องขัง ${totalTables})<br>`;
-    html += `<strong>รวมทั้งหมด: ${totalRel + totalTables} คน</strong>`;
-    html += `</div>`;
-
-    // Kitchen + Bakery (combined)
-    const combinedAdults = totalAdults + totalTables;
-    html += `<div class="dept" style="border-color:#2e7d32;">`;
-    html += `<strong style="color:#1b5e20">🍽️🍰 ครัว + เบเกอรี่ (รวม)</strong>`;
-    html += `ผู้ใหญ่ (รวมผู้ต้องขัง): <strong>${combinedAdults}</strong> คน &nbsp;&nbsp;`;
-    html += `เด็ก 5-8 ปี: <strong>${total5_8}</strong> คน &nbsp;&nbsp;`;
-    html += `ต่ำกว่า 5 ปี: <strong>${totalUnder5}</strong> คน`;
-    html += `</div>`;
-
-    html += `</div>`;
-  });
-
-  html += `<div class="print-footer">รายงานนี้สร้างจากระบบ CC Cafe · ${now}</div>`;
-  html += `</body></html>`;
-
-  const w = window.open('', '_blank');
-  if (!w) {
-    showToast('กรุณาอนุญาต Popup เพื่อเปิดหน้าพิมพ์', 'warning');
-    return;
-  }
-  w.document.write(html);
-  w.document.close();
-  w.focus();
 }
 
 // ===== Helper: Get filtered rows for the Reports page (independent filters) =====
@@ -3634,18 +3404,6 @@ function populateReportsWingFilter() {
   if (wings.includes(cur)) el.value = cur;
 }
 
-function populateFormalWingFilter() {
-  const el = document.getElementById('formalFilterWing');
-  if (!el) return;
-  const wings = [...new Set(allRows.map(r => (r.wing || '').trim()).filter(Boolean))].sort();
-  el.innerHTML = '<option value="">ทุกแดน</option>';
-  wings.forEach(w => {
-    const o = document.createElement('option');
-    o.value = w; o.textContent = w;
-    el.appendChild(o);
-  });
-}
-
 // ===== NEW: Dedicated Reports View (each department as its own section/page) =====
 function renderReportsView() {
   const container = document.getElementById('reportsContent');
@@ -3714,9 +3472,9 @@ function renderReportsView() {
 
       prisonerList.forEach(p => {
         html += `<tr>`;
-        html += `<td style="border:1px solid #ddd;padding:6px;"><strong>น.ช. ${p.name}</strong></td>`;
-        html += `<td style="border:1px solid #ddd;padding:6px;">${p.id}</td>`;
-        html += `<td style="border:1px solid #ddd;padding:6px;">${p.wing}</td>`;
+        html += `<td style="border:1px solid #ddd;padding:6px;"><strong>น.ช. ${escHtml(p.name)}</strong></td>`;
+        html += `<td style="border:1px solid #ddd;padding:6px;">${escHtml(p.id)}</td>`;
+        html += `<td style="border:1px solid #ddd;padding:6px;">${escHtml(p.wing)}</td>`;
         html += `</tr>`;
       });
 
@@ -3757,14 +3515,14 @@ function renderReportsView() {
     html += `<div style="font-size:12px; line-height:1.6;">`;
     rows.forEach((r, i) => {
       const tableNo = i + 1;
-      const ref = r.ref || '—';
-      const prisoner = r.prisonerName ? `น.ช. ${r.prisonerName}` : '—';
+      const ref = escHtml(r.ref || '—');
+      const prisoner = r.prisonerName ? `น.ช. ${escHtml(r.prisonerName)}` : '—';
 
       // Get main visitor + extras
-      let visitors = [r.visitorName || '—'];
+      let visitors = [escHtml(r.visitorName || '—')];
       const extras = parseExtraVisitors(r);
       extras.forEach(ex => {
-        if (ex.name) visitors.push(ex.name);
+        if (ex.name) visitors.push(escHtml(ex.name));
       });
 
       const totalPeople = (parseInt(r.visitorCount) || 1) + 1; // relatives + prisoner
@@ -4011,7 +3769,7 @@ function generateMonthlyReport() {
   // Build wing statistics
   const wingStats = Object.entries(wingCounts)
     .sort((a, b) => b[1] - a[1])
-    .map(([wing, count]) => `• แดน ${wing}: <strong>${count} คน</strong>`)
+    .map(([wing, count]) => `• แดน ${escHtml(wing)}: <strong>${count} คน</strong>`)
     .join('\n');
 
   const startFmt = startDate.split('-').map((p, i) => i === 0 ? parseInt(p) + 543 : p).join('/');
@@ -4408,10 +4166,10 @@ function renderFloorPlan() {
 
   grid.innerHTML = dayBookings.map((r, i) => {
     const tableNo = i + 1;
-    const prisonerName = r.prisonerName || '—';
-    const wing = r.wing || '—';
+    const prisonerName = escHtml(r.prisonerName || '—');
+    const wing = escHtml(r.wing || '—');
     const visitors = r.visitorCount || 1;
-    const ref = r.ref || '';
+    const ref = escHtml(r.ref || '');
     const s = normalizeStatus(r.status);
     const total = parseInt(r.total) || 0;
 
@@ -4422,7 +4180,7 @@ function renderFloorPlan() {
       statusText = 'รอชำระ';
     }
 
-    const wingColor = wingColors[wing] || '#475569';
+    const wingColor = wingColors[r.wing] || '#475569';
 
     return `
       <div class="floor-table ${statusClass}" onclick="viewDetail(${allRows.indexOf(r)});switchView('reservations')" title="ดูรายละเอียด ${ref}">
@@ -4502,14 +4260,14 @@ function renderDashboardHomeV2() {
     else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
     else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
     rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:10px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;flex-direction:column;gap:6px;">
-       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-         <b style="font-size:13px;color:var(--blue)">${r.ref}</b>
-         <span class="badge ${bcls}" style="font-size:11px;padding:2px 8px;white-space:nowrap">${s}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+         <b style="font-size:13px;color:var(--blue)">${escHtml(r.ref)}</b>
+         <span class="badge ${bcls}" style="font-size:11px;padding:2px 8px;white-space:nowrap">${escHtml(s)}</span>
        </div>
        <div style="display:flex;flex-direction:column;gap:2px;font-size:12px">
-         <span><strong style="color:var(--text2)">👤</strong> ${r.visitorName || ''}</span>
-         <span><strong style="color:var(--text2)">🏢</strong> ${r.prisonerName || ''} (#${r.prisonerId || ''})</span>
-         <span><strong style="color:var(--text2)">📅</strong> ${r.visitDate || ''} • <strong style="color:var(--blue)">${(r.total || 0).toLocaleString()} บ.</strong></span>
+         <span><strong style="color:var(--text2)">👤</strong> ${escHtml(r.visitorName || '')}</span>
+         <span><strong style="color:var(--text2)">🏢</strong> ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})</span>
+         <span><strong style="color:var(--text2)">📅</strong> ${escHtml(r.visitDate || '')} • <strong style="color:var(--blue)">${(r.total || 0).toLocaleString()} บ.</strong></span>
        </div>
      </div>`;
   });
@@ -4729,20 +4487,19 @@ function nbCalculateTotal() {
   let kids5_8 = 0, kidsUnder5 = 0;
 
   extras.forEach(v => {
-    let fee = 1000;
-    let isChild = false;
-    if (v.relation === 'บุตร / ธิดา') {
+    const fee = PRICING.computeExtraFee(v.relation, v.age);
+    extraFees += fee;
+    if (fee === PRICING.EXTRA_VISITOR) adults++;
+    else {
       const a = parseInt(v.age, 10);
       if (!isNaN(a)) {
-        if (a < 5) { fee = 0; isChild = true; kidsUnder5++; }
-        else if (a <= 8) { fee = 500; isChild = true; kids5_8++; }
+        if (a < PRICING.CHILD_FREE_AGE) kidsUnder5++;
+        else if (a <= PRICING.CHILD_HALF_AGE) kids5_8++;
       }
     }
-    extraFees += fee;
-    if (!isChild) adults++;
   });
 
-  const total = 1000 + 1000 + extraFees;
+  const total = PRICING.baseTotal() + extraFees;
   return { total, extraFees, adults, kids5_8, kidsUnder5, numVisitors: n };
 }
 
@@ -4922,7 +4679,7 @@ function editBooking(idx) {
     approved: extraApproved[i] || ''
   }));
 
-  function esc(s) { return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  function esc(s) { return escHtml(s); }
 
   let extraHtml = '';
   extras.forEach((e, i) => {
@@ -5358,35 +5115,61 @@ function bulkExport() {
 }
 
 // ===== NOTIFICATIONS =====
+function getWaitingTime(d) {
+  if (!d) return '';
+  const diff = Date.now() - new Date(d).getTime();
+  if (diff < 0) return '';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `รอ ${mins} นาที`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `รอ ${hrs} ชม.`;
+  const days = Math.floor(hrs / 24);
+  return `รอ ${days} วัน`;
+}
+
 function renderNotifications() {
-  const pending = allRows.filter(r => {
+  const groups = {
+    'รอตรวจสอบวินัย': { label: '🔍 รอตรวจสอบวินัย', icon: '🔍', rows: [] },
+    'รอตรวจสอบผู้เข้าร่วม': { label: '👥 รอตรวจสอบผู้เข้าร่วม', icon: '👥', rows: [] },
+    'รอชำระเงิน': { label: '💳 รอชำระเงิน', icon: '💳', rows: [] }
+  };
+
+  allRows.forEach(r => {
     const s = normalizeStatus(r.status);
-    return s === 'รอตรวจสอบวินัย' || s === 'รอชำระเงิน';
+    if (groups[s]) groups[s].rows.push(r);
   });
 
   const bell = document.getElementById('notifBell');
   const badge = document.getElementById('notifBadge');
   const list = document.getElementById('notifPanel');
 
-  if (pending.length > 0 && bell) {
+  const total = Object.values(groups).reduce((sum, g) => sum + g.rows.length, 0);
+
+  if (total > 0 && bell) {
     bell.style.display = 'flex';
-    if (badge) { badge.style.display = 'flex'; badge.textContent = pending.length > 99 ? '99+' : pending.length; }
+    if (badge) { badge.style.display = 'flex'; badge.textContent = total > 99 ? '99+' : total; }
     if (list) {
-      list.innerHTML = pending.slice(0, 20).map(r => {
-        const s = normalizeStatus(r.status);
-        const icon = s === 'รอตรวจสอบวินัย' ? '🔍' : '💳';
-        return `<div onclick="viewDetail(${allRows.indexOf(r)});switchView('reservations');toggleNotifPanel()" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;align-items:center;transition:background 0.15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
-          <span style="font-size:18px;">${icon}</span>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);">${escHtml(r.ref)} · ${escHtml(r.visitorName || '')}</div>
-            <div style="font-size:11px;color:var(--text2);">${escHtml(s)} · ${escHtml(r.wing || '')}</div>
-          </div>
-          <span class="badge badge-payment-pending" style="font-size:10px;white-space:nowrap;">${escHtml(s)}</span>
-        </div>`;
-      }).join('');
-      if (pending.length > 20) {
-        list.innerHTML += `<div style="padding:10px;text-align:center;font-size:12px;color:var(--text2);">และอีก ${pending.length - 20} รายการ...</div>`;
-      }
+      let html = '';
+      Object.keys(groups).forEach(key => {
+        const g = groups[key];
+        if (g.rows.length === 0) return;
+        html += `<div class="notif-section-header">${g.label} <span class="notif-section-count">${g.rows.length}</span></div>`;
+        g.rows.slice(0, 10).forEach(r => {
+          const wt = getWaitingTime(r.timestamp || r.createdAt);
+          html += `<div onclick="viewDetail(${allRows.indexOf(r)});switchView('reservations');toggleNotifPanel()" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;align-items:center;transition:background 0.15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+            <span style="font-size:18px;">${g.icon}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:600;color:var(--text);">${escHtml(r.ref)} · ${escHtml(r.visitorName || '')}</div>
+              <div style="font-size:11px;color:var(--text2);">${escHtml(r.wing || '')}</div>
+            </div>
+            ${wt ? `<span class="notif-waiting">${wt}</span>` : ''}
+          </div>`;
+        });
+        if (g.rows.length > 10) {
+          html += `<div style="padding:8px 14px;text-align:center;font-size:11px;color:var(--text2);">และอีก ${g.rows.length - 10} รายการ...</div>`;
+        }
+      });
+      list.innerHTML = html || '<div style="padding:14px;text-align:center;color:var(--text2);font-size:12px;">ไม่มีการแจ้งเตือน</div>';
     }
   } else {
     if (bell) bell.style.display = 'none';
@@ -5471,408 +5254,7 @@ function addNote(ref, text) {
   showToast('เพิ่มหมายเหตุสำเร็จ', 'success');
 }
 
-// Override the original renderDashboardHome
-renderDashboardHome = renderDashboardHomeV2;
 
-// Call renderNotifications after dashboard loads
-const _origRenderDash = renderDashboardHome;
-renderDashboardHome = function () {
-  _origRenderDash();
-  renderNotifications();
-  const saved = JSON.parse(localStorage.getItem('cc_settings') || '{}');
-  if (saved.pageSize) pageSize = parseInt(saved.pageSize) || 10;
-};
-
-// =====================================================
-// ===== FORMAL GOVERNMENT REPORTS ENGINE =============
-// ===== ตามระเบียบสำนักนายกรัฐมนตรีว่าด้วยงานสารบรรณ พ.ศ. 2526 ====
-// =====================================================
-const FORMAL_PRINT_CSS = `
-  @page { size: A4; margin: 35mm 20mm 20mm 30mm; }
-  @media print {
-    html, body { margin: 0; padding: 0; width:210mm; }
-    * { box-sizing:border-box; }
-  }
-  body {
-    font-family:'TH Sarabun New','Sarabun PSK','Sarabun','Tahoma',sans-serif;
-    font-size:16pt; line-height:1.5; color:#000;
-  }
-  .formal-page { width:160mm; margin:0 auto; padding:0; }
-
-  /* ตราครุฑ */
-  .garuda-wrap { text-align:center; margin-bottom:12pt; }
-  .garuda-img { width:85pt; height:auto; display:inline-block; }
-
-  /* ส่วนราชการเจ้าของหนังสือ และวันที่ */
-  .header-block { margin-bottom:14pt; }
-  .header-block .ref-line { }
-  .header-block .dept-line { }
-  .header-block .addr-line { }
-  .header-block .date-line { text-align:right; margin-top:2pt; }
-
-  /* เรื่อง */
-  .topic-line { margin-bottom:4pt; display:flex; }
-  .topic-line .label { white-space:pre; }
-  .topic-line .value { }
-
-  /* เรียน */
-  .attn-line { margin-bottom:4pt; display:flex; }
-  .attn-line .label { white-space:pre; }
-  .attn-line .value { }
-
-  /* อ้างถึง */
-  .ref-line { margin-bottom:4pt; display:flex; }
-  .ref-line .label { white-space:pre; }
-
-  /* สิ่งที่ส่งมาด้วย */
-  .enclose-line { margin-bottom:8pt; display:flex; }
-  .enclose-line .label { white-space:pre; }
-
-  /* เนื้อหา */
-  .content-body { margin-top:10pt; }
-  .content-body p { text-indent:2.5cm; margin:0 0 8pt 0; }
-  .content-body table { width:100%; border-collapse:collapse; margin:10pt 0; font-size:15pt; }
-  .content-body th, .content-body td { border:1px solid #000; padding:5pt 8pt; text-align:left; vertical-align:top; }
-  .content-body th { font-weight:700; text-align:center; }
-  .content-body .total-row { font-weight:700; }
-  .content-body .center { text-align:center; }
-
-  /* คำลงท้าย */
-  .closing { margin-top:22pt; text-align:right; }
-
-  /* ลายเซ็น */
-  .signature-block { margin-top:16pt; }
-  .signature-table { width:100%; }
-  .signature-table td { width:50%; vertical-align:top; padding:0 10pt; text-align:center; }
-  .signature-table .sign-label { }
-  .signature-table .sign-name { font-weight:700; margin-top:2pt; }
-  .signature-table .sign-pos { }
-  .signature-table .sign-dept { }
-  .signature-table .sign-phone { margin-top:4pt; }
-
-  .page-break { page-break-after:always; }
-`;
-
-function thaiDateStr(date) {
-  const months = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-  const d = date.getDate();
-  const m = date.getMonth() + 1;
-  const y = date.getFullYear() + 543;
-  return d + ' ' + months[m] + ' พ.ศ. ' + y;
-}
-
-function setDefaultFormalDate() {
-  const dateEl = document.getElementById('formalDate');
-  if (!dateEl) return;
-  const dates = allRows.map(r => r.visitDateISO).filter(Boolean).sort();
-  if (dates.length > 0) {
-    dateEl.value = dates[dates.length - 1];
-  }
-}
-
-function getFormalFilteredRows() {
-  const dateEl = document.getElementById('formalDate');
-  const wingEl = document.getElementById('formalFilterWing');
-  const statusEl = document.getElementById('formalFilterStatus');
-
-  const fd = dateEl ? dateEl.value : '';
-  const fw = wingEl ? wingEl.value : '';
-  const fs = statusEl ? statusEl.value : '';
-
-  return allRows.filter(r => {
-    if (fs && normalizeStatus(r.status) !== fs) return false;
-    if (fw && (r.wing || '') !== fw) return false;
-    if (fd && (r.visitDateISO || r.visitDate) !== fd) return false;
-    return true;
-  });
-}
-
-function renderFormalReportsView() {
-  const container = document.getElementById('formalReportsContent');
-  if (!container) return;
-
-  const dateEl = document.getElementById('formalDate');
-  if (!dateEl || !dateEl.value) {
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">กรุณาเลือกวันที่จากปฏิทิน แล้วคลิก "แสดงรายงาน"</div>';
-    return;
-  }
-
-  const filtered = getFormalFilteredRows();
-  if (filtered.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>';
-    return;
-  }
-
-  const date = filtered[0].visitDate || filtered[0].visitDateISO || 'ไม่ระบุวันที่';
-
-  let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
-  const prisonerList = [];
-  filtered.forEach(r => {
-    const d = computeDeptReportData(r);
-    totalAdults += d.adults;
-    total5_8 += d.kids5_8;
-    totalUnder5 += d.kidsUnder5;
-    if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
-      prisonerList.push({ name: r.prisonerName, id: r.prisonerId, wing: r.wing || '-' });
-    }
-  });
-
-  const totalTables = filtered.length;
-  const totalRelatives = filtered.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
-  const totalPrisoners = prisonerList.length;
-
-  let html = '<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">พบ ' + filtered.length + ' รายการ วันที่ ' + date + '</div>';
-
-  html += '<div style="margin-bottom:20px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--bg2);">';
-  html += '<div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:10px;">วันที่ ' + date + '</div>';
-
-  html += buildFormalMiniPreview('disciplinary', prisonerList);
-  html += buildFormalMiniPreview('kitchen', null, { totalTables, totalRelatives, totalPrisoners, totalAdults, total5_8, totalUnder5 });
-  html += buildFormalMiniPreview('table', null, filtered);
-
-  html += '</div>';
-
-  container.innerHTML = html;
-}
-
-function buildFormalMiniPreview(type, data, extra) {
-  const labels = {
-    disciplinary: { title: 'รายงานส่วนทัณฑ์', icon: '🚨', color: '#c62828' },
-    kitchen: { title: 'รายงานครัวและเบเกอรี่', icon: '🍽️', color: '#1b5e20' },
-    table: { title: 'รายงานการจัดโต๊ะ', icon: '🪑', color: '#e65100' }
-  };
-  const l = labels[type];
-  if (!l) return '';
-  let detail = '';
-  if (type === 'disciplinary' && data) {
-    detail = 'ผู้ต้องขัง ' + data.length + ' คน';
-  } else if (type === 'kitchen' && extra) {
-    detail = extra.totalTables + ' โต๊ะ, ' + (extra.totalRelatives + extra.totalPrisoners) + ' คน';
-  } else if (type === 'table' && extra) {
-    detail = extra.length + ' โต๊ะ';
-  }
-  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee;">' +
-    '<span style="font-size:13px;"><span style="color:' + l.color + ';">' + l.icon + '</span> ' + l.title + '</span>' +
-    '<span style="font-size:12px;color:var(--text2);">' + detail + '</span></div>';
-}
-
-function printFormalReport() {
-  const dateEl = document.getElementById('formalDate');
-  if (!dateEl || !dateEl.value) { showToast('กรุณาเลือกวันที่ก่อนพิมพ์', 'warning'); return; }
-
-  const filtered = getFormalFilteredRows();
-  if (filtered.length === 0) { showToast('ไม่มีข้อมูลสำหรับพิมพ์', 'warning'); return; }
-
-  const date = filtered[0].visitDate || filtered[0].visitDateISO || 'ไม่ระบุวันที่';
-
-  const wingEl = document.getElementById('formalFilterWing');
-  const wingLabel = wingEl && wingEl.value ? ' แดน' + wingEl.value : '';
-
-  const printContainer = document.getElementById('formalReportPrintPage');
-  if (!printContainer) return;
-
-  const title = 'รายงานผลการดำเนินกิจกรรมการเยี่ยมผู้ต้องขัง';
-
-  const fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + FORMAL_PRINT_CSS + '</style></head><body>' +
-    buildLetterhead(title, wingLabel, date) +
-    buildDailyFormalContent(date, filtered) +
-    buildFromClause(date) +
-    buildSignatureBlock() +
-    '</body></html>';
-
-  printContainer.innerHTML = fullHtml;
-
-  const printWindow = window.open('', '_blank', 'width=800,height=600');
-  if (!printWindow) { showToast('กรุณาอนุญาต Pop-up เพื่อพิมพ์รายงาน', 'error'); return; }
-  printWindow.document.write(fullHtml);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => { printWindow.print(); }, 500);
-}
-
-function buildLetterhead(title, wingLabel, visitDate) {
-  const dept = 'เรือนจำจําลอง CC คาเฟ่';
-  const addr1 = 'เลขที่ ๑ ถนนจําลอง ตําบลจําลอง';
-  const addr2 = 'อําเภอจําลอง จังหวัดจําลอง ๑๐๐๐๐';
-
-  const thaiYear = new Date().getFullYear() + 543;
-  const docNum = String(Math.floor(Math.random() * 9000) + 1000);
-  const docRef = 'ศผ XXX/' + docNum;
-
-  let html = '<div class="formal-page">';
-
-  // Garuda
-  html += '<div class="garuda-wrap"><div class="garuda-img"><svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg"><path d="M60 10 L68 30 L95 20 L80 40 L110 50 L88 65 L115 80 L88 90 L95 115 L75 100 L68 130 L60 110 L52 130 L45 100 L25 115 L32 90 L5 80 L32 65 L10 50 L40 40 L25 20 L52 30 Z" fill="black"/><circle cx="60" cy="52" r="12" fill="white"/><circle cx="60" cy="52" r="6" fill="black"/><path d="M50 68 Q60 78 70 68" stroke="black" stroke-width="3" fill="none"/><path d="M40 85 L60 95 L80 85" stroke="black" stroke-width="3" fill="none"/><path d="M35 100 L60 115 L85 100" stroke="black" stroke-width="3" fill="none"/></svg></div></div>';
-
-  // Header block
-  html += '<div class="header-block">';
-  html += '<div class="ref-line">ที่ ' + docRef + '</div>';
-  html += '<div class="dept-line">' + dept + '</div>';
-  html += '<div class="addr-line">' + addr1 + '</div>';
-  html += '<div class="addr-line">' + addr2 + '</div>';
-  html += '<div class="date-line">' + thaiDateStr(new Date()) + '</div>';
-  html += '</div>';
-
-  // Subject
-  html += '<div class="topic-line"><span class="label">เรื่อง </span><span class="value">' + title + wingLabel + '</span></div>';
-
-  // Attention
-  html += '<div class="attn-line"><span class="label">เรียน </span><span class="value">ผู้บัญชาการเรือนจําจําลอง CC คาเฟ่</span></div>';
-
-  // Body opening
-  html += '<div class="content-body">';
-  html += '<p>ตามที่เรือนจําจําลอง CC คาเฟ่ ได้ดำเนินกิจกรรมการเยี่ยมผู้ต้องขังตามโครงการ Chance &amp; Change Cafe เมื่อวันที่ ' + visitDate + ' นั้น ในการนี้ฝ่ายที่เกี่ยวข้องได้ดำเนินการจัดกิจกรรมและมีรายละเอียดสรุปได้ดังนี้</p>';
-
-  return html;
-}
-
-function buildFromClause(visitDate) {
-  return '<p>จึงเรียนมาเพื่อโปรดทราบ</p>';
-}
-
-function buildSignatureBlock() {
-  const dept = 'เรือนจําจําลอง CC คาเฟ่';
-  const phone = '๐ ๒xxx-xxxx';
-
-  return '</div>' + // close content-body
-    '<div class="closing">ขอแสดงความนับถือ</div>' +
-    '<div class="signature-block">' +
-    '<table class="signature-table">' +
-    '<tr>' +
-    '<td>' +
-    '<div class="sign-label">(ลงชื่อ)........................................................</div>' +
-    '<div class="sign-name">(' + (currentUser ? currentUser.displayName || currentUser.username : '____________________') + ')</div>' +
-    '<div class="sign-pos">เจ้าหน้าที่ดําเนินงานโครงการ</div>' +
-    '<div class="sign-dept">' + dept + '</div>' +
-    '<div class="sign-phone">โทร. ' + phone + '</div>' +
-    '</td>' +
-    '<td>' +
-    '<div class="sign-label">(ลงชื่อ)........................................................</div>' +
-    '<div class="sign-name">(____________________________________)</div>' +
-    '<div class="sign-pos">ผู้บัญชาการเรือนจําจําลอง CC คาเฟ่</div>' +
-    '<div class="sign-dept">' + dept + '</div>' +
-    '<div class="sign-phone">โทร. ' + phone + '</div>' +
-    '</td>' +
-    '</tr>' +
-    '</table>' +
-    '</div>' +
-    '</div>'; // close formal-page
-}
-
-function buildDailyFormalContent(date, rows) {
-  let html = '';
-  html += buildDisciplinarySection(date, rows);
-  html += buildKitchenSection(date, rows);
-  html += buildTableSection(date, rows);
-  return html;
-}
-
-function buildDisciplinarySection(date, rows) {
-  const prisonerList = [];
-  rows.forEach(r => {
-    if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
-      prisonerList.push({
-        name: r.prisonerName,
-        id: r.prisonerId,
-        wing: r.wing || '-',
-        ref: r.ref || '-'
-      });
-    }
-  });
-
-  let html = '<p><b>๑. ส่วนทัณฑ์ (เบิกตัวผู้ต้องขัง)</b></p>';
-  html += '<p>รายชื่อผู้ต้องขังที่ได้รับการเบิกตัวเพื่อเข้าร่วมกิจกรรมการเยี่ยม ณ เรือนจำ CC คาเฟ่ ประจำวันที่ ' + date + ' มีจำนวนทั้งสิ้น ' + prisonerList.length + ' คน ดังนี้</p>';
-
-  if (prisonerList.length === 0) {
-    html += '<p>ไม่มีรายการเบิกตัวผู้ต้องขังในวันนี้</p>';
-    return html;
-  }
-
-  html += '<table>';
-  html += '<thead><tr><th>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>เลขประจำตัวผู้ต้องขัง</th><th>แดน</th><th>หมายเลขอ้างอิง</th></tr></thead><tbody>';
-  prisonerList.forEach((p, i) => {
-    html += '<tr><td class="center">' + (i + 1) + '</td><td>' + p.name + '</td><td>' + p.id + '</td><td>' + p.wing + '</td><td>' + p.ref + '</td></tr>';
-  });
-  html += '</tbody></table>';
-  html += '<p>รวมผู้ต้องขังทั้งสิ้น ' + prisonerList.length + ' คน</p>';
-  return html;
-}
-
-function buildKitchenSection(date, rows) {
-  let totalAdults = 0, total5_8 = 0, totalUnder5 = 0;
-  const prisonerList = [];
-  rows.forEach(r => {
-    const d = computeDeptReportData(r);
-    totalAdults += d.adults;
-    total5_8 += d.kids5_8;
-    totalUnder5 += d.kidsUnder5;
-    if (r.prisonerName && !prisonerList.some(p => p.id === r.prisonerId)) {
-      prisonerList.push({ name: r.prisonerName, id: r.prisonerId });
-    }
-  });
-
-  const totalTables = rows.length;
-  const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
-  const totalPrisoners = prisonerList.length;
-  const grandTotal = totalRelatives + totalPrisoners;
-  const combinedAdults = totalAdults + totalPrisoners;
-
-  let html = '<p><b>๒. ครัวและเบเกอรี่ (เตรียมอาหารและของหวาน)</b></p>';
-  html += '<p>สรุปจำนวนอาหารและเครื่องดื่มที่ต้องเตรียมสำหรับกิจกรรมการเยี่ยม ประจำวันที่ ' + date + '</p>';
-
-  html += '<table>';
-  html += '<thead><tr><th>รายการ</th><th>จำนวน</th><th>หมายเหตุ</th></tr></thead><tbody>';
-  html += '<tr><td>จำนวนโต๊ะที่เปิดให้บริการ</td><td class="center">' + totalTables + ' โต๊ะ</td><td></td></tr>';
-  html += '<tr><td>จำนวนผู้ต้องขัง (เบิกตัว)</td><td class="center">' + totalPrisoners + ' คน</td><td>นับเป็นผู้ใหญ่ ๑ ที่นั่งต่อคน</td></tr>';
-  html += '<tr><td>จำนวนญาติผู้เยี่ยม (ผู้ใหญ่)</td><td class="center">' + totalAdults + ' คน</td><td>อายุ ๙ ปีขึ้นไป</td></tr>';
-  html += '<tr><td>จำนวนเด็กอายุ ๕-๘ ปี</td><td class="center">' + total5_8 + ' คน</td><td></td></tr>';
-  html += '<tr><td>จำนวนเด็กอายุต่ำกว่า ๕ ปี</td><td class="center">' + totalUnder5 + ' คน</td><td></td></tr>';
-  html += '<tr class="total-row"><td>รวมจำนวนผู้เข้าร่วมทั้งหมด</td><td class="center">' + grandTotal + ' คน</td><td>ญาติ ' + totalRelatives + ' คน + ผู้ต้องขัง ' + totalPrisoners + ' คน</td></tr>';
-  html += '<tr class="total-row"><td>รวมจำนวนอาหารผู้ใหญ่</td><td class="center">' + combinedAdults + ' ที่</td><td>รวมผู้ต้องขัง</td></tr>';
-  html += '</tbody></table>';
-
-  html += '<div style="margin-top:8pt;padding:6pt;border:1px solid #000;">';
-  html += '<b>สรุปการเตรียมอาหารและเบเกอรี่</b><br>';
-  html += '- อาหารคาว (ผู้ใหญ่): ' + combinedAdults + ' ที่<br>';
-  html += '- อาหารว่างและเบเกอรี่: ' + grandTotal + ' ชุด<br>';
-  html += '- เครื่องดื่ม: ' + grandTotal + ' แก้ว';
-  html += '</div>';
-
-  return html;
-}
-
-function buildTableSection(date, rows) {
-  const totalTables = rows.length;
-  const totalRelatives = rows.reduce((sum, r) => sum + (parseInt(r.visitorCount) || 1), 0);
-  const totalPrisoners = rows.filter(r => r.prisonerName).length;
-  const grandTotal = totalRelatives + totalPrisoners;
-
-  let html = '<p><b>๓. การจัดโต๊ะ</b></p>';
-  html += '<p>รายละเอียดการจัดโต๊ะสำหรับกิจกรรมการเยี่ยม ประจำวันที่ ' + date + ' จำนวน ' + totalTables + ' โต๊ะ รวมผู้เข้าร่วม ' + grandTotal + ' คน</p>';
-
-  html += '<table>';
-  html += '<thead><tr><th>ลำดับ</th><th>โต๊ะที่</th><th>ผู้ต้องขัง</th><th>ผู้เยี่ยม</th><th>เบอร์โทรศัพท์</th><th>จำนวน (คน)</th></tr></thead><tbody>';
-
-  rows.forEach((r, i) => {
-    const tableNo = i + 1;
-    const prisoner = r.prisonerName || '-';
-    const mainVisitor = r.visitorName || '-';
-    const phone = r.visitorPhone || '-';
-
-    let extras = [];
-    try { extras = parseExtraVisitors(r); } catch (e) { extras = []; }
-    const extraNames = extras.map(ex => ex.name).filter(Boolean).join(', ');
-    const allVisitors = mainVisitor + (extraNames ? ', ' + extraNames : '');
-    const totalPeople = (parseInt(r.visitorCount) || 1) + 1;
-
-    html += '<tr><td class="center">' + (i + 1) + '</td><td class="center">' + tableNo + '</td><td>' + prisoner + '</td><td>' + allVisitors + '</td><td>' + phone + '</td><td class="center">' + totalPeople + '</td></tr>';
-  });
-
-  html += '</tbody></table>';
-  html += '<p><b>รวมทั้งสิ้น ' + totalTables + ' โต๊ะ จำนวน ' + grandTotal + ' คน</b></p>';
-  return html;
-}
-// ===== END FORMAL REPORTS ENGINE =====
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeEditModal(); } });
 document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });

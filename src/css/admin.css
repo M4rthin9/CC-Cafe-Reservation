@@ -409,21 +409,17 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: f
 th { background: var(--bg); padding: 10px 14px; text-align: left; font-weight: 600; color: var(--text2); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 thead th:nth-child(1) { width: 36px; }
-thead th:nth-child(2) { width: 11%; }
-thead th:nth-child(3) { width: 18%; }
-thead th:nth-child(4) { width: 13%; }
-thead th:nth-child(5) { width: 7%; }
+thead th:nth-child(2) { width: 10%; }
+thead th:nth-child(3) { width: 24%; }
+thead th:nth-child(4) { width: 6%; }
+thead th:nth-child(5) { width: 8%; }
 thead th:nth-child(6) { width: 10%; }
-thead th:nth-child(7) { width: 9%; }
-thead th:nth-child(8) { width: 8%; }
-thead th:nth-child(9) { width: auto; }
+thead th:nth-child(7) { width: 14%; }
+thead th:nth-child(8) { width: auto; }
 tr:last-child td { border-bottom: none; }
 
 /* Reservations table - card layout on mobile */
 @media (max-width: 700px) {
-  .table-wrap thead th.hide-mobile,
-  .table-wrap td.hide-mobile { display: none; }
-  .mobile-show-prisoner { display: block !important; }
   .table-wrap table,
   .table-wrap thead,
   .table-wrap tbody,
@@ -1075,6 +1071,109 @@ input[type="date"], #filterDate {
 .status-check.pending {
   background: #ccc;
   color: #666;
+}
+.status-check.rejected {
+  background: var(--red);
+  color: #fff;
+}
+.status-check.skipped {
+  background: transparent;
+  color: #adb5bd;
+}
+
+/* Progress bar for reservation table */
+.progress-bar-compact {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.progress-step {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.progress-step.done {
+  background: var(--green);
+  color: #fff;
+}
+.progress-step.pending {
+  background: #e5e7eb;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+.progress-step.rejected {
+  background: var(--red);
+  color: #fff;
+}
+.progress-step.skipped {
+  background: transparent;
+  color: #d1d5db;
+  border: 1px solid #e5e7eb;
+}
+.progress-connector {
+  width: 14px;
+  height: 2px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+.progress-step.done + .progress-connector {
+  background: var(--green);
+}
+.progress-step.rejected + .progress-connector {
+  background: var(--red);
+}
+
+/* Icon action buttons */
+.action-icon-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.action-icon-btn:hover {
+  border-color: var(--blue);
+  background: var(--blue-light);
+}
+.action-icon-btn.btn-approve-icon {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.action-icon-btn.btn-approve-icon:hover {
+  box-shadow: 0 2px 8px rgba(22, 101, 52, 0.25);
+}
+.action-icon-btn.btn-reject-icon {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.action-icon-btn.btn-reject-icon:hover {
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+.action-icon-btn.btn-cancel-icon {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+.action-icon-btn.btn-cancel-icon:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
 }
 
 /* Sidebar responsive */
@@ -1791,8 +1890,8 @@ input[type="date"], #filterDate {
   position: absolute;
   top: 50px;
   right: 16px;
-  width: 320px;
-  max-height: 400px;
+  width: 340px;
+  max-height: 480px;
   overflow-y: auto;
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -1811,6 +1910,29 @@ input[type="date"], #filterDate {
   font-size: 13px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
+}
+.notif-section-header {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0,0,0,0.02);
+}
+.notif-section-count {
+  background: var(--bg);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+}
+.notif-waiting {
+  font-size: 10px;
+  color: var(--text2);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 @media (max-width: 600px) {
