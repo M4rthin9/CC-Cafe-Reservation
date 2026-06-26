@@ -6,8 +6,6 @@ const NOTES_SHEET = 'Notes';
 const SETTINGS_SHEET = 'Settings';
 const PAYMENTS_SHEET = 'UsedPayments';
 
-const LEGACY_STAFF_PASS = '10900';
-
 const ROLES = {
   SUPERADMIN: 'superadmin',
   ADMIN: 'admin',
@@ -39,10 +37,8 @@ function doGet(e) {
   const pass   = params.pass  || '';
   const username = params.username || '';
 
-  // Legacy support for old getAll calls
   if (action === 'getAll') {
-    const isPublicAccess = !username && !pass || username === 'public';
-    if (!isPublicAccess && !isAuthorized(username, pass)) {
+    if (!isAuthorized(username, pass)) {
       return jsonResp({ status: 'error', message: 'Unauthorized' });
     }
     const sheet = getMainSheet();
@@ -372,6 +368,13 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     const newRow  = headers.map(h => body[h] !== undefined ? body[h] : '');
     sheet.appendRow(newRow);
 
+    // Force phone column as text to prevent leading zero stripping
+    const phoneIdx = headers.indexOf('visitorPhone');
+    if (phoneIdx >= 0) {
+      const lastRow = sheet.getLastRow();
+      sheet.getRange(lastRow, phoneIdx + 1).setNumberFormat('@');
+    }
+
     logEvent('public', 'booking_submitted', body.ref || '', { visitorName: body.visitorName, prisonerName: body.prisonerName, visitDate: body.visitDate }, 'success');
 
     // Optional email notification (kept from original)
@@ -682,9 +685,10 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     const refIdx = headers.indexOf('ref');
 
     const updatableFields = [
-      'visitorName', 'visitorPhone', 'visitorId', 'relation',
+      'visitorName', 'visitorPhone', 'visitorId', 'relation', 'religion', 'allergy',
       'prisonerName', 'prisonerId', 'wing', 'visitDate',
-      'visitorCount', 'total', 'status'
+      'visitorCount', 'total', 'status',
+      'extraVisitorNames', 'extraVisitorReligions', 'extraVisitorAllergies', 'extraVisitorApproved'
     ];
 
     for (let i = 1; i < data.length; i++) {
@@ -695,7 +699,9 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
           if (body[field] !== undefined) {
             const colIdx = headers.indexOf(field);
             if (colIdx >= 0) {
-              sheet.getRange(row, colIdx + 1).setValue(body[field]);
+              const range = sheet.getRange(row, colIdx + 1);
+              if (field === 'visitorPhone') range.setNumberFormat('@');
+              range.setValue(body[field]);
               changes[field] = body[field];
             }
           }
@@ -1175,10 +1181,6 @@ function hasPermission(username, perm) {
 }
 
 function isAuthorized(username, pass) {
-  // Legacy password-only auth for backward compatibility
-  if (String(pass) === String(LEGACY_STAFF_PASS)) return true;
-  
-  // RBAC auth
   const user = getUserByUsername(username);
   if (!user) return false;
   

@@ -1,7 +1,10 @@
+<<<<<<< HEAD
 // ===== CONFIG =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpgMWA1ARyZKdHz3fkjSXj3CLoufCGweggthl4g-iyvnrr-7wQ_Bj9S70aTs2h8wN2Ww/exec';
 const QUOTA = 20;
 
+=======
+>>>>>>> cebccbf96b7aa022520ab573071c6abdc968135e
 // ===== CALENDAR =====
 const HOLIDAYS = {
   '2026-01-01': 'วันขึ้นปีใหม่', '2026-02-13': 'มาฆบูชา', '2026-04-06': 'จักรี',
@@ -12,6 +15,7 @@ const HOLIDAYS = {
   '2026-12-05': 'วันพ่อ', '2026-12-10': 'รัฐธรรมนูญ', '2026-12-31': 'วันสิ้นปี',
   '2026-05-25': 'ปิดจอง',   // ตามคำขอ: ปิดจองวันที่ 25-5-69
   '2026-06-01': 'หยุดชดเชย',
+  '2026-06-29': 'เต็ม',
 };
 
 let calYear, calMonth, selectedDate = null;
@@ -26,33 +30,6 @@ function changeMonth(d) {
   if (calMonth > 11) { calMonth = 0; calYear++; }
   if (calMonth < 0) { calMonth = 11; calYear--; }
   renderCalendar();
-}
-
-// แปลง local Date → "YYYY-MM-DD" โดยไม่ผ่าน UTC (แก้ปัญหา timezone offset)
-function toLocalDateStr(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-// parse "YYYY-MM-DD" เป็น local Date (ไม่ใช่ UTC)
-function parseLocalDate(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function maskPrisonerName(name) {
-  if (!name) return name;
-  const trimmed = name.trim();
-  const lastSpace = trimmed.lastIndexOf(' ');
-  if (lastSpace > 0) {
-    const firstName = trimmed.substring(0, lastSpace + 1);
-    const lastName = trimmed.substring(lastSpace + 1);
-    const maskedLast = lastName.slice(0, 4);
-    return firstName + maskedLast;
-  }
-  return trimmed.length > 3 ? trimmed.slice(0, 3) : trimmed;
 }
 
 function renderCalendar() {
@@ -171,7 +148,7 @@ function updateExtraVisitors() {
       '<div class="form-group"><label>ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>' +
       '<input type="text" id="extraVisitorName' + i + '" placeholder="เช่น สมหญิง ใจดี"></div>' +
       '<div class="form-group"><label>เลขบัตรประชาชน <span style="color:var(--red)">*</span></label>' +
-      '<input type="text" id="extraVisitorId' + i + '" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17"></div>' +
+      '<input type="text" id="extraVisitorId' + i + '" placeholder="เลขบัตร ปชช. หรือ Passport" maxlength="20"></div>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
       '<div class="form-group"><label>ศาสนา <span style="color:var(--red)">*</span></label>' +
@@ -360,9 +337,7 @@ function copyDeptReport(dept) {
   }
 
   if (text) {
-    navigator.clipboard.writeText(text).then(() => {
-      alert('✅ คัดลอกแล้ว! สามารถวางส่งต่อแผนกได้เลย');
-    }).catch(() => {
+    navigator.clipboard.writeText(text).catch(() => {
       prompt('คัดลอกข้อความด้านล่าง (กด Ctrl+C):', text);
     });
   }
@@ -388,7 +363,6 @@ async function loadPrisonerMaster() {
         statusEl.textContent = `✓ โหลดรายชื่อสำเร็จ (${prisonerMaster.length} คน)`;
         statusEl.style.color = 'var(--green)';
       }
-      console.log('[PrisonerMaster] Loaded', prisonerMaster.length, 'records');
     } else {
       throw new Error('Invalid response from server');
     }
@@ -423,11 +397,11 @@ function filterPrisonerSuggestions() {
     div.className = 'suggestion-item';
     div.innerHTML = `
       <div style="flex:1">
-        <strong style="font-size:15px;">${maskPrisonerName(p.prisonerName)}</strong>
+        <strong style="font-size:15px;">${escHtml(maskPrisonerName(p.prisonerName))}</strong>
       </div>
       <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
-        #${p.prisonerId}<br>
-        <span style="color:var(--blue);font-weight:600;">${p.wing || ''}</span>
+        #${escHtml(p.prisonerId)}<br>
+        <span style="color:var(--blue);font-weight:600;">${escHtml(p.wing || '')}</span>
       </div>
     `;
     div.onclick = () => selectPrisoner(p);
@@ -496,80 +470,219 @@ function checkPrisonerMatch() {
   }
 }
 
+// ===== VALIDATION HELPERS =====
+function validateIdFormat(val) {
+  if (!val) return { valid: true };
+  if (val.includes('-')) {
+    const isValid = /^\d{1}-\d{4}-\d{5}-\d{2}-\d{1}$/.test(val);
+    return { valid: isValid, error: 'รูปแบบเลขบัตรประชาชนไม่ถูกต้อง (X-XXXX-XXXXX-XX-X)' };
+  }
+  const isValid = /^[A-Za-z0-9]{6,20}$/.test(val);
+  return { valid: isValid, error: 'รูปแบบ Passport ไม่ถูกต้อง (ตัวอักษร/ตัวเลข 6-20 หลัก)' };
+}
+
+function validatePhone(val) {
+  const cleaned = val.replace(/[^0-9]/g, '');
+  return { cleaned, valid: cleaned.length === 10, error: 'เบอร์โทรศัพท์ต้องมี 10 ตัวเลข' };
+}
+
+// ===== INLINE ERROR HELPERS =====
+function showError(fieldId, message) {
+  const el = document.getElementById(fieldId);
+  if (!el) return false;
+  clearFieldError(fieldId);
+  el.classList.add('field-error');
+  const err = document.createElement('div');
+  err.className = 'error-text';
+  err.id = 'err-' + fieldId;
+  err.textContent = message;
+  el.parentNode.insertBefore(err, el.nextSibling);
+  el.focus();
+  el.addEventListener('input', function onClear() { clearFieldError(fieldId); el.removeEventListener('input', onClear); }, { once: true });
+  el.addEventListener('change', function onClear() { clearFieldError(fieldId); el.removeEventListener('change', onClear); }, { once: true });
+  return false;
+}
+
+function showInlineError(containerId, message) {
+  const container = document.getElementById(containerId);
+  if (!container) return false;
+  const existing = container.querySelector('.error-text-inline');
+  if (existing) existing.remove();
+  const err = document.createElement('div');
+  err.className = 'error-text-inline';
+  err.textContent = message;
+  container.appendChild(err);
+  container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  return false;
+}
+
+function clearFieldError(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (el) el.classList.remove('field-error');
+  const err = document.getElementById('err-' + fieldId);
+  if (err) err.remove();
+}
+
+function clearAllErrors() {
+  document.querySelectorAll('.field-error').forEach(e => e.classList.remove('field-error'));
+  document.querySelectorAll('.error-text, .error-text-inline').forEach(e => e.remove());
+}
+
+function scrollToFirstError() {
+  const firstErr = document.querySelector('.error-text');
+  if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 // ===== VALIDATION =====
 function validate() {
+  clearAllErrors();
+
+  // Check prisoner selection first (hidden fields set via search dropdown)
+  const pidHidden = document.getElementById('prisonerId').value.trim();
+  const pnameHidden = document.getElementById('prisonerName').value.trim();
+  const wingHidden = document.getElementById('wing').value.trim();
+  if (!pidHidden || !pnameHidden || !wingHidden) {
+    showError('prisonerSearch', 'กรุณาเลือกผู้ต้องขังจากรายการค้นหา');
+    return false;
+  }
+
   const fields = [
     { id: 'visitorName', label: 'ชื่อผู้ร่วมกิจกรรม' },
-    { id: 'visitorId', label: 'เลขบัตรประชาชน' },
+    { id: 'visitorId', label: 'เลขประจำตัว' },
     { id: 'visitorPhone', label: 'เบอร์โทรศัพท์' },
     { id: 'relation', label: 'ความสัมพันธ์' },
-    { id: 'prisonerName', label: 'ชื่อผู้ต้องขัง' },
-    { id: 'prisonerId', label: 'หมายเลขผู้ต้องขัง' },
-    { id: 'wing', label: 'แดน' },
   ];
   for (const f of fields) {
     const el = document.getElementById(f.id);
-    if (!el.value.trim()) { alert(`กรุณากรอก ${f.label}`); el.focus(); return false; }
+    if (!el.value.trim()) {
+      showError(f.id, `กรุณากรอก ${f.label}`);
+      scrollToFirstError();
+      return false;
+    }
+  }
+
+  // Validate ID format (auto-detect Thai ID or Passport)
+  const visitorIdEl = document.getElementById('visitorId');
+  const idResult = validateIdFormat(visitorIdEl.value.trim());
+  if (!idResult.valid) {
+    showError('visitorId', idResult.error);
+    scrollToFirstError();
+    return false;
+  }
+
+  // Validate phone format (must be 10 digits)
+  const phoneEl = document.getElementById('visitorPhone');
+  const phoneResult = validatePhone(phoneEl.value.trim());
+  if (!phoneResult.valid) {
+    showError('visitorPhone', phoneResult.error);
+    scrollToFirstError();
+    return false;
   }
 
   // Validate main visitor religion (required)
   const mainReligion = document.getElementById('visitorReligion');
-  if (!mainReligion.value.trim()) { alert('กรุณาเลือกศาสนา'); mainReligion.focus(); return false; }
+  if (!mainReligion.value.trim()) {
+    showError('visitorReligion', 'กรุณาเลือกศาสนา');
+    scrollToFirstError();
+    return false;
+  }
 
   // Validate main visitor allergy (required)
   const mainAllergy = document.getElementById('visitorAllergy');
-  if (!mainAllergy.value.trim()) { alert('กรุณาระบุการแพ้อาหาร (ถ้าไม่มีให้กรอก \"ไม่มี\")'); mainAllergy.focus(); return false; }
+  if (!mainAllergy.value.trim()) {
+    showError('visitorAllergy', 'กรุณาระบุการแพ้อาหาร (ถ้าไม่มีให้กรอก "ไม่มี")');
+    scrollToFirstError();
+    return false;
+  }
 
-  // Validate extra visitors (name + id + religion + allergy)
+  // Validate extra visitors (name + id + religion + allergy + relation + age for child)
   const n = parseInt(document.getElementById('visitorCount').value);
   for (let i = 2; i <= n; i++) {
     const nameEl = document.getElementById('extraVisitorName' + i);
     const idEl = document.getElementById('extraVisitorId' + i);
-    if (nameEl && !nameEl.value.trim()) { alert('กรุณากรอกชื่อผู้เข้าร่วมกิจกรรมคนที่ ' + i); nameEl.focus(); return false; }
-    if (idEl && !idEl.value.trim()) { alert('กรุณากรอกเลขบัตรประชาชนผู้เข้าร่วมกิจกรรมคนที่ ' + i); idEl.focus(); return false; }
+    if (nameEl && !nameEl.value.trim()) {
+      showError('extraVisitorName' + i, 'กรุณากรอกชื่อผู้เข้าร่วมกิจกรรมคนที่ ' + i);
+      scrollToFirstError();
+      return false;
+    }
+    if (idEl && !idEl.value.trim()) {
+      showError('extraVisitorId' + i, 'กรุณากรอกเลขประจำตัวผู้เข้าร่วมกิจกรรมคนที่ ' + i);
+      scrollToFirstError();
+      return false;
+    }
+    if (idEl) {
+      const extraIdResult = validateIdFormat(idEl.value.trim());
+      if (!extraIdResult.valid) {
+        showError('extraVisitorId' + i, 'ผู้เข้าร่วมคนที่ ' + i + ': ' + extraIdResult.error);
+        scrollToFirstError();
+        return false;
+      }
+    }
 
-    // Validate religion for extra visitors
     const religionEl = document.getElementById('extraVisitorReligion' + i);
-    if (religionEl && !religionEl.value.trim()) { alert('กรุณาเลือกศาสนาสำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i); religionEl.focus(); return false; }
+    if (religionEl && !religionEl.value.trim()) {
+      showError('extraVisitorReligion' + i, 'กรุณาเลือกศาสนาสำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i);
+      scrollToFirstError();
+      return false;
+    }
 
-    // Validate allergy for extra visitors
     const allergyEl = document.getElementById('extraVisitorAllergy' + i);
-    if (allergyEl && !allergyEl.value.trim()) { alert('กรุณาระบุการแพ้อาหารสำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i + ' (ถ้าไม่มีให้กรอก \"ไม่มี\")'); allergyEl.focus(); return false; }
+    if (allergyEl && !allergyEl.value.trim()) {
+      showError('extraVisitorAllergy' + i, 'กรุณาระบุการแพ้อาหารสำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i + ' (ถ้าไม่มีให้กรอก "ไม่มี")');
+      scrollToFirstError();
+      return false;
+    }
 
     const relEl = document.getElementById('extraVisitorRelation' + i);
-    if (relEl && !relEl.value) { alert('กรุณาเลือกความสัมพันธ์ผู้ร่วมกิจกรรมคนที่ ' + i); relEl.focus(); return false; }
+    if (relEl && !relEl.value) {
+      showError('extraVisitorRelation' + i, 'กรุณาเลือกความสัมพันธ์ผู้ร่วมกิจกรรมคนที่ ' + i);
+      scrollToFirstError();
+      return false;
+    }
     if (relEl && relEl.value === 'บุตร / ธิดา') {
       const ageEl = document.getElementById('extraVisitorAge' + i);
       const a = ageEl ? parseInt(ageEl.value, 10) : NaN;
       if (!ageEl || isNaN(a) || a < 0) {
-        alert('กรุณากรอกอายุ (ปี) สำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i + ' (บุตร/ธิดา)');
-        if (ageEl) ageEl.focus();
+        showError('extraVisitorAge' + i, 'กรุณากรอกอายุ (ปี) สำหรับผู้เข้าร่วมกิจกรรมคนที่ ' + i + ' (บุตร/ธิดา)');
+        scrollToFirstError();
         return false;
       }
     }
   }
-  if (!selectedDate) { alert('กรุณาเลือกวันที่ต้องการร่วมกิจกรรม'); return false; }
-  if ((bookings[selectedDate] || 0) >= QUOTA) { alert('วันที่เลือกเต็มแล้ว กรุณาเลือกวันอื่น'); return false; }
+
+  // Validate date selection
+  if (!selectedDate) {
+    showInlineError('page1', 'กรุณาเลือกวันที่ต้องการร่วมกิจกรรม');
+    document.getElementById('calTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+  if ((bookings[selectedDate] || 0) >= QUOTA) {
+    showInlineError('page1', 'วันที่เลือกเต็มแล้ว กรุณาเลือกวันอื่น');
+    document.getElementById('calTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
 
   // Optional: soft validation against prisoner master data (if loaded)
   if (prisonerMaster.length > 0) {
-    const pid = document.getElementById('prisonerId').value.trim();
-    const pname = document.getElementById('prisonerName').value.trim();
-    const pwing = document.getElementById('wing').value.trim();
     const exists = prisonerMaster.some(p =>
-      p.prisonerId === pid ||
-      (p.prisonerName.toLowerCase() === pname.toLowerCase() && p.wing === pwing)
+      p.prisonerId === pidHidden ||
+      (p.prisonerName.toLowerCase() === pnameHidden.toLowerCase() && p.wing === wingHidden)
     );
     if (!exists) {
       const proceed = confirm('⚠️ ไม่พบข้อมูลผู้ต้องขังนี้ในฐานข้อมูล\n\nคุณต้องการดำเนินการต่อหรือไม่?\n(เจ้าหน้าที่จะตรวจสอบอีกครั้ง)');
       if (!proceed) {
-        document.getElementById('prisonerId').focus();
+        showError('prisonerSearch', 'กรุณาเลือกผู้ต้องขังที่มีอยู่ในฐานข้อมูล');
+        scrollToFirstError();
         return false;
       }
     }
   }
 
-  if (!document.getElementById('consent').checked) { alert('กรุณายืนยันและยินยอมก่อนดำเนินการ'); return false; }
+  if (!document.getElementById('consent').checked) {
+    showInlineError('page1', 'กรุณายืนยันและยินยอมก่อนดำเนินการ');
+    document.getElementById('consent').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
   return true;
 }
 
@@ -639,15 +752,15 @@ function goToConfirm() {
       <div class="review-section">
         <div class="review-label"><i class="ti ti-users"></i> ผู้เข้าร่วมกิจกรรมทั้งหมด (${n} คน)</div>
         <div class="review-value" style="font-size:14px;line-height:1.4">
-          1. ${visitor1Name} (ผู้จอง)
+          1. ${escHtml(visitor1Name)} (ผู้จอง)
           ${extrasListHtml}
         </div>
       </div>
 
       <div class="review-section">
         <div class="review-label"><i class="ti ti-lock"></i> ผู้ต้องขังที่เข้าร่วม</div>
-        <div class="review-value">${prisonerName}</div>
-        <div class="review-sub">#${prisonerId} • แดน ${wing}</div>
+        <div class="review-value">${escHtml(prisonerName)}</div>
+        <div class="review-sub">#${escHtml(prisonerId)} • แดน ${escHtml(wing)}</div>
       </div>
 
       <div class="review-section cost">
@@ -680,7 +793,7 @@ function goToConfirm() {
         navigator.clipboard.writeText(cleanText).then(() => {
           copyBtn.innerHTML = '<i class="ti ti-check"></i> คัดลอกแล้ว';
           setTimeout(() => { if (copyBtn) copyBtn.innerHTML = '<i class="ti ti-copy"></i> คัดลอกสรุปการจองของฉัน (บันทึกส่วนตัว)'; }, 1800);
-        }).catch(() => alert(cleanText));
+        }).catch(() => prompt('คัดลอกข้อความด้านล่าง (กด Ctrl+C):', cleanText));
       };
       summaryEl.appendChild(copyBtn);
     }
@@ -722,7 +835,7 @@ async function submitBooking() {
       if (duplicate) {
         document.getElementById('overlay').classList.remove('show');
         document.getElementById('submitBtn').disabled = false;
-        alert(`⚠️ ไม่สามารถจองได้\n\nมีการจองผู้ต้องขังหมายเลข "${prisonerId}" ในวันนี้อยู่แล้ว\n\nRef: ${duplicate.ref}\nสถานะ: ${duplicate.status}\n\nกรุณาเลือกวันอื่น หรือตรวจสอบสถานะการจองเดิม`);
+        showInlineError('confirmSummary', `⚠️ ไม่สามารถจองได้ — มีการจองผู้ต้องขังหมายเลข "${escHtml(prisonerId)}" ในวันนี้อยู่แล้ว (Ref: ${escHtml(duplicate.ref)})`);
         return;
       }
     }
@@ -737,7 +850,7 @@ async function submitBooking() {
     visitorName: document.getElementById('visitorName').value.trim(),
     extraVisitorNames: extraNamesStr,
     visitorId: document.getElementById('visitorId').value.trim(),
-    visitorPhone: document.getElementById('visitorPhone').value.trim(),
+    visitorPhone: validatePhone(document.getElementById('visitorPhone').value.trim()).cleaned,
     relation: document.getElementById('relation').value,
     religion: document.getElementById('visitorReligion').value.trim(),
     allergy: document.getElementById('visitorAllergy').value.trim(),
@@ -786,7 +899,7 @@ async function submitBooking() {
 
   if (!submitSuccess) {
     document.getElementById('submitBtn').disabled = false;
-    alert('❌ การส่งคำขอจองล้มเหลว\n\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองใหม่อีกครั้ง\nหรือติดต่อเจ้าหน้าที่หากปัญหายังคงอยู่');
+    showInlineError('confirmSummary', '❌ การส่งคำขอจองล้มเหลว — กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองใหม่อีกครั้ง หรือติดต่อเจ้าหน้าที่หากปัญหายังคงอยู่');
     return;
   }
 
@@ -802,37 +915,37 @@ async function submitBooking() {
 
   document.getElementById('finalSummary').innerHTML = `
     <div style="text-align:center;margin-bottom:8px">
-      <strong style="color:#185fa5">✅ ส่งคำขอเรียบร้อย — Ref: ${ref}</strong>
+      <strong style="color:#185fa5">✅ ส่งคำขอเรียบร้อย — Ref: ${escHtml(ref)}</strong>
     </div>
     
     <div class="booking-details">
       <div class="detail-row">
         <span class="detail-label">📅 วันที่เข้าร่วม</span>
-        <span class="detail-value">${data.visitDate}</span>
+        <span class="detail-value">${escHtml(data.visitDate)}</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">👥 จำนวนผู้เข้าร่วม</span>
-        <span class="detail-value">ญาติ ${data.visitorCount} คน + ผู้ต้องขัง 1 คน = ${totalPersons} คน</span>
+        <span class="detail-value">ญาติ ${escHtml(String(data.visitorCount))} คน + ผู้ต้องขัง 1 คน = ${escHtml(String(totalPersons))} คน</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">👤 ชื่อผู้ต้องขัง</span>
-        <span class="detail-value">${data.prisonerName}</span>
+        <span class="detail-value">${escHtml(data.prisonerName)}</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">🔢 เลขประจำตัวผู้ต้องขัง</span>
-        <span class="detail-value">${data.prisonerId}</span>
+        <span class="detail-value">${escHtml(data.prisonerId)}</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">📍 แดนของผู้ต้องขัง</span>
-        <span class="detail-value">${data.wing}</span>
+        <span class="detail-value">${escHtml(data.wing)}</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">🧑 ชื่อผู้จอง</span>
-        <span class="detail-value">${data.visitorName}</span>
+        <span class="detail-value">${escHtml(data.visitorName)}</span>
       </div>
       ${extras.length > 0 ? `<div class="detail-row">
         <span class="detail-label">📋 รายชื่อผู้เข้าร่วมเพิ่มเติม</span>
-        <span class="detail-value" style="line-height:1.8">${extras.map((v, i) => `${i + 2}. ${v.name} (${v.relation})`).join('<br>')}</span>
+        <span class="detail-value" style="line-height:1.8">${extras.map((v, i) => `${i + 2}. ${escHtml(v.name)} (${escHtml(v.relation)})`).join('<br>')}</span>
       </div>` : ''}
     </div>
     
@@ -908,7 +1021,6 @@ async function appsScriptGet(params) {
 
 async function fetchAllReservations() {
   const attempts = [
-    { action: 'getAll', pass: '10900' },
     { action: 'getAll' },
     { action: 'getAll', username: 'public' }
   ];
@@ -932,9 +1044,7 @@ async function loadBookingCounts() {
   // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
   const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
   try {
-    console.log('[Calendar] Loading booking counts from server...');
     const rows = await fetchAllReservations();
-    console.log('[Calendar] Loaded rows:', rows.length);
     if (rows) {
       bookings = {};
       rows.forEach(r => {
@@ -958,7 +1068,6 @@ async function loadBookingCounts() {
 
         bookings[dateKey] = (bookings[dateKey] || 0) + 1;
       });
-      console.log('[Calendar] Loaded bookings:', bookings);
     } else {
       console.warn('[Calendar] No rows in response');
     }

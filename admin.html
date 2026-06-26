@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>หน้าเจ้าหน้าที่ — ตรวจสอบการจอง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/css/admin.css">
 
@@ -66,8 +68,9 @@
 <div class="notif-bell" id="notifBell" style="display:none;cursor:pointer;padding:6px 10px;border-radius:8px;transition:background 0.15s;position:relative;" onclick="toggleNotifPanel()" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background=''">
             🔔<span class="notif-badge" id="notifBadge" style="display:none;"></span>
           </div>
-          <div class="notif-panel" id="notifPanel" style="display:none;position:absolute;top:40px;right:0;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;width:300px;max-height:400px;overflow-y:auto;z-index:999;"></div>
-          <span id="topDate" style="font-size:13px;opacity:0.85"></span>
+           <div class="notif-panel" id="notifPanel" style="display:none;position:absolute;top:40px;right:0;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;width:300px;max-height:400px;overflow-y:auto;z-index:999;"></div>
+           <a href="src/guide.html" target="_blank" style="color:#fff;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">📖 คู่มือ</a>
+           <span id="topDate" style="font-size:13px;opacity:0.85"></span>
        </div>
      </div>
 
@@ -272,9 +275,10 @@
               <option value="">ทุกแดน</option>
             </select>
            <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄 โหลดใหม่</button>
+           <button class="btn-approve" onclick="openNewBookingModal()" id="btnNewBooking" style="display:none;background:var(--green);">➕ จองใหม่</button>
            <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤 Export CSV</button>
            <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️ พิมพ์รายงาน</button>
-            <button class="btn-print-vinai" onclick="printPrisonerVinaiList()" aria-label="พิมพ์รายชื่อผู้ต้องขัง" id="btnPrintVinai" style="display:none">🖨️ พิมพ์รายชื่อผู้ต้องขัง (วินัย)</button>
+
             <button class="btn-export" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤 Export CSV (มีเบอร์)</button>
             <button class="refresh-btn" onclick="syncPrisonerWings()" id="btnSyncWings" style="display:none;background:#7c3aed;">🔄 Sync Wings</button>
          </div>
@@ -583,6 +587,112 @@
    </div>
  </div>
 
+<!-- NEW BOOKING MODAL -->
+<div class="modal-bg" id="newBookingModalBg" onclick="closeNewBookingModal(event)">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-head">
+      <h3>➕ จองใหม่</h3>
+      <button class="modal-close" onclick="closeNewBookingModal()">×</button>
+    </div>
+    <div class="modal-body" id="newBookingModalBody" style="max-height:75vh;overflow-y:auto;">
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">📋 ข้อมูลผู้เข้าร่วมกิจกรรม</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">👤 ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbVisitorName" class="search-box" placeholder="เช่น สมชาย ใจดี" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🪪 เลขประจำตัว (บัตร ปชช. / Passport) <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbVisitorId" class="search-box" placeholder="X-XXXX-XXXXX-XX-X หรือ Passport No." style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">📞 เบอร์โทรศัพท์ <span style="color:var(--red)">*</span></label>
+            <input type="tel" id="nbVisitorPhone" class="search-box" placeholder="08X-XXX-XXXX" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🤝 ความสัมพันธ์ <span style="color:var(--red)">*</span></label>
+            <select id="nbRelation" class="filter-select" style="width:100%;">
+              <option value="">-- เลือก --</option>
+              <option>บิดา / มารดา</option><option>แฟน/ภรรยา</option><option>บุตร / ธิดา</option>
+              <option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>
+            </select></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🛐 ศาสนา <span style="color:var(--red)">*</span></label>
+            <select id="nbVisitorReligion" class="filter-select" style="width:100%;">
+              <option value="">-- เลือก --</option>
+              <option>พุทธ</option><option>อิสลาม</option><option>คริสต์</option><option>อื่น ๆ</option>
+            </select></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">⚠️ การแพ้อาหาร <span style="color:var(--red)">*</span></label>
+            <input type="text" id="nbVisitorAllergy" class="search-box" placeholder="ระบุอาการแพ้ หรือ 'ไม่มี'" style="width:100%;"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">👥 ผู้เข้าร่วมเพิ่มเติม</div>
+        <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">จำนวนผู้เข้าร่วม (รวมผู้จอง)</label>
+          <select id="nbVisitorCount" class="filter-select" onchange="nbUpdateExtraVisitors()" style="width:100%;">
+            <option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option>
+            <option value="4">4 คน</option><option value="5">5 คน</option><option value="6">6 คน</option>
+            <option value="7">7 คน</option><option value="8">8 คน</option><option value="9">9 คน</option>
+            <option value="10">10 คน</option>
+          </select>
+        </div>
+        <div id="nbExtraVisitorsContainer" style="display:none;margin-top:8px;">
+          <div id="nbExtraVisitorsList"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">🔒 ข้อมูลผู้ต้องขัง</div>
+
+        <!-- Prisoner search -->
+        <div class="prisoner-search-wrap" style="margin-bottom:10px;">
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">
+            🔍 ค้นหาจากฐานข้อมูลผู้ต้องขัง <span style="color:var(--red)">*</span>
+            <span style="font-weight:400;font-size:10px;">(เลือกจากรายชื่อเพื่อแสดงข้อมูล)</span>
+          </label>
+          <input type="text" id="nbPrisonerSearch" class="search-box" placeholder="พิมพ์เลขผู้ต้องขัง หรือ ชื่อ-นามสกุล..."
+            oninput="nbFilterPrisonerSuggestions()" style="width:100%;">
+          <div id="nbPrisonerSuggestions" class="suggestions-dropdown" style="display:none;"></div>
+          <div id="nbPrisonerLoadStatus" style="font-size:11px;margin-top:4px;color:var(--text2);"></div>
+          <div id="nbPrisonerMatchStatus" style="font-size:11px;margin-top:4px;color:var(--green);display:none;"></div>
+        </div>
+
+        <!-- Selected prisoner display -->
+        <div id="nbSelectedPrisonerDisplay"
+          style="display:none; text-align:center; background:var(--green-light); border:2px solid var(--green); border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+          <div style="font-size:11px; color:var(--green); font-weight:600; margin-bottom:4px;">✅ ข้อมูลผู้ต้องขังที่เลือก</div>
+          <div style="font-weight:700; font-size:16px; color:var(--text); margin-bottom:2px;" id="nbDispPrisonerName"></div>
+          <div style="font-size:13px; color:var(--text);">
+            เลข: <span id="nbDispPrisonerId" style="font-family:monospace; font-weight:600;"></span>
+            &nbsp;·&nbsp; <span id="nbDispWing" style="color:var(--blue);font-weight:700;"></span>
+          </div>
+        </div>
+
+        <!-- Hidden fields (set only via search selection) -->
+        <input type="hidden" id="nbPrisonerName">
+        <input type="hidden" id="nbPrisonerId">
+        <input type="hidden" id="nbWing">
+
+        <div style="font-size:10px;color:var(--text2);margin-top:4px;">
+          💡 ค้นหาแล้วคลิกเลือกจากรายการ — ชื่อ + เลข + แดน จะแสดงอัตโนมัติ
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">📅 วันที่ต้องการเข้าร่วม</div>
+        <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">เลือกวันที่</label>
+          <input type="date" id="nbVisitDate" class="search-box" style="width:100%;"></div>
+      </div>
+
+      <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:13px;color:var(--text2);">💰 ค่าบริการรวม:</span>
+          <span style="font-size:22px;font-weight:700;color:var(--green);" id="nbTotalDisplay">3,000 บาท</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
+        <button class="btn-cancel" onclick="closeNewBookingModal()">ยกเลิก</button>
+        <button class="btn-approve" onclick="submitNewBooking()">💾 บันทึกการจอง</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Slip Modal -->
 <div class="modal-bg" id="modalBg" onclick="closeModal(event)">
   <div class="modal">
@@ -616,6 +726,8 @@
   </div>
 </div>
 
+  <script src="src/js/config.js" defer></script>
+  <script src="src/js/utils.js" defer></script>
   <script src="src/js/admin.js" defer></script>
 
   <!-- Bottom Navigation for Mobile -->

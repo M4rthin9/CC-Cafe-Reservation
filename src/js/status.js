@@ -1,8 +1,11 @@
+<<<<<<< HEAD
 // ===== CONFIG =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpgMWA1ARyZKdHz3fkjSXj3CLoufCGweggthl4g-iyvnrr-7wQ_Bj9S70aTs2h8wN2Ww/exec';
 const STAFF_PASS = '10900';
 const PROMPTPAY_ID = '0994000160208'; // กรอกเลขบัตรประชาชน 13 หลัก หรือเบอร์โทร 10 หลักของร้าน
 
+=======
+>>>>>>> cebccbf96b7aa022520ab573071c6abdc968135e
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptPost(payload) {
   const resp = await fetch(APPS_SCRIPT_URL, {
@@ -76,7 +79,7 @@ async function doSearch() {
 
   let rows = [];
   try {
-    const data = await appsScriptGet({ action: 'getAll', pass: STAFF_PASS });
+    const data = await appsScriptGet({ action: 'getAll' });
     if (data.status === 'ok') rows = data.rows || [];
     else throw new Error(data.message || 'error');
   } catch (err) {
@@ -425,7 +428,8 @@ function processFile(file) {
     showUploadAlert('err', '❌ ไฟล์ใหญ่เกิน 10MB กรุณาเลือกไฟล์ที่เล็กกว่า');
     return;
   }
-  if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+  const mime = file.type.toLowerCase();
+  if (!mime.startsWith('image/') && mime !== 'application/pdf') {
     showUploadAlert('err', '❌ รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG) เท่านั้น');
     return;
   }
@@ -433,7 +437,7 @@ function processFile(file) {
   slipUploaded = true;
   hideUploadAlert();
 
-  if (file.type.startsWith('image/')) {
+  if (mime.startsWith('image/')) {
     const reader = new FileReader();
     reader.onload = ev => {
       const img = document.getElementById('previewImg');
@@ -473,7 +477,6 @@ async function uploadSlipViaAppsScript(file, ref) {
 
   const result = await appsScriptPost({
     action: 'uploadSlip',
-    pass: STAFF_PASS,
     ref: ref,
     fileName: file.name,
     mimeType: file.type,
@@ -569,7 +572,6 @@ async function submitPayment() {
   try {
     const result = await appsScriptPost({
       action: 'updateSlipAndStatus',
-      pass: STAFF_PASS,
       ref: currentBooking.ref,
       status: 'ชำระแล้ว',
       slipImage: slipUrl,
@@ -635,14 +637,6 @@ function setOverlay(show, msg) {
   if (msg) document.getElementById('overlayMsg').textContent = msg;
 }
 
-// ===== UTILS =====
-function toLocalDateStr(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
 function parseThaiDateToISO(dateStr) {
   if (!dateStr) return '';
   const thMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
@@ -656,27 +650,6 @@ function parseThaiDateToISO(dateStr) {
     return `${year}-${month}-${day}`;
   }
   return String(dateStr).trim();
-}
-
-function maskPrisonerName(name) {
-  if (!name || name === '—') return name;
-  const trimmed = name.trim();
-  const lastSpace = trimmed.lastIndexOf(' ');
-  if (lastSpace > 0) {
-    const firstName = trimmed.substring(0, lastSpace + 1);
-    const lastName = trimmed.substring(lastSpace + 1);
-    const maskedLast = lastName.slice(0, 4);
-    return firstName + maskedLast;
-  }
-  return trimmed.length > 3 ? trimmed.slice(0, 3) : trimmed;
-}
-
-function escHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 // ===== DEMO DATA =====

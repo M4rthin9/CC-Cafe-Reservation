@@ -1,11 +1,3 @@
-// ===== HELPER: Date formatting =====
-function toLocalDateStr(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
 // ===== CONFIG =====
 const PERMISSIONS = {
   Superadmin: ['approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'confirm_payment', 'reject_payment', 'cancel', 'visitor_approval', 'view_slip', 'view_detail', 'export', 'print', 'manage_users', 'manage_settings', 'view_eventlog'],
@@ -26,8 +18,11 @@ const SIDEBAR_MENU = {
   User: ['home']
 };
 
+<<<<<<< HEAD
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpgMWA1ARyZKdHz3fkjSXj3CLoufCGweggthl4g-iyvnrr-7wQ_Bj9S70aTs2h8wN2Ww/exec';
 
+=======
+>>>>>>> cebccbf96b7aa022520ab573071c6abdc968135e
 // ===== POLLING FOR REALTIME UPDATES =====
 let pollInterval = null;
 const POLL_INTERVAL_MS = 30000;
@@ -105,6 +100,7 @@ let allRows = [];
 let currentPage = 1;
 let pageSize = 10;
 let currentUser = null;
+let prisonerMaster = [];
 
 // ===== TOAST NOTIFICATIONS =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -213,12 +209,14 @@ async function doLogin() {
     const btnPrintVinai = document.getElementById('btnPrintVinai');
     const btnExportPhones = document.getElementById('btnExportPhones');
     const btnSyncWings = document.getElementById('btnSyncWings');
+    const btnNewBooking = document.getElementById('btnNewBooking');
     if (filterStatusEl) filterStatusEl.style.display = isAdminOrSuper ? '' : 'none';
     if (btnExport) btnExport.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrint) btnPrint.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrintVinai) btnPrintVinai.style.display = isAdminOrSuper ? '' : 'none';
     if (btnExportPhones) btnExportPhones.style.display = isAdminOrSuper ? '' : 'none';
     if (btnSyncWings) btnSyncWings.style.display = isAdminOrSuper ? '' : 'none';
+    if (btnNewBooking) btnNewBooking.style.display = isAdminOrSuper ? '' : 'none';
 
     // Show role-specific sidebar links and bottom nav
     ['sbUsers', 'sbPrisoners', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnSettings'].forEach(id => {
@@ -233,6 +231,7 @@ async function doLogin() {
     renderDashboardHome();
     loadData();
     startPolling();
+    loadPrisonerMaster();
     showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณ ' + (currentUser.displayName || currentUser.username), 'success');
 
   } catch (e) {
@@ -483,23 +482,23 @@ function renderTable() {
 
     return `<tr data-idx="${rowIdx}">
            <td data-label="" style="width:32px;text-align:center;"><input type="checkbox" class="row-select" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer;"></td>
-           <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${r.ref}</b></td>
+           <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:12px">${escHtml(r.ref)}</b></td>
 <td data-label="ผู้เข้าร่วม">
-              <div style="font-weight:600">${r.visitorName}</div>
-              <div style="font-size:11px;color:var(--text2)">${r.visitorPhone || ''}</div>
+              <div style="font-weight:600">${escHtml(r.visitorName)}</div>
+              <div style="font-size:11px;color:var(--text2)">${escHtml(r.visitorPhone || '')}</div>
               <div style="font-size:11px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);display:none" class="mobile-show-prisoner">
-                <span style="font-weight:600;color:var(--text2)">👤 ผู้ต้องขัง:</span> ${r.prisonerName || ''} (#${r.prisonerId || ''})
+                <span style="font-weight:600;color:var(--text2)">👤 ผู้ต้องขัง:</span> ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})
               </div>
             </td>
            <td data-label="ผู้ต้องขัง" class="hide-mobile">
-             <div style="font-weight:600">${r.prisonerName}</div>
-             <div style="font-size:11px;color:var(--text2)">#${r.prisonerId}</div>
+             <div style="font-weight:600">${escHtml(r.prisonerName)}</div>
+             <div style="font-size:11px;color:var(--text2)">#${escHtml(r.prisonerId)}</div>
            </td>
-           <td data-label="แดน">${r.wing || '—'}</td>
+           <td data-label="แดน">${escHtml(r.wing) || '—'}</td>
            <td data-label="จำนวน/ยอด">
-             <div>${r.visitorCount} คน • ${(r.total || 0).toLocaleString()} บ.</div>
+             <div>${escHtml(r.visitorCount)} คน • ${(r.total || 0).toLocaleString()} บ.</div>
            </td>
-           <td data-label="สถานะ"><span class="badge ${badgeClass}">${r.status}</span></td>
+           <td data-label="สถานะ"><span class="badge ${badgeClass}">${escHtml(r.status)}</span></td>
            <td data-label="ตรวจสอบ">
              <div style="display:flex;gap:4px;align-items:center;justify-content:center">
                <span class="status-check ${disciplineApproved ? 'done' : 'pending'}" title="อนุมัติโดย Vinai (ตรวจสอบวินัย)">✓</span>
@@ -648,11 +647,11 @@ function renderEventlog() {
 
   container.innerHTML = displayEvents.map(e => `
     <tr>
-      <td style="white-space:nowrap;font-size:12px;">${e.timestamp}</td>
-      <td style="font-size:12px;">${e.user} <span style="color:var(--text2);">(${e.role})</span></td>
-      <td style="font-size:12px;color:var(--text2);">${e.displayName || '-'}</td>
-      <td style="font-size:12px;">${e.action}</td>
-      <td style="font-size:12px;">${e.details}</td>
+      <td style="white-space:nowrap;font-size:12px;">${escHtml(e.timestamp)}</td>
+      <td style="font-size:12px;">${escHtml(e.user)} <span style="color:var(--text2);">(${escHtml(e.role)})</span></td>
+      <td style="font-size:12px;color:var(--text2);">${escHtml(e.displayName || '-')}</td>
+      <td style="font-size:12px;">${escHtml(e.action)}</td>
+      <td style="font-size:12px;">${escHtml(e.details)}</td>
     </tr>
   `).join('');
 }
@@ -948,7 +947,7 @@ if (financeCanvasEl) {
   });
 }
 
-function renderDashboardHome() {
+let renderDashboardHome = function () {
   // Role‑based KPI visibility
   const role = currentUser && currentUser.role;
   const visible = {
@@ -1394,6 +1393,15 @@ function initPullToRefresh() {
   }, { passive: true });
 }
 
+// Close prisoner suggestions when clicking outside
+document.addEventListener('click', (e) => {
+  const searchBox = document.getElementById('nbPrisonerSearch');
+  const suggBox = document.getElementById('nbPrisonerSuggestions');
+  if (searchBox && suggBox && !searchBox.contains(e.target) && !suggBox.contains(e.target)) {
+    suggBox.style.display = 'none';
+  }
+});
+
 // Initialize mobile features on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   loadFilterState();
@@ -1692,8 +1700,8 @@ function viewSlip(idx) {
   const slip = (row.slipImage || '').trim();
 
   const infoBox = `<div style="margin-top:10px;font-size:13px;color:var(--text2);padding:10px;background:var(--bg);border-radius:6px;">
-    <b>${row.ref}</b> · ${row.visitorName}<br>
-    ยอด: <b>${(row.total || 0).toLocaleString()} บาท</b> · สถานะ: <b>${row.status}</b>
+    <b>${escHtml(row.ref)}</b> · ${escHtml(row.visitorName)}<br>
+    ยอด: <b>${(row.total || 0).toLocaleString()} บาท</b> · สถานะ: <b>${escHtml(row.status)}</b>
   </div>`;
 
   // ✅ ดึง fileId จาก Drive URL ทุกรูปแบบ (?id=, /d/, /open?id=)
@@ -1791,9 +1799,9 @@ function viewDetail(idx) {
   const visitor1Html = `
      <div class="visitor-card">
        <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ 1 (ผู้จอง)</div>
-       <div class="vc-name">${r.visitorName || '—'}</div>
-       <div class="vc-info">บัตร: ${r.visitorId || '—'} · โทร: ${r.visitorPhone || '—'} · ความสัมพันธ์: ${r.relation || '—'}</div>
-       <div class="vc-info">ศาสนา: ${r.religion || '—'} · แพ้อาหาร: ${r.allergy || '—'}</div>
+       <div class="vc-name">${escHtml(r.visitorName) || '—'}</div>
+       <div class="vc-info">บัตร: ${escHtml(r.visitorId) || '—'} · โทร: ${escHtml(r.visitorPhone) || '—'} · ความสัมพันธ์: ${escHtml(r.relation) || '—'}</div>
+       <div class="vc-info">ศาสนา: ${escHtml(r.religion) || '—'} · แพ้อาหาร: ${escHtml(r.allergy) || '—'}</div>
         <div class="visitor-approval">
           <span class="lbl">สถานะ:</span>
           <span class="approval-badge ${va === 'yes' ? 'yes' : va === 'no' ? 'no' : 'pending'}">${getApprLabel(va)}</span>
@@ -1827,11 +1835,15 @@ function viewDetail(idx) {
       const infoParts = [];
       if (v.id) infoParts.push('บัตร: ' + v.id);
       if (v.relation) infoParts.push('ความสัมพันธ์: ' + v.relation);
+      const er = String(r.extraVisitorReligions || '').split(';;')[i] || '';
+      const ea2 = String(r.extraVisitorAllergies || '').split(';;')[i] || '';
+      if (er) infoParts.push('ศาสนา: ' + er);
+      if (ea2) infoParts.push('แพ้อาหาร: ' + ea2);
       const ea = String(r.extraVisitorApproved || '').split(';;')[i] || '';
       extraHtml += `
          <div class="visitor-card">
            <div class="vc-num">👤 ผู้ร่วมกิจกรรมคนที่ ${i + 2}</div>
-           <div class="vc-name">${v.name}</div>
+           <div class="vc-name">${escHtml(v.name)}</div>
            ${infoParts.length ? '<div class="vc-info">' + infoParts.join(' · ') + '</div>' : ''}
             <div class="visitor-approval">
               <span class="lbl">สถานะ:</span>
@@ -1850,7 +1862,7 @@ function viewDetail(idx) {
     <div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
       <div>
         <div style="font-size:11px;color:var(--text2);margin-bottom:2px;">เลขอ้างอิง</div>
-        <div style="font-size:20px;font-weight:700;color:var(--blue);letter-spacing:2px;">${r.ref || '—'}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--blue);letter-spacing:2px;">${escHtml(r.ref) || '—'}</div>
       </div>
       <span class="badge ${badgeClass}" style="font-size:13px;padding:6px 14px;">${s}</span>
     </div>
@@ -1862,15 +1874,15 @@ function viewDetail(idx) {
     <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-top:8px;">
       <div class="detail-row">
         <span class="dlbl">🔒 ผู้ต้องขัง</span>
-        <span class="dval">${r.prisonerName || '—'} <span style="color:var(--text2);font-weight:400">(#${r.prisonerId || '—'})</span></span>
+        <span class="dval">${escHtml(r.prisonerName) || '—'} <span style="color:var(--text2);font-weight:400">(#${escHtml(r.prisonerId) || '—'})</span></span>
       </div>
       <div class="detail-row">
         <span class="dlbl">🏢 แดน</span>
-        <span class="dval">${r.wing || '—'}</span>
+        <span class="dval">${escHtml(r.wing) || '—'}</span>
       </div>
       <div class="detail-row">
         <span class="dlbl">📅 วันที่เยี่ยม</span>
-        <span class="dval">${r.visitDate || '—'}</span>
+        <span class="dval">${escHtml(r.visitDate) || '—'}</span>
       </div>
       <div class="detail-row">
         <span class="dlbl">👥 จำนวนรวม</span>
@@ -1882,7 +1894,7 @@ function viewDetail(idx) {
       </div>
 <div class="detail-row">
          <span class="dlbl">🕐 จองเมื่อ</span>
-         <span class="dval">${r.timestamp || '—'}</span>
+         <span class="dval">${escHtml(r.timestamp) || '—'}</span>
        </div>
 ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
@@ -4587,53 +4599,425 @@ function renderDashboardHomeV2() {
   renderFloorPlan();
 }
 
+// ===== VALIDATION HELPERS =====
+function validateIdFormat(val) {
+  if (!val) return { valid: true };
+  if (val.includes('-')) {
+    const isValid = /^\d{1}-\d{4}-\d{5}-\d{2}-\d{1}$/.test(val);
+    return { valid: isValid, error: 'รูปแบบเลขบัตรประชาชนไม่ถูกต้อง (X-XXXX-XXXXX-XX-X)' };
+  }
+  const isValid = /^[A-Za-z0-9]{6,20}$/.test(val);
+  return { valid: isValid, error: 'รูปแบบ Passport ไม่ถูกต้อง (ตัวอักษร/ตัวเลข 6-20 หลัก)' };
+}
+
+function validatePhone(val) {
+  const cleaned = val.replace(/[^0-9]/g, '');
+  return { cleaned, valid: cleaned.length === 10, error: 'เบอร์โทรศัพท์ต้องมี 10 ตัวเลข' };
+}
+
+// ===== PRISONER MASTER DATA =====
+async function loadPrisonerMaster() {
+  const statusEl = document.getElementById('nbPrisonerLoadStatus');
+  if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขัง...';
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL + '?action=getPrisoners');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    if (data.status === 'ok' && Array.isArray(data.prisoners)) {
+      prisonerMaster = data.prisoners;
+      if (statusEl) {
+        statusEl.textContent = `✓ โหลดสำเร็จ (${prisonerMaster.length} คน)`;
+        statusEl.style.color = 'var(--green)';
+      }
+    } else {
+      throw new Error('Invalid response');
+    }
+  } catch (e) {
+    console.error('[PrisonerMaster]', e);
+    if (statusEl) {
+      statusEl.textContent = '⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้ — กรอกเองไม่ได้';
+      statusEl.style.color = 'var(--red)';
+    }
+  }
+}
+
+function nbFilterPrisonerSuggestions() {
+  const q = document.getElementById('nbPrisonerSearch').value.trim().toLowerCase();
+  const container = document.getElementById('nbPrisonerSuggestions');
+  container.innerHTML = '';
+  container.style.display = 'none';
+
+  if (!q || prisonerMaster.length === 0) return;
+
+  const matches = prisonerMaster.filter(p =>
+    p.prisonerId.toLowerCase().includes(q) ||
+    p.prisonerName.toLowerCase().includes(q)
+  ).slice(0, 8);
+
+  if (matches.length === 0) return;
+
+  matches.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'suggestion-item';
+    div.innerHTML = `
+      <div style="flex:1">
+        <strong style="font-size:15px;">${escHtml(maskPrisonerName(p.prisonerName))}</strong>
+      </div>
+      <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
+        #${escHtml(p.prisonerId)}<br>
+        <span style="color:var(--blue);font-weight:600;">${escHtml(p.wing || '')}</span>
+      </div>
+    `;
+    div.onclick = () => nbSelectPrisoner(p);
+    container.appendChild(div);
+  });
+  container.style.display = 'block';
+}
+
+function nbSelectPrisoner(p) {
+  document.getElementById('nbPrisonerId').value = p.prisonerId;
+  document.getElementById('nbPrisonerName').value = p.prisonerName;
+  document.getElementById('nbWing').value = p.wing || '';
+
+  document.getElementById('nbDispPrisonerName').textContent = maskPrisonerName(p.prisonerName);
+  document.getElementById('nbDispPrisonerId').textContent = p.prisonerId;
+  document.getElementById('nbDispWing').textContent = p.wing || '';
+  document.getElementById('nbSelectedPrisonerDisplay').style.display = 'block';
+
+  document.getElementById('nbPrisonerSearch').value = '';
+  document.getElementById('nbPrisonerSuggestions').innerHTML = '';
+  document.getElementById('nbPrisonerSuggestions').style.display = 'none';
+
+  const statusEl = document.getElementById('nbPrisonerMatchStatus');
+  statusEl.textContent = `✓ เลือกจากฐานข้อมูล: ${maskPrisonerName(p.prisonerName)} (#${p.prisonerId}) — ${p.wing}`;
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--green)';
+}
+
+// ===== NEW BOOKING MODAL (Superadmin/Admin) =====
+function openNewBookingModal() {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  document.getElementById('nbVisitDate').value = y + '-' + m + '-' + d;
+  document.getElementById('nbVisitorCount').value = '1';
+  document.getElementById('nbExtraVisitorsContainer').style.display = 'none';
+  document.getElementById('nbExtraVisitorsList').innerHTML = '';
+
+  // Reset prisoner state
+  document.getElementById('nbPrisonerName').value = '';
+  document.getElementById('nbPrisonerId').value = '';
+  document.getElementById('nbWing').value = '';
+  document.getElementById('nbPrisonerSearch').value = '';
+  document.getElementById('nbPrisonerSuggestions').innerHTML = '';
+  document.getElementById('nbPrisonerSuggestions').style.display = 'none';
+  document.getElementById('nbSelectedPrisonerDisplay').style.display = 'none';
+  document.getElementById('nbPrisonerMatchStatus').style.display = 'none';
+
+  updateNbTotal();
+  document.getElementById('newBookingModalBg').classList.add('show');
+}
+
+function closeNewBookingModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('newBookingModalBg').classList.remove('show');
+}
+
+function nbCalculateTotal() {
+  const n = parseInt(document.getElementById('nbVisitorCount').value) || 1;
+  const extras = nbGetExtraVisitors();
+  let extraFees = 0;
+  let adults = 1;
+  let kids5_8 = 0, kidsUnder5 = 0;
+
+  extras.forEach(v => {
+    let fee = 1000;
+    let isChild = false;
+    if (v.relation === 'บุตร / ธิดา') {
+      const a = parseInt(v.age, 10);
+      if (!isNaN(a)) {
+        if (a < 5) { fee = 0; isChild = true; kidsUnder5++; }
+        else if (a <= 8) { fee = 500; isChild = true; kids5_8++; }
+      }
+    }
+    extraFees += fee;
+    if (!isChild) adults++;
+  });
+
+  const total = 1000 + 1000 + extraFees;
+  return { total, extraFees, adults, kids5_8, kidsUnder5, numVisitors: n };
+}
+
+function updateNbTotal() {
+  const c = nbCalculateTotal();
+  const feeNote = c.extraFees > 0 ? ` (รวมค่าพิเศษ ${c.extraFees.toLocaleString()} บาท)` : '';
+  document.getElementById('nbTotalDisplay').textContent = c.total.toLocaleString() + ' บาท' + feeNote;
+}
+
+function nbUpdateExtraVisitors() {
+  const n = parseInt(document.getElementById('nbVisitorCount').value);
+  const container = document.getElementById('nbExtraVisitorsContainer');
+  const list = document.getElementById('nbExtraVisitorsList');
+  list.innerHTML = '';
+  if (n <= 1) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+
+  const relOpts = '<option value="">-- เลือก --</option><option>บิดา / มารดา</option><option>แฟน/ภรรยา</option><option>บุตร / ธิดา</option><option>พี่ / น้อง</option><option>ญาติ</option><option>เพื่อน</option><option>ทนายความ</option><option>อื่น ๆ</option>';
+  const religionOpts = '<option value="">-- เลือก --</option><option>พุทธ</option><option>อิสลาม</option><option>คริสต์</option><option>อื่น ๆ</option>';
+
+  for (let i = 2; i <= n; i++) {
+    const div = document.createElement('div');
+    div.style.cssText = 'border-top:1px dashed var(--border);padding-top:10px;margin-top:4px;';
+    div.innerHTML =
+      '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;">ผู้เข้าร่วมคนที่ ' + i + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>' +
+          '<input type="text" id="nbExtraName' + i + '" class="search-box" style="width:100%;"></div>' +
+        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขประจำตัว <span style="color:var(--red)">*</span></label>' +
+          '<input type="text" id="nbExtraId' + i + '" class="search-box" placeholder="ปชช. X-XXXX-XXXXX-XX-X หรือ Passport" style="width:100%;"></div>' +
+        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ศาสนา <span style="color:var(--red)">*</span></label>' +
+          '<select id="nbExtraReligion' + i + '" class="filter-select" style="width:100%;">' + religionOpts + '</select></div>' +
+        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">แพ้อาหาร <span style="color:var(--red)">*</span></label>' +
+          '<input type="text" id="nbExtraAllergy' + i + '" class="search-box" style="width:100%;"></div>' +
+        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ความสัมพันธ์ <span style="color:var(--red)">*</span></label>' +
+          '<select id="nbExtraRelation' + i + '" class="filter-select" style="width:100%;">' + relOpts + '</select></div>' +
+        '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">อายุ <span style="color:var(--text2);font-size:10px;">(ถ้าเป็นบุตร)</span></label>' +
+          '<input type="number" id="nbExtraAge' + i + '" class="search-box" min="0" max="120" style="width:100%;"></div>' +
+      '</div>';
+    list.appendChild(div);
+  }
+  updateNbTotal();
+}
+
+function nbGetExtraVisitors() {
+  const n = parseInt(document.getElementById('nbVisitorCount').value);
+  const extras = [];
+  for (let i = 2; i <= n; i++) {
+    const nameEl = document.getElementById('nbExtraName' + i);
+    if (!nameEl) continue;
+    const name = nameEl.value.trim();
+    if (!name) continue;
+    extras.push({
+      name,
+      id: document.getElementById('nbExtraId' + i).value.trim(),
+      relation: document.getElementById('nbExtraRelation' + i).value,
+      age: document.getElementById('nbExtraAge' + i).value,
+      religion: document.getElementById('nbExtraReligion' + i).value,
+      allergy: document.getElementById('nbExtraAllergy' + i).value.trim()
+    });
+  }
+  return extras;
+}
+
+async function submitNewBooking() {
+  const visitorName = document.getElementById('nbVisitorName').value.trim();
+  const visitorId = document.getElementById('nbVisitorId').value.trim();
+  let visitorPhone = document.getElementById('nbVisitorPhone').value.trim();
+  const relation = document.getElementById('nbRelation').value;
+  const visitorReligion = document.getElementById('nbVisitorReligion').value;
+  const visitorAllergy = document.getElementById('nbVisitorAllergy').value.trim();
+  const prisonerName = document.getElementById('nbPrisonerName').value.trim();
+  const prisonerId = document.getElementById('nbPrisonerId').value.trim();
+  const wing = document.getElementById('nbWing').value.trim();
+  const visitDateISO = document.getElementById('nbVisitDate').value;
+  const n = parseInt(document.getElementById('nbVisitorCount').value) || 1;
+
+  if (!visitorName || !visitorId || !visitorPhone || !relation || !visitorReligion || !visitorAllergy) {
+    showToast('กรุณากรอกข้อมูลผู้จองให้ครบถ้วน', 'error'); return;
+  }
+
+  const idResult = validateIdFormat(visitorId);
+  if (!idResult.valid) { showToast(idResult.error, 'error'); return; }
+
+  const phoneResult = validatePhone(visitorPhone);
+  if (!phoneResult.valid) { showToast(phoneResult.error, 'error'); return; }
+  visitorPhone = phoneResult.cleaned;
+
+  if (!prisonerName || !prisonerId || !wing) {
+    showToast('กรุณากรอกข้อมูลผู้ต้องขังให้ครบถ้วน', 'error'); return;
+  }
+  if (!visitDateISO) {
+    showToast('กรุณาเลือกวันที่ต้องการเข้าร่วม', 'error'); return;
+  }
+
+  const extras = nbGetExtraVisitors();
+  const extraNamesStr = extras.map(v => v.name + '|' + v.id + '|' + v.relation + '|' + (v.age || '')).join(';;');
+  const extraReligionsStr = extras.map(v => v.religion || '').join(';;');
+  const extraAllergiesStr = extras.map(v => v.allergy || '').join(';;');
+
+  const calc = nbCalculateTotal();
+  const totalPersons = n + 1;
+  const total = calc.total;
+
+  const ref = 'VIS-' + Math.floor(10000 + Math.random() * 90000);
+  const d = new Date(visitDateISO + 'T00:00:00');
+  const thDate = d.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const now = new Date().toLocaleString('th-TH');
+
+  const data = {
+    action: 'saveReservation',
+    ref,
+    timestamp: now,
+    visitorName,
+    extraVisitorNames: extraNamesStr,
+    visitorId,
+    visitorPhone,
+    relation,
+    religion: visitorReligion,
+    allergy: visitorAllergy,
+    extraVisitorReligions: extraReligionsStr,
+    extraVisitorAllergies: extraAllergiesStr,
+    prisonerName,
+    prisonerId,
+    wing,
+    visitDate: thDate,
+    visitDateISO,
+    visitorCount: n,
+    totalPersons,
+    total,
+    adultCount: calc.adults,
+    child5to8Count: calc.kids5_8,
+    childUnder5Count: calc.kidsUnder5,
+    status: 'รอตรวจสอบวินัย',
+    slipImage: ''
+  };
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(data)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const result = JSON.parse(await resp.text());
+    if (result.status !== 'ok') throw new Error(result.message || 'ไม่สำเร็จ');
+
+    showToast('✅ จองสำเร็จ! เลขอ้างอิง: ' + ref, 'success');
+    logEvent('admin_new_booking', `Admin สร้างการจอง ${ref} โดย ${currentUser.username}`);
+    closeNewBookingModal();
+    loadData();
+    updateStats();
+    renderDashboardHome();
+  } catch (e) {
+    console.error('New booking error:', e);
+    showToast('ไม่สามารถบันทึกการจองได้: ' + e.message, 'error');
+  }
+}
+
 // ===== EDIT BOOKING (Superadmin) =====
 function editBooking(idx) {
   const r = allRows[idx];
   if (!r) return;
 
+  const extras = parseExtraVisitors(r);
+  const extraReligions = String(r.extraVisitorReligions || '').split(';;').filter(Boolean);
+  const extraAllergies = String(r.extraVisitorAllergies || '').split(';;').filter(Boolean);
+  const extraApproved = String(r.extraVisitorApproved || '').split(';;').filter(Boolean);
+
+  window._editExtrasOriginal = extras.map((e, i) => ({
+    name: e.name,
+    id: e.id,
+    relation: e.relation,
+    age: e.age,
+    religion: extraReligions[i] || '',
+    allergy: extraAllergies[i] || '',
+    approved: extraApproved[i] || ''
+  }));
+
+  function esc(s) { return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+  let extraHtml = '';
+  extras.forEach((e, i) => {
+    const rel = esc(e.relation);
+    const relAge = e.relation === 'บุตร / ธิดา' ? 'block' : 'none';
+    extraHtml += `
+      <div class="edit-extra-row" data-ei="${i}" style="border-top:1px dashed var(--border);padding:10px 0;margin-top:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:600;color:var(--blue);">👤 ผู้เข้าร่วมเพิ่มเติม #${i + 1}</span>
+          <button class="btn-cancel" onclick="removeEditExtra(this)" style="padding:3px 10px;font-size:11px;">✕ ลบ</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล</label>
+            <input type="text" class="edit-extra-name search-box" value="${esc(e.name)}" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขประจำตัว</label>
+            <input type="text" class="edit-extra-id search-box" value="${esc(e.id)}" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ความสัมพันธ์</label>
+            <select class="edit-extra-relation filter-select" style="width:100%;" onchange="toggleEditExtraAge(this)">
+              <option value="">-- เลือก --</option>${['บิดา / มารดา','แฟน/ภรรยา','บุตร / ธิดา','พี่ / น้อง','ญาติ','เพื่อน','ทนายความ','อื่น ๆ'].map(o =>
+      `<option value="${o}" ${rel === o ? 'selected' : ''}>${o}</option>`
+    ).join('')}</select></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">อายุ</label>
+            <input type="number" class="edit-extra-age search-box" value="${esc(e.age)}" min="0" max="120" style="width:100%;${relAge === 'none' ? 'display:none;' : ''}"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ศาสนา</label>
+            <select class="edit-extra-religion filter-select" style="width:100%;">
+              <option value="">-- เลือก --</option>${['พุทธ','อิสลาม','คริสต์','อื่น ๆ'].map(o =>
+      `<option value="${o}" ${extraReligions[i] === o ? 'selected' : ''}>${o}</option>`
+    ).join('')}</select></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">แพ้อาหาร</label>
+            <input type="text" class="edit-extra-allergy search-box" value="${esc(extraAllergies[i] || '')}" style="width:100%;"></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">✅ สถานะอนุมัติ</label>
+            <select class="edit-extra-approved filter-select" style="width:100%;">
+              <option value="">-- รอพิจารณา --</option>
+              <option value="yes" ${extraApproved[i] === 'yes' ? 'selected' : ''}>อนุมัติ</option>
+              <option value="no" ${extraApproved[i] === 'no' ? 'selected' : ''}>ไม่อนุมัติ</option>
+            </select></div>
+        </div>
+      </div>`;
+  });
+
   const modal = document.getElementById('editModalBody');
   modal.innerHTML = `
     <div style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div style="font-weight:700;font-size:15px;">แก้ไขการจอง ${r.ref}</div>
-        <span class="badge badge-discipline-check" style="font-size:11px;">${r.status}</span>
+        <div style="font-weight:700;font-size:15px;">แก้ไขการจอง ${esc(r.ref)}</div>
+        <span class="badge badge-discipline-check" style="font-size:11px;">${esc(r.status)}</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">👤 ชื่อผู้เข้าร่วม</label>
-          <input type="text" id="editVisitorName" class="search-box" value="${r.visitorName || ''}" style="width:100%;">
+          <input type="text" id="editVisitorName" class="search-box" value="${esc(r.visitorName)}" style="width:100%;">
         </div>
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">📞 เบอร์โทร</label>
-          <input type="text" id="editVisitorPhone" class="search-box" value="${r.visitorPhone || ''}" style="width:100%;">
+          <input type="text" id="editVisitorPhone" class="search-box" value="${esc(r.visitorPhone)}" style="width:100%;">
         </div>
         <div>
-          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🪪 บัตรประชาชน</label>
-          <input type="text" id="editVisitorId" class="search-box" value="${r.visitorId || ''}" style="width:100%;">
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🪪 เลขประจำตัว (บัตร ปชช. / Passport)</label>
+          <input type="text" id="editVisitorId" class="search-box" value="${esc(r.visitorId)}" style="width:100%;">
         </div>
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🤝 ความสัมพันธ์</label>
-          <input type="text" id="editRelation" class="search-box" value="${r.relation || ''}" style="width:100%;">
+          <input type="text" id="editRelation" class="search-box" value="${esc(r.relation)}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🛐 ศาสนา</label>
+          <input type="text" id="editReligion" class="search-box" value="${esc(r.religion)}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">⚠️ แพ้อาหาร</label>
+          <input type="text" id="editAllergy" class="search-box" value="${esc(r.allergy)}" style="width:100%;">
         </div>
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🔒 ชื่อผู้ต้องขัง</label>
-          <input type="text" id="editPrisonerName" class="search-box" value="${r.prisonerName || ''}" style="width:100%;">
+          <input type="text" id="editPrisonerName" class="search-box" value="${esc(r.prisonerName)}" style="width:100%;">
         </div>
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🔢 เลขผู้ต้องขัง</label>
-          <input type="text" id="editPrisonerId" class="search-box" value="${r.prisonerId || ''}" style="width:100%;">
+          <input type="text" id="editPrisonerId" class="search-box" value="${esc(r.prisonerId)}" style="width:100%;">
         </div>
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">🏢 แดน</label>
-          <input type="text" id="editWing" class="search-box" value="${r.wing || ''}" style="width:100%;">
+          <input type="text" id="editWing" class="search-box" value="${esc(r.wing)}" style="width:100%;">
         </div>
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">📅 วันที่เยี่ยม</label>
-          <input type="text" id="editVisitDate" class="search-box" value="${r.visitDate || ''}" style="width:100%;">
+          <input type="text" id="editVisitDate" class="search-box" value="${esc(r.visitDate)}" style="width:100%;">
         </div>
         <div>
-          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">👥 จำนวนคน</label>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">👥 จำนวนผู้เข้าร่วม</label>
           <input type="number" id="editVisitorCount" class="search-box" value="${r.visitorCount || 1}" style="width:100%;">
         </div>
         <div>
@@ -4650,6 +5034,13 @@ function editBooking(idx) {
         </div>
       </div>
     </div>
+
+    <div style="margin-bottom:16px;" id="editExtraSection">
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px;">👥 ผู้เข้าร่วมเพิ่มเติม</div>
+      <div id="editExtraList">${extraHtml}</div>
+      <button class="btn-approve" onclick="addEditExtra()" style="margin-top:8px;padding:6px 14px;font-size:12px;">➕ เพิ่มผู้เข้าร่วม</button>
+    </div>
+
     <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
       <button class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
       <button class="btn-approve" onclick="saveBookingEdit(${idx})">💾 บันทึกการแก้ไข</button>
@@ -4658,22 +5049,117 @@ function editBooking(idx) {
   document.getElementById('editModalBg').classList.add('show');
 }
 
+function toggleEditExtraAge(selectEl) {
+  const row = selectEl.closest('.edit-extra-row');
+  if (!row) return;
+  const ageInput = row.querySelector('.edit-extra-age');
+  const childValues = ['บุตร / ธิดา'];
+  if (childValues.includes(selectEl.value)) {
+    ageInput.style.display = '';
+  } else {
+    ageInput.style.display = 'none';
+    ageInput.value = '';
+  }
+}
+
+function removeEditExtra(btn) {
+  const row = btn.closest('.edit-extra-row');
+  if (row) row.remove();
+}
+
+function addEditExtra() {
+  const list = document.getElementById('editExtraList');
+  const idx = list.querySelectorAll('.edit-extra-row').length;
+  const relOpts = ['บิดา / มารดา','แฟน/ภรรยา','บุตร / ธิดา','พี่ / น้อง','ญาติ','เพื่อน','ทนายความ','อื่น ๆ'].map(o =>
+    `<option value="${o}">${o}</option>`
+  ).join('');
+  const relOptsAll = '<option value="">-- เลือก --</option>' + relOpts;
+  const relOptsRel = ['พุทธ','อิสลาม','คริสต์','อื่น ๆ'].map(o =>
+    `<option value="${o}">${o}</option>`
+  ).join('');
+  const relOptsRelAll = '<option value="">-- เลือก --</option>' + relOptsRel;
+  const div = document.createElement('div');
+  div.className = 'edit-extra-row';
+  div.style.cssText = 'border-top:1px dashed var(--border);padding:10px 0;margin-top:4px;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:12px;font-weight:600;color:var(--green);">➕ ผู้เข้าร่วมเพิ่มเติม (ใหม่)</span>
+      <button class="btn-cancel" onclick="removeEditExtra(this)" style="padding:3px 10px;font-size:11px;">✕ ลบ</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล</label>
+        <input type="text" class="edit-extra-name search-box" style="width:100%;"></div>
+      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">เลขประจำตัว</label>
+        <input type="text" class="edit-extra-id search-box" placeholder="ปชช. X-XXXX-XXXXX-XX-X หรือ Passport" style="width:100%;"></div>
+      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ความสัมพันธ์</label>
+        <select class="edit-extra-relation filter-select" style="width:100%;" onchange="toggleEditExtraAge(this)">${relOptsAll}</select></div>
+      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">อายุ</label>
+        <input type="number" class="edit-extra-age search-box" min="0" max="120" style="width:100%;display:none;"></div>
+      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ศาสนา</label>
+        <select class="edit-extra-religion filter-select" style="width:100%;">${relOptsRelAll}</select></div>
+      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">แพ้อาหาร</label>
+        <input type="text" class="edit-extra-allergy search-box" style="width:100%;"></div>
+      <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">✅ สถานะอนุมัติ</label>
+        <select class="edit-extra-approved filter-select" style="width:100%;">
+          <option value="">-- รอพิจารณา --</option>
+          <option value="yes">อนุมัติ</option>
+          <option value="no">ไม่อนุมัติ</option>
+        </select></div>
+    </div>`;
+  list.appendChild(div);
+}
+
 async function saveBookingEdit(idx) {
   const r = allRows[idx];
   const oldData = { ...r };
+
+  const extraRows = document.querySelectorAll('#editExtraList .edit-extra-row');
+  const extraNames = [], extraReligions = [], extraAllergies = [], extraApproved = [];
+  extraRows.forEach(row => {
+    const name = row.querySelector('.edit-extra-name')?.value?.trim() || '';
+    if (!name) return;
+    const id = row.querySelector('.edit-extra-id')?.value?.trim() || '';
+    const relation = row.querySelector('.edit-extra-relation')?.value || '';
+    const age = row.querySelector('.edit-extra-age')?.value || '';
+    const religion = row.querySelector('.edit-extra-religion')?.value || '';
+    const allergy = row.querySelector('.edit-extra-allergy')?.value?.trim() || '';
+    extraNames.push(name + '|' + id + '|' + relation + '|' + age);
+    extraReligions.push(religion);
+    extraAllergies.push(allergy);
+
+    const ei = row.dataset.ei;
+    const orig = ei !== undefined && window._editExtrasOriginal && window._editExtrasOriginal[parseInt(ei)];
+    if (orig) {
+      const changed = name !== orig.name || id !== orig.id || relation !== orig.relation
+        || age !== orig.age || religion !== orig.religion || allergy !== orig.allergy;
+      extraApproved.push(changed ? '' : orig.approved);
+    } else {
+      extraApproved.push('');
+    }
+  });
+  const extraVisitorNamesStr = extraNames.join(';;');
+  const extraVisitorReligionsStr = extraReligions.join(';;');
+  const extraVisitorAllergiesStr = extraAllergies.join(';;');
+  const extraVisitorApprovedStr = extraApproved.join(';;');
 
   const updates = {
     visitorName: document.getElementById('editVisitorName').value.trim(),
     visitorPhone: document.getElementById('editVisitorPhone').value.trim(),
     visitorId: document.getElementById('editVisitorId').value.trim(),
     relation: document.getElementById('editRelation').value.trim(),
+    religion: document.getElementById('editReligion').value.trim(),
+    allergy: document.getElementById('editAllergy').value.trim(),
     prisonerName: document.getElementById('editPrisonerName').value.trim(),
     prisonerId: document.getElementById('editPrisonerId').value.trim(),
     wing: document.getElementById('editWing').value.trim(),
     visitDate: document.getElementById('editVisitDate').value.trim(),
     visitorCount: parseInt(document.getElementById('editVisitorCount').value) || 1,
     total: parseInt(document.getElementById('editTotal').value) || 0,
-    status: document.getElementById('editStatus').value
+    status: document.getElementById('editStatus').value,
+    extraVisitorNames: extraVisitorNamesStr,
+    extraVisitorReligions: extraVisitorReligionsStr,
+    extraVisitorAllergies: extraVisitorAllergiesStr,
+    extraVisitorApproved: extraVisitorApprovedStr
   };
 
   Object.assign(r, updates);
@@ -4897,10 +5383,10 @@ function renderNotifications() {
         return `<div onclick="viewDetail(${allRows.indexOf(r)});switchView('reservations');toggleNotifPanel()" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;align-items:center;transition:background 0.15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
           <span style="font-size:18px;">${icon}</span>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);">${r.ref} · ${r.visitorName || ''}</div>
-            <div style="font-size:11px;color:var(--text2);">${s} · ${r.wing || ''}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);">${escHtml(r.ref)} · ${escHtml(r.visitorName || '')}</div>
+            <div style="font-size:11px;color:var(--text2);">${escHtml(s)} · ${escHtml(r.wing || '')}</div>
           </div>
-          <span class="badge badge-payment-pending" style="font-size:10px;white-space:nowrap;">${s}</span>
+          <span class="badge badge-payment-pending" style="font-size:10px;white-space:nowrap;">${escHtml(s)}</span>
         </div>`;
       }).join('');
       if (pending.length > 20) {

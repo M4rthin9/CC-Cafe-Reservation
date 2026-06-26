@@ -292,3 +292,5 @@
    color: var(--white);
    border-color: var(--black);
  }
+
+@keyframes spin { to { transform: rotate(360deg); } }
