@@ -965,6 +965,8 @@
       <li><a href="#s12">⚙️ จัดการตั้งค่า (Settings)</a></li>
       <li><a href="#s13">💡 เคล็ดลับการใช้งาน</a></li>
       <li><a href="#s14">🔧 การแก้ไขปัญหาเบื้องต้น</a></li>
+      <li><a href="#s15">👤 คู่มือตามบทบาท (Role-Based Guides)</a></li>
+      <li><a href="#s16">✨ ฟีเจอร์ใหม่ v4.0</a></li>
     </ol>
   </div>
 
@@ -2175,11 +2177,149 @@
     </div>
   </div>
 
+  <!-- ===== SECTION 15: ROLE-BASED QUICK GUIDES ===== -->
+  <div class="section" id="s15">
+    <h2><i class="ti ti-users"></i> 15. คู่มือตามบทบาท (Role-Based Quick Guides)</h2>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:16px;">คู่มือเฉพาะสำหรับแต่ละบทบาท — เลือกดูเฉพาะส่วนที่เกี่ยวข้องกับคุณ</p>
+
+    <!-- Superadmin -->
+    <div style="margin-bottom:24px;">
+      <h3><span class="role-badge superadmin">Superadmin</span> — ผู้ดูแลระบบสูงสุด</h3>
+      <p>คุณมีสิทธิ์เข้าถึงทุกฟังก์ชันในระบบ</p>
+      <div class="callout">
+        <strong>📋 หน้าที่หลัก:</strong>
+        <ul style="margin:6px 0 0 16px;">
+          <li>จัดการผู้ใช้ทั้งหมด (สร้าง/แก้ไข/ลบ)</li>
+          <li>ตั้งค่าระบบ</li>
+          <li>ดูบันทึกการทำงาน (Event Log)</li>
+          <li>อนุมัติ/ปฏิเสธ การจองทุกขั้นตอน</li>
+          <li>ส่งออกรายงาน</li>
+        </ul>
+      </div>
+      <h4>เมนูที่คุณเห็น:</h4>
+      <p>🏠 ภาพรวม · 📋 รายการจอง · 📊 รายงาน · 📝 บันทึกการทำงาน · 👥 จัดการผู้ใช้ · 🔒 ผู้ต้องขัง · ⚙️ ตั้งค่า</p>
+    </div>
+
+    <!-- Admin -->
+    <div style="margin-bottom:24px;">
+      <h3><span class="role-badge admin">Admin</span> — ผู้ดูแลระบบ</h3>
+      <p>จัดการการจองและดูรายงาน แต่ไม่สามารถจัดการผู้ใช้หรือตั้งค่าระบบได้</p>
+      <div class="callout">
+        <strong>📋 หน้าที่หลัก:</strong>
+        <ul style="margin:6px 0 0 16px;">
+          <li>สร้าง/แก้ไข/ยกเลิก การจอง</li>
+          <li>อนุมัติ/ปฏิเสธ ทุกขั้นตอน</li>
+          <li>ดูและส่งออกรายงาน</li>
+          <li>จัดการข้อมูลผู้ต้องขัง</li>
+        </ul>
+      </div>
+      <h4>เมนูที่คุณเห็น:</h4>
+      <p>🏠 ภาพรวม · 📋 รายการจอง · 📊 รายงาน · 📝 บันทึกการทำงาน · 🔒 ผู้ต้องขัง</p>
+    </div>
+
+    <!-- Vinai -->
+    <div style="margin-bottom:24px;">
+      <h3><span class="role-badge vinai">Vinai</span> — ตรวจสอบวินัย</h3>
+      <p>ตรวจสอบและอนุมัติวินัยของผู้ต้องขัง</p>
+      <div class="callout">
+        <strong>📋 หน้าที่หลัก:</strong>
+        <ul style="margin:6px 0 0 16px;">
+          <li>ตรวจสอบวินัยผู้ต้องขัง</li>
+          <li>อนุมัติหรือปฏิเสธการจอง (ขั้นตอนวินัย)</li>
+          <li>ดูสลิปการชำระเงิน</li>
+          <li>ดูรายละเอียดการจอง</li>
+        </ul>
+      </div>
+      <h4>เมนูที่คุณเห็น:</h4>
+      <p>🏠 ภาพรวม · 📋 รายการจอง · 📊 รายงาน</p>
+      <h4>วิธีทำงาน:</h4>
+      <ol class="step-list">
+        <li>เข้าสู่ระบบ → ไปที่หน้า <strong>ภาพรวม</strong></li>
+        <li>ดูการ์ด <strong>"🔍 รอตรวจสอบวินัย"</strong> เพื่อดูจำนวนรายการที่รอดำเนินการ</li>
+        <li>คลิก <strong>"ดำเนินการ →"</strong> เพื่อไปที่รายการที่กรองแล้ว</li>
+        <li>คลิก <strong>✓</strong> เพื่ออนุมัติ หรือ <strong>✕</strong> เพื่อปฏิเสธ</li>
+      </ol>
+    </div>
+
+    <!-- Tadtel -->
+    <div style="margin-bottom:24px;">
+      <h3><span class="role-badge tadtel">Tadtel</span> — ตรวจสอบผู้เข้าร่วม</h3>
+      <p>ตรวจสอบและอนุมัติผู้เข้าร่วมกิจกรรม</p>
+      <div class="callout">
+        <strong>📋 หน้าที่หลัก:</strong>
+        <ul style="margin:6px 0 0 16px;">
+          <li>ตรวจสอบผู้เข้าร่วมกิจกรรม</li>
+          <li>อนุมัติหรือปฏิเสธการจอง (ขั้นตอนผู้เข้าร่วม)</li>
+          <li>ดูสลิปการชำระเงิน</li>
+          <li>ดูรายละเอียดการจอง</li>
+        </ul>
+      </div>
+      <h4>เมนูที่คุณเห็น:</h4>
+      <p>🏠 ภาพรวม · 📋 รายการจอง · 📊 รายงาน</p>
+      <h4>วิธีทำงาน:</h4>
+      <ol class="step-list">
+        <li>เข้าสู่ระบบ → ไปที่หน้า <strong>ภาพรวม</strong></li>
+        <li>ดูการ์ด <strong>"👥 รอตรวจสอบผู้เข้าร่วม"</strong> เพื่อดูจำนวนรายการที่รอดำเนินการ</li>
+        <li>คลิก <strong>"ดำเนินการ →"</strong> เพื่อไปที่รายการที่กรองแล้ว</li>
+        <li>คลิก <strong>✓</strong> เพื่ออนุมัติ หรือ <strong>✕</strong> เพื่อปฏิเสธ</li>
+      </ol>
+    </div>
+
+    <!-- Finance -->
+    <div style="margin-bottom:24px;">
+      <h3><span class="role-badge finance">Finance</span> — การเงิน</h3>
+      <p>ยืนยันและจัดการการชำระเงิน</p>
+      <div class="callout">
+        <strong>📋 หน้าที่หลัก:</strong>
+        <ul style="margin:6px 0 0 16px;">
+          <li>ยืนยันการชำระเงิน</li>
+          <li>ปฏิเสธการชำระเงิน</li>
+          <li>ดูสลิปการโอนเงิน</li>
+          <li>ดูรายละเอียดการจอง</li>
+        </ul>
+      </div>
+      <h4>เมนูที่คุณเห็น:</h4>
+      <p>📋 รายการจอง · 📊 รายงาน</p>
+      <h4>วิธีทำงาน:</h4>
+      <ol class="step-list">
+        <li>เข้าสู่ระบบ → ไปที่หน้า <strong>รายการจอง</strong></li>
+        <li>กรองสถานะเป็น <strong>"💳 รอชำระ"</strong></li>
+        <li>คลิก <strong>🧾</strong> เพื่อดูสลิปการโอนเงิน</li>
+        <li>คลิก <strong>✓</strong> เพื่อยืนยันชำระ หรือ <strong>✕</strong> เพื่อปฏิเสธ</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 16: v4.0 NEW FEATURES ===== -->
+  <div class="section" id="s16">
+    <h2><i class="ti ti-sparkles"></i> 16. ฟีเจอร์ใหม่ v4.0</h2>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:16px;">อัปเดตใหม่ล่าสุดที่เพิ่มเข้ามาในระบบ</p>
+
+    <h3>🆕 สิ่งที่เพิ่มเข้ามา</h3>
+    <table class="guide-table">
+      <tr><th>ฟีเจอร์</th><th>คำอธิบาย</th><th>ใช้ได้กับ</th></tr>
+      <tr><td>👋 Welcome Banner</td><td>แสดงคำทักทายตามบทบาท + จำนวนรายการที่ต้องทำ</td><td>ทุกบทบาท</td></tr>
+      <tr><td>⚡ Quick Actions</td><td>ปุ่มลัดสำหรับการกระทำที่ใช้บ่อย</td><td>Admin, Superadmin</td></tr>
+      <tr><td>📊 Pipeline Funnel</td><td>แผนผังแสดงขั้นตอนการดำเนินงานแบบ visual</td><td>ทุกบทบาท</td></tr>
+      <tr><td>⚠️ Alerts</td><td>แจ้งเตือนสำหรับรายการค้างเก่าและการจองวันพรุ่งนี้</td><td>ทุกบทบาท</td></tr>
+      <tr><td>📈 Performance Metrics</td><td>อัตราการอนุมัติ, จำนวนเสร็จสิ้น, การจองเดือนนี้</td><td>Superadmin, Admin</td></tr>
+      <tr><td>📋 Today's Visits</td><td>รายการจองที่ยืนยันแล้วสำหรับวันนี้</td><td>Superadmin, Admin</td></tr>
+      <tr><td>📊 Reservation Summary</td><td>สรุปจำนวนตามสถานะเหนือตาราง</td><td>ทุกบทบาท</td></tr>
+      <tr><td>🌙 Dark Mode</td><td>โหมดมืดสำหรับการใช้งานในที่มืด</td><td>ทุกบทบาท (localStorage)</td></tr>
+      <tr><td>🔍 Search Highlight</td><td>เน้นคำค้นหาในผลลัพธ์</td><td>ทุกบทบาท</td></tr>
+      <tr><td>⏳ Skeleton Loading</td><td>สถานะโหลดแบบ skeleton แทน spinner</td><td>ทุกบทบาท</td></tr>
+    </table>
+
+    <div class="callout">
+      <strong>💡 หมายเหตุ:</strong> Dark Mode จะบันทึกค่าใน localStorage ของเบราว์เซอร์ — เมื่อเปิดครั้งแรกแล้วจะจำค่าไว้ในครั้งถัดไป
+    </div>
+  </div>
+
   <!-- Footer -->
   <div style="text-align:center;padding:24px 0 12px;border-top:1px solid var(--border);margin-top:12px;">
     <p style="font-size:12px;color:var(--text-muted);">
       จัดทำโดย ทัณฑสถานบำบัดพิเศษกลาง · ระบบ CC Cafe Reservation<br>
-      เวอร์ชัน 2.0 — มิถุนายน 2569
+      เวอร์ชัน 4.0 — มิถุนายน 2569
     </p>
   </div>
 

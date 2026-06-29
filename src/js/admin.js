@@ -116,6 +116,8 @@ const PRINT_SHARED_CSS = `
 let allRows = [];
 let currentPage = 1;
 let pageSize = 10;
+let overviewPage = 1;
+const overviewPageSize = 10;
 let currentUser = null;
 let prisonerMaster = [];
 
@@ -753,16 +755,20 @@ function computeFinanceTimeSeries(rows) {
   };
 }
 
-let financeChartCache = [];
-
 function formatBaht(n) {
   return (n || 0).toLocaleString('th-TH') + ' บาท';
 }
 
+function formatChartBahtShort(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
 function renderFinanceOverview() {
   const summaryEl = document.getElementById('financeSummary');
-  const canvas = document.getElementById('financeChart');
-  if (!summaryEl || !canvas) return;
+  const chartEl = document.getElementById('financeChart');
+  if (!summaryEl || !chartEl) return;
 
   const stats = computeFinanceStats(allRows);
   const { totalBooked, paid, unpaid, pendingReview, bookingCount } = stats;
@@ -789,7 +795,7 @@ function renderFinanceOverview() {
   `;
 
   const timeSeries = computeFinanceTimeSeries(allRows);
-  drawFinanceLineChart(canvas, timeSeries);
+  drawFinanceLineChart(chartEl, timeSeries);
 
   const legendEl = document.getElementById('financeLegend');
   if (legendEl) {
@@ -802,166 +808,116 @@ function renderFinanceOverview() {
   }
 }
 
-function formatChartBahtShort(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
-  return String(n);
-}
-
-function buildSmoothPoints(values, xAt, yAt, baselineY) {
-  const pts = values.map((v, i) => ({ x: xAt(i), y: yAt(v), value: v }));
-  if (pts.length < 2) return pts;
-  return pts;
-}
-
-function traceSmoothLine(ctx, points) {
-  if (!points.length) return;
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i];
-    const p1 = points[i + 1];
-    const mx = (p0.x + p1.x) / 2;
-    ctx.bezierCurveTo(mx, p0.y, mx, p1.y, p1.x, p1.y);
-  }
-}
-
-function drawFinanceLineChart(canvas, timeSeries) {
-  if (!canvas || !timeSeries) return;
-  const ctx = canvas.getContext('2d', { alpha: true });
-  const w = canvas.width = canvas.offsetWidth || 520;
-  const h = canvas.height = 240;
-  ctx.clearRect(0, 0, w, h);
-  financeChartCache = [];
+function drawFinanceLineChart(container, timeSeries) {
+  if (!container || !timeSeries) return;
+  d3.select(container).selectAll('*').remove();
 
   const { days, series } = timeSeries;
   const allVals = series.flatMap(s => s.values);
   const maxVal = Math.max(1, ...allVals);
   const hasData = allVals.some(v => v > 0);
-
-  const pad = { top: 24, right: 20, bottom: 32, left: 52 };
-  const chartW = w - pad.left - pad.right;
-  const chartH = h - pad.top - pad.bottom;
-  const baseY = pad.top + chartH;
+  const ch = 200;
 
   if (!hasData) {
-    ctx.fillStyle = '#6B7280';
-    ctx.font = '13px Sarabun, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('ยังไม่มียอดจองในช่วง 14 วันนี้', w / 2, h / 2);
+    d3.select(container).append('div')
+      .style('text-align', 'center').style('color', '#94a3b8')
+      .style('padding', '40px 0').style('font-size', '13px')
+      .style('font-family', "'Sarabun', sans-serif")
+      .text('ยังไม่มียอดจองในช่วง 14 วันนี้');
     return;
   }
 
-  const xAt = i => pad.left + (days.length <= 1 ? chartW / 2 : (i / (days.length - 1)) * chartW);
-  const yAt = v => baseY - (v / maxVal) * chartH;
+  const w = container.offsetWidth || 520;
+  const pad = { top: 24, right: 20, bottom: 32, left: 52 };
+  const cw = w - pad.left - pad.right;
+  const chartH = ch - pad.top - pad.bottom;
 
-  // grid + y-axis labels
-  ctx.strokeStyle = 'rgba(11,37,69,0.07)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = pad.top + (chartH / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(pad.left, y);
-    ctx.lineTo(w - pad.right, y);
-    ctx.stroke();
-    const val = Math.round(maxVal * (1 - i / 4));
-    ctx.fillStyle = '#6B7280';
-    ctx.font = '9px Sarabun, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(formatChartBahtShort(val), pad.left - 8, y + 3);
-  }
+  const svg = d3.select(container).append('svg').attr('width', w).attr('height', ch);
+  const defs = svg.append('defs');
+  series.forEach(s => {
+    const lg = defs.append('linearGradient').attr('id', 'grad-' + s.id)
+      .attr('x1', '0').attr('y1', '0').attr('x2', '0').attr('y2', '1');
+    lg.append('stop').attr('offset', '0%').attr('stop-color', s.fillTop);
+    lg.append('stop').attr('offset', '100%').attr('stop-color', s.fillBottom);
+  });
+  const g = svg.append('g').attr('transform', 'translate(' + pad.left + ',' + pad.top + ')');
 
-  // x-axis labels (every other day on narrow screens)
+  const x = d3.scaleBand().domain(days).range([0, cw]);
+  const y = d3.scaleLinear().domain([0, maxVal * 1.1]).range([chartH, 0]);
+
+  // grid lines
+  g.selectAll('.grid').data(y.ticks(4)).enter().append('line')
+    .attr('x1', 0).attr('x2', cw)
+    .attr('y1', d => y(d)).attr('y2', d => y(d))
+    .attr('stroke', 'rgba(11,37,69,0.07)').attr('stroke-width', 1);
+
+  // y-axis labels
+  g.selectAll('.y-label').data(y.ticks(4)).enter().append('text')
+    .attr('x', -8).attr('y', d => y(d) + 3).attr('text-anchor', 'end')
+    .attr('fill', '#6B7280').attr('font-size', '9px').attr('font-family', "'Sarabun', sans-serif")
+    .text(d => formatChartBahtShort(d));
+
+  // x-axis labels
   const step = days.length > 10 ? 2 : 1;
-  days.forEach((day, i) => {
-    if (i % step !== 0 && i !== days.length - 1) return;
-    const x = xAt(i);
-    const label = new Date(day + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
-    ctx.fillStyle = '#3F4755';
-    ctx.font = '9px Sarabun, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, x, h - 10);
-  });
+  g.selectAll('.x-label').data(days.filter((d, i) => i % step === 0 || i === days.length - 1))
+    .enter().append('text')
+    .attr('x', d => x(d) + x.bandwidth() / 2).attr('y', chartH + 16).attr('text-anchor', 'middle')
+    .attr('fill', '#3F4755').attr('font-size', '9px').attr('font-family', "'Sarabun', sans-serif")
+    .text(d => new Date(d + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' }));
 
-  // draw areas then lines (booked behind, unpaid in front)
+  // area + line generator
+  const areaGen = d3.area()
+    .x(d => x(d.day) + x.bandwidth() / 2)
+    .y0(chartH)
+    .y1(d => y(d.val))
+    .curve(d3.curveMonotoneX);
+  const lineGen = d3.line()
+    .x(d => x(d.day) + x.bandwidth() / 2)
+    .y(d => y(d.val))
+    .curve(d3.curveMonotoneX);
+
+  // draw series (reversed: booked behind, unpaid in front)
   [...series].reverse().forEach(s => {
-    const points = buildSmoothPoints(s.values, xAt, yAt, baseY);
-    if (!points.length) return;
+    const pts = days.map((day, i) => ({ day, val: s.values[i] }));
 
-    const grad = ctx.createLinearGradient(0, pad.top, 0, baseY);
-    grad.addColorStop(0, s.fillTop);
-    grad.addColorStop(1, s.fillBottom);
+    // area
+    g.append('path').datum(pts)
+      .attr('fill', 'url(#grad-' + s.id + ')').attr('opacity', 0)
+      .attr('d', areaGen)
+      .transition().duration(600)
+      .attr('opacity', 1);
 
-    ctx.beginPath();
-    traceSmoothLine(ctx, points);
-    ctx.lineTo(points[points.length - 1].x, baseY);
-    ctx.lineTo(points[0].x, baseY);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
+    // line
+    g.append('path').datum(pts)
+      .attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 2.5)
+      .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+      .attr('opacity', 0)
+      .attr('d', lineGen)
+      .transition().duration(600)
+      .attr('opacity', 1);
 
-    ctx.beginPath();
-    traceSmoothLine(ctx, points);
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.stroke();
+    // dots + hover
+    const dots = g.selectAll('.dot-' + s.id).data(pts).enter().append('circle')
+      .attr('cx', d => x(d.day) + x.bandwidth() / 2)
+      .attr('cy', d => y(d.val))
+      .attr('r', 0)
+      .attr('fill', '#fff').attr('stroke', s.color).attr('stroke-width', 2)
+      .attr('opacity', d => d.val > 0 ? 1 : 0);
 
-    points.forEach((p, i) => {
-      financeChartCache.push({
-        x: p.x - 8, y: p.y - 8, width: 16, height: 16,
-        date: days[i],
-        series: s.label,
-        value: p.value,
-        label: new Date(days[i] + 'T12:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })
-      });
-      if (p.value > 0) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
-        ctx.fill();
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
+    dots.transition().duration(600).delay((d, i) => i * 30)
+      .attr('r', d => d.val > 0 ? 4 : 0);
+
+    dots.on('mouseenter', function (ev, d) {
+      d3.select(this).transition().duration(150).attr('r', 6);
+      const tip = d3.select(container).append('div').attr('class', 'd3-tooltip');
+      tip.html(
+        '<strong>' + new Date(d.day + 'T12:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }) + '</strong><br>' +
+        s.label + ': <strong>' + d.val.toLocaleString('th-TH') + ' บาท</strong>'
+      ).style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 28) + 'px');
+    }).on('mouseleave', function () {
+      d3.select(this).transition().duration(150).attr('r', 4);
+      d3.select(container).selectAll('.d3-tooltip').remove();
     });
-  });
-}
-
-// Hover tooltip for finance line chart (desktop) + tap support (mobile)
-const financeCanvasEl = document.getElementById('financeChart');
-if (financeCanvasEl) {
-  financeCanvasEl.addEventListener('mousemove', (e) => {
-    if (!financeChartCache.length) return;
-    const rect = financeCanvasEl.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    let found = null;
-    let best = Infinity;
-    for (const item of financeChartCache) {
-      const cx = item.x + item.width / 2;
-      const cy = item.y + item.height / 2;
-      const d = Math.hypot(mouseX - cx, mouseY - cy);
-      if (d < 14 && d < best) { best = d; found = item; }
-    }
-    if (found) {
-      financeCanvasEl.style.cursor = 'pointer';
-      financeCanvasEl.title = `${found.label} · ${found.series}: ${found.value.toLocaleString('th-TH')} บาท`;
-    } else {
-      financeCanvasEl.style.cursor = 'default';
-      financeCanvasEl.title = '';
-    }
-  });
-  financeCanvasEl.addEventListener('mouseleave', () => {
-    financeCanvasEl.style.cursor = 'default';
-    financeCanvasEl.title = '';
-  });
-  // Tap for mobile
-  financeCanvasEl.addEventListener('click', (e) => {
-    if ('ontouchstart' in window) {
-      showChartTooltip(financeCanvasEl, financeChartCache, financeCanvasEl.getBoundingClientRect(), e.clientX, e.clientY);
-      setTimeout(hideChartTooltip, 2000);
-    }
   });
 }
 
@@ -1006,7 +962,7 @@ let renderDashboardHome = function () {
     const elM = document.getElementById('statThisMonth'); if (elM) elM.textContent = '0';
     const elV = document.getElementById('statUniqueVisitors'); if (elV) elV.textContent = '0';
     const chartEl = document.getElementById('trendChart');
-    if (chartEl) chartEl.getContext && chartEl.getContext('2d').clearRect(0, 0, chartEl.width, chartEl.height);
+    if (chartEl) d3.select(chartEl).selectAll('*').remove();
     return;
   }
 
@@ -1110,20 +1066,14 @@ let renderDashboardHome = function () {
   drawReservationTrendChart();
 }
 
-let trendDataCache = []; // for hover detection
-
 function drawReservationTrendChart() {
-  const canvas = document.getElementById('trendChart');
-  if (!canvas) return;
+  const container = document.getElementById('trendChart');
+  if (!container) return;
+  d3.select(container).selectAll('*').remove();
 
-  const ctx = canvas.getContext('2d', { alpha: true });
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Aggregate last 14 days
   const dateCounts = {};
   const today = new Date();
   const days = [];
-
   for (let i = 13; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
@@ -1144,186 +1094,97 @@ function drawReservationTrendChart() {
   const values = days.map(d => dateCounts[d]);
   const maxVal = Math.max(1, ...values);
 
-  const w = canvas.width = canvas.offsetWidth || 620;
-  const h = canvas.height = 220;
-  const paddingLeft = 32;
-  const paddingBottom = 28;
-  const paddingTop = 18;
-  const chartW = w - paddingLeft - 8;
-  const chartH = h - paddingBottom - paddingTop;
-  const barGap = 5;
-  const barW = Math.max(6, (chartW - (days.length - 1) * barGap) / days.length);
+  const cw = container.offsetWidth || 620;
+  const ch = 220;
+  const pad = { top: 18, right: 8, bottom: 28, left: 32 };
+  const chartW = cw - pad.left - pad.right;
+  const chartH = ch - pad.top - pad.bottom;
 
-  trendDataCache = []; // reset for hover
+  const svg = d3.select(container).append('svg').attr('width', cw).attr('height', ch);
+  const g = svg.append('g').attr('transform', 'translate(' + pad.left + ',' + pad.top + ')');
 
-  // Light grid lines
-  ctx.strokeStyle = 'rgba(11,37,69,0.08)';
-  ctx.lineWidth = 1;
-  for (let i = 1; i <= 4; i++) {
-    const y = paddingTop + (chartH / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(paddingLeft, y);
-    ctx.lineTo(paddingLeft + chartW, y);
-    ctx.stroke();
-  }
+  const x = d3.scaleBand().domain(days).range([0, chartW]).padding(0.25);
+  const y = d3.scaleLinear().domain([0, maxVal]).range([chartH, 0]);
 
-  // Bars + store positions for hover
-  days.forEach((day, i) => {
-    const val = values[i];
-    const barH = Math.max(3, Math.round((val / maxVal) * chartH));
-    const x = paddingLeft + i * (barW + barGap);
-    const y = h - paddingBottom - barH;
+  // grid
+  g.selectAll('.grid').data(y.ticks(4)).enter().append('line')
+    .attr('x1', 0).attr('x2', chartW)
+    .attr('y1', d => y(d)).attr('y2', d => y(d))
+    .attr('stroke', 'rgba(11,37,69,0.08)').attr('stroke-width', 1);
 
-    // Store data for tooltip
-    trendDataCache.push({
-      x, y, width: barW, height: barH,
-      date: day,
-      count: val,
-      label: new Date(day).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })
+  // bars
+  g.selectAll('.bar').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
+    .append('rect')
+    .attr('x', d => x(d.day)).attr('width', x.bandwidth())
+    .attr('y', chartH).attr('height', 0).attr('rx', 2)
+    .attr('fill', d => d.val > 0 ? '#0B2545' : '#E8E0D1')
+    .transition().duration(500).delay((d, i) => i * 30)
+    .attr('y', d => y(d.val)).attr('height', d => chartH - y(d.val));
+
+  // gold top accent
+  g.selectAll('.bar-top').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
+    .append('rect')
+    .attr('x', d => x(d.day)).attr('width', x.bandwidth()).attr('height', 2.5)
+    .attr('y', chartH).attr('fill', '#D4AF37').attr('opacity', 0)
+    .transition().duration(500).delay((d, i) => i * 30)
+    .attr('y', d => d.val > 0 ? y(d.val) : chartH).attr('opacity', d => d.val > 0 ? 1 : 0);
+
+  // value labels
+  g.selectAll('.val-label').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
+    .append('text')
+    .attr('x', d => x(d.day) + x.bandwidth() / 2).attr('y', d => y(d.val) - 5)
+    .attr('text-anchor', 'middle').attr('fill', '#1C2433')
+    .attr('font-size', '10px').attr('font-weight', 'bold')
+    .attr('font-family', "'Sarabun', sans-serif")
+    .attr('opacity', 0)
+    .transition().duration(500).delay((d, i) => i * 30)
+    .attr('opacity', d => d.val > 0 ? 1 : 0);
+
+  // x-axis labels
+  g.selectAll('.x-label').data(days).enter().append('text')
+    .attr('x', d => x(d) + x.bandwidth() / 2).attr('y', chartH + 16).attr('text-anchor', 'middle')
+    .attr('fill', '#3F4755').attr('font-size', '9px')
+    .attr('font-family', "'Sarabun', sans-serif")
+    .text(d => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit' }));
+
+  // y-axis max
+  g.append('text').attr('x', -6).attr('y', y(maxVal) + 3).attr('text-anchor', 'end')
+    .attr('fill', '#6B7280').attr('font-size', '9px')
+    .attr('font-family', "'Sarabun', sans-serif")
+    .text(maxVal);
+
+  // hover
+  g.selectAll('.bar-hover').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
+    .append('rect')
+    .attr('x', d => x(d.day)).attr('width', x.bandwidth())
+    .attr('y', 0).attr('height', chartH).attr('fill', 'transparent').style('cursor', 'pointer')
+    .on('mouseenter', function (ev, d) {
+      const tip = d3.select(container).append('div').attr('class', 'd3-tooltip');
+      tip.html(
+        '<strong>' + new Date(d.day).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }) + '</strong><br>' +
+        d.val + ' รายการ'
+      ).style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 40) + 'px');
+    })
+    .on('mouseleave', function () {
+      d3.select(container).selectAll('.d3-tooltip').remove();
     });
-
-    // Navy bar
-    ctx.fillStyle = val > 0 ? '#0B2545' : '#E8E0D1';
-    ctx.fillRect(x, y, barW, barH);
-
-    // Gold top accent
-    if (val > 0) {
-      ctx.fillStyle = '#D4AF37';
-      ctx.fillRect(x, y, barW, 2.5);
-    }
-
-    // Value label
-    if (val > 0) {
-      ctx.fillStyle = '#1C2433';
-      ctx.font = 'bold 10px Sarabun, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(val, x + barW / 2, y - 5);
-    }
-
-    // Day label
-    const labelDate = new Date(day);
-    const label = labelDate.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit' });
-    ctx.fillStyle = '#3F4755';
-    ctx.font = '9px Sarabun, sans-serif';
-    ctx.fillText(label, x + barW / 2, h - 8);
-  });
-
-  // Y-axis max
-  ctx.fillStyle = '#6B7280';
-  ctx.font = '9px Sarabun, sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(maxVal, paddingLeft - 6, paddingTop + 3);
 }
 
-// Simple hover tooltip for trend chart (desktop) + tap support (mobile)
-const trendCanvas = document.getElementById('trendChart');
-if (trendCanvas) {
-  trendCanvas.addEventListener('mousemove', (e) => {
-    if (!trendDataCache.length) return;
-    const rect = trendCanvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    let found = null;
-    for (const item of trendDataCache) {
-      if (mouseX >= item.x && mouseX <= item.x + item.width &&
-        mouseY >= item.y && mouseY <= item.y + item.height) {
-        found = item;
-        break;
-      }
-    }
-    if (found) {
-      trendCanvas.style.cursor = 'pointer';
-      trendCanvas.title = `${found.label} — ${found.count} รายการ`;
-    } else {
-      trendCanvas.style.cursor = 'default';
-      trendCanvas.title = '';
-    }
-  });
-  trendCanvas.addEventListener('mouseleave', () => {
-    trendCanvas.style.cursor = 'default';
-    trendCanvas.title = '';
-  });
-  // Tap for mobile
-  trendCanvas.addEventListener('click', (e) => {
-    if ('ontouchstart' in window) {
-      showChartTooltip(trendCanvas, trendDataCache, trendCanvas.getBoundingClientRect(), e.clientX, e.clientY);
-      setTimeout(hideChartTooltip, 2000);
-    }
-  });
-}
-
-// Redraw trend chart on window resize (when overview is visible)
+// Redraw charts on window resize
 window.addEventListener('resize', () => {
   const homeView = document.getElementById('view-home');
-  if (homeView && homeView.style.display !== 'none' && document.getElementById('trendChart')) {
-    clearTimeout(window._trendResizeTimer);
-    window._trendResizeTimer = setTimeout(() => {
-      if (typeof drawReservationTrendChart === 'function') drawReservationTrendChart();
-      const financeCanvas = document.getElementById('financeChart');
-      if (financeCanvas && typeof drawFinanceLineChart === 'function') {
-        drawFinanceLineChart(financeCanvas, computeFinanceTimeSeries(allRows));
+  if (homeView && homeView.style.display !== 'none') {
+    clearTimeout(window._chartResizeTimer);
+    window._chartResizeTimer = setTimeout(() => {
+      const trendEl = document.getElementById('trendChart');
+      if (trendEl && typeof drawReservationTrendChart === 'function') drawReservationTrendChart();
+      const financeEl = document.getElementById('financeChart');
+      if (financeEl && typeof drawFinanceLineChart === 'function') {
+        drawFinanceLineChart(financeEl, computeFinanceTimeSeries(allRows));
       }
     }, 120);
   }
 });
-
-// ===== MOBILE CHART INTERACTIONS - Touch/Tap Tooltips =====
-let activeTooltip = null;
-function showChartTooltip(canvas, data, rect, clientX, clientY) {
-  const mouseX = clientX - rect.left;
-  const mouseY = clientY - rect.top;
-
-  let found = null;
-  let best = Infinity;
-
-  for (const item of data) {
-    const cx = item.x + item.width / 2;
-    const cy = item.y + item.height / 2;
-    const d = Math.hypot(mouseX - cx, mouseY - cy);
-    if (d < 20 && d < best) { best = d; found = item; }
-  }
-
-  if (found) {
-    if (activeTooltip) activeTooltip.remove();
-    activeTooltip = document.createElement('div');
-    activeTooltip.className = 'chart-tooltip';
-    activeTooltip.style.cssText = `
-      position: fixed; background: rgba(11,37,69,0.95); color: #fff;
-      padding: 8px 12px; border-radius: 6px; font-size: 12px; pointer-events: none;
-      z-index: 9999; max-width: 200px; text-align: center;
-    `;
-    activeTooltip.textContent = `${found.label} · ${found.series}: ${found.value.toLocaleString('th-TH')} บาท`;
-    activeTooltip.style.left = (clientX + 10) + 'px';
-    activeTooltip.style.top = (clientY - 30) + 'px';
-    document.body.appendChild(activeTooltip);
-  }
-}
-
-function hideChartTooltip() {
-  if (activeTooltip) {
-    activeTooltip.remove();
-    activeTooltip = null;
-  }
-}
-
-// Setup touch/click handlers for both charts
-function setupChartTouchInteractions() {
-  const financeCanvas = document.getElementById('financeChart');
-  if (financeCanvas) {
-    financeCanvas.addEventListener('click', (e) => {
-      showChartTooltip(financeCanvas, financeChartCache, financeCanvas.getBoundingClientRect(), e.clientX, e.clientY);
-      setTimeout(hideChartTooltip, 2000);
-    });
-  }
-
-  const trendCanvas = document.getElementById('trendChart');
-  if (trendCanvas) {
-    trendCanvas.addEventListener('click', (e) => {
-      showChartTooltip(trendCanvas, trendDataCache, trendCanvas.getBoundingClientRect(), e.clientX, e.clientY);
-      setTimeout(hideChartTooltip, 2000);
-    });
-  }
-}
 
 // ===== FILTER STATE MANAGEMENT =====
 const filterState = {
@@ -1424,7 +1285,6 @@ document.addEventListener('click', (e) => {
 document.addEventListener('DOMContentLoaded', async () => {
   await initBackendUrl();
   loadFilterState();
-  setupChartTouchInteractions();
   initPullToRefresh();
 
   const searchBox = document.getElementById('searchBox');
@@ -3958,20 +3818,13 @@ function renderFinanceRibbon() {
 
 // ===== STATUS DONUT CHART (Canvas 2D) =====
 function drawStatusDonutChart() {
-  const canvas = document.getElementById('statusDonutChart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const size = 180;
-  canvas.width = size * dpr;
-  canvas.height = size * dpr;
-  canvas.style.width = size + 'px';
-  canvas.style.height = size + 'px';
-  ctx.scale(dpr, dpr);
+  const container = document.getElementById('statusDonutChart');
+  if (!container) return;
+  d3.select(container).selectAll('*').remove();
 
   const statusOrder = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
   const colors = {
-    'รอตรวจสอบวинัย': '#3b82f6',
+    'รอตรวจสอบวินัย': '#3b82f6',
     'รอตรวจสอบผู้เข้าร่วม': '#f97316',
     'รอชำระเงิน': '#eab308',
     'ชำระแล้ว': '#22c55e',
@@ -3998,32 +3851,47 @@ function drawStatusDonutChart() {
   });
 
   const total = allRows.filter(r => r.ref && String(r.ref).trim() !== '').length || 1;
-  const cx = size / 2, cy = size / 2;
+  const size = 180;
   const outerR = 78, innerR = 50;
-  let startAngle = -Math.PI / 2;
 
-  statusOrder.forEach(status => {
-    const val = counts[status];
-    if (val === 0) return;
-    const slice = (val / total) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, outerR, startAngle, startAngle + slice);
-    ctx.arc(cx, cy, innerR, startAngle + slice, startAngle, true);
-    ctx.closePath();
-    ctx.fillStyle = colors[status];
-    ctx.fill();
-    startAngle += slice;
-  });
+  const data = statusOrder.filter(s => counts[s] > 0).map(s => ({ status: s, count: counts[s] }));
+  const pie = d3.pie().value(d => d.count).sort(null).padAngle(0.02);
+  const arc = d3.arc().innerRadius(innerR).outerRadius(outerR);
+  const arcHover = d3.arc().innerRadius(innerR).outerRadius(outerR + 6);
+
+  const svg = d3.select(container).append('svg')
+    .attr('width', size).attr('height', size)
+    .append('g').attr('transform', 'translate(' + size / 2 + ',' + size / 2 + ')');
+
+  const slices = svg.selectAll('.slice').data(pie(data)).enter().append('g').attr('class', 'slice');
+
+  slices.append('path')
+    .attr('d', arc)
+    .attr('fill', d => colors[d.data.status])
+    .attr('stroke', '#fff').attr('stroke-width', 2)
+    .style('cursor', 'pointer')
+    .on('mouseenter', function (ev, d) {
+      d3.select(this).transition().duration(200).attr('d', arcHover);
+      const tip = d3.select(container).append('div').attr('class', 'd3-tooltip');
+      tip.html(
+        '<strong>' + labels[d.data.status] + '</strong><br>' +
+        d.data.count + ' รายการ (' + Math.round((d.data.count / total) * 100) + '%)'
+      ).style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 40) + 'px');
+    })
+    .on('mouseleave', function () {
+      d3.select(this).transition().duration(200).attr('d', arc);
+      d3.select(container).selectAll('.d3-tooltip').remove();
+    });
 
   // Center text
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 28px Sarabun, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(total, cx, cy - 6);
-  ctx.font = '11px Sarabun, sans-serif';
-  ctx.fillStyle = '#64748b';
-  ctx.fillText('รายการทั้งหมด', cx, cy + 14);
+  svg.append('text').attr('text-anchor', 'middle').attr('dy', '-0.1em')
+    .attr('fill', '#0f172a').attr('font-size', '28px').attr('font-weight', 'bold')
+    .attr('font-family', "'Sarabun', sans-serif")
+    .text(total);
+  svg.append('text').attr('text-anchor', 'middle').attr('dy', '1.4em')
+    .attr('fill', '#64748b').attr('font-size', '11px')
+    .attr('font-family', "'Sarabun', sans-serif")
+    .text('รายการทั้งหมด');
 
   // Legend
   const legendEl = document.getElementById('donutLegend');
@@ -4042,10 +3910,10 @@ function drawStatusDonutChart() {
 
 // ===== WING REVENUE HORIZONTAL BAR CHART =====
 function drawWingRevenueChart() {
-  const canvas = document.getElementById('wingRevenueChart');
-  if (!canvas) return;
+  const container = document.getElementById('wingRevenueChart');
+  if (!container) return;
+  d3.select(container).selectAll('*').remove();
 
-  // Aggregate revenue by wing
   const wingData = {};
   allRows.forEach(r => {
     if (!r.ref || String(r.ref).trim() === '') return;
@@ -4055,51 +3923,66 @@ function drawWingRevenueChart() {
     wingData[wing] = (wingData[wing] || 0) + (parseInt(r.total) || 0);
   });
 
-  const sorted = Object.entries(wingData)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+  const sorted = Object.entries(wingData).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   if (sorted.length === 0) {
-    const ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth || 400;
-    canvas.height = 200;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '13px Sarabun, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('ยังไม่มีข้อมูลรายได้', canvas.width / 2, 100);
+    d3.select(container).append('div')
+      .style('text-align', 'center').style('color', '#94a3b8')
+      .style('padding', '40px 0').style('font-size', '13px')
+      .style('font-family', "'Sarabun', sans-serif")
+      .text('ยังไม่มีข้อมูลรายได้');
     return;
   }
 
   const maxVal = sorted[0][1] || 1;
+  const barH = 28, gap = 8, pad = { top: 8, left: 70, right: 60, bottom: 8 };
+  const ch = sorted.length * (barH + gap) - gap + pad.top + pad.bottom;
+  const cw = (container.offsetWidth || 400);
   const barColors = ['#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
-  const container = canvas.parentElement;
 
-  // Replace canvas with HTML bars for better responsiveness
-  const existingBars = container.querySelector('.wing-bars');
-  if (existingBars) existingBars.remove();
+  const svg = d3.select(container).append('svg').attr('width', cw).attr('height', ch);
+  const g = svg.append('g').attr('transform', 'translate(' + pad.left + ',' + pad.top + ')');
 
-  const barsDiv = document.createElement('div');
-  barsDiv.className = 'wing-bars';
-  barsDiv.style.cssText = 'margin-top:8px;padding:0 4px;';
+  const y = d3.scaleBand().domain(sorted.map(d => d[0])).range([0, sorted.length * (barH + gap) - gap]).padding(0.2);
+  const x = d3.scaleLinear().domain([0, maxVal]).range([0, cw - pad.left - pad.right]);
 
-  sorted.forEach(([wing, revenue], i) => {
-    const pct = Math.round((revenue / maxVal) * 100);
-    barsDiv.innerHTML += `
-      <div class="wing-bar-row">
-        <div class="wing-bar-label">แดน ${wing}</div>
-        <div class="wing-bar-track">
-          <div class="wing-bar-fill" style="width:${pct}%;background:${barColors[i] || barColors[4]}">
-            <span class="wing-bar-val">${revenue.toLocaleString()} บ.</span>
-          </div>
-        </div>
-      </div>
-    `;
-  });
+  // bars
+  g.selectAll('.bar').data(sorted).enter().append('rect')
+    .attr('x', 0).attr('y', d => y(d[0]))
+    .attr('height', y.bandwidth()).attr('rx', 4)
+    .attr('fill', (d, i) => barColors[i] || barColors[4])
+    .attr('width', 0)
+    .transition().duration(600).delay((d, i) => i * 80)
+    .attr('width', d => x(d[1]));
 
-  container.appendChild(barsDiv);
-  // Hide canvas since we're using HTML bars
-  canvas.style.display = 'none';
+  // wing labels
+  g.selectAll('.wing-label').data(sorted).enter().append('text')
+    .attr('x', -8).attr('y', d => y(d[0]) + y.bandwidth() / 2).attr('dy', '0.35em')
+    .attr('text-anchor', 'end').attr('fill', '#3F4755')
+    .attr('font-size', '11px').attr('font-weight', '500')
+    .attr('font-family', "'Sarabun', sans-serif")
+    .text(d => 'แดน ' + d[0]);
+
+  // value labels
+  g.selectAll('.val-label').data(sorted).enter().append('text')
+    .attr('x', d => x(d[1]) + 6).attr('y', d => y(d[0]) + y.bandwidth() / 2).attr('dy', '0.35em')
+    .attr('fill', '#1C2433').attr('font-size', '11px').attr('font-weight', '700')
+    .attr('font-family', "'Sarabun', sans-serif")
+    .text(d => d[1].toLocaleString() + ' บ.');
+
+  // hover tooltip
+  g.selectAll('.bar-hover').data(sorted).enter().append('rect')
+    .attr('x', 0).attr('y', d => y(d[0]))
+    .attr('width', cw - pad.left - pad.right).attr('height', y.bandwidth())
+    .attr('fill', 'transparent').style('cursor', 'pointer')
+    .on('mouseenter', function (ev, d) {
+      const tip = d3.select(container).append('div').attr('class', 'd3-tooltip');
+      tip.html('<strong>แดน ' + d[0] + '</strong><br>รายได้: <strong>' + d[1].toLocaleString() + ' บาท</strong>')
+        .style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 40) + 'px');
+    })
+    .on('mouseleave', function () {
+      d3.select(container).selectAll('.d3-tooltip').remove();
+    });
 }
 
 // ===== FLOOR PLAN RENDERER =====
@@ -4197,25 +4080,167 @@ function renderFloorPlan() {
   }).join('');
 }
 
-// ===== OVERRIDE renderDashboardHome to include new components =====
-const _origRenderDashboardHome = typeof renderDashboardHome === 'function' ? renderDashboardHome : null;
+// ===== OVERVIEW TABLE (Embedded in Home) =====
+function buildOverviewDateFilter() {
+  const sel = document.getElementById('overviewFilterDate');
+  if (!sel) return;
+  const dates = [...new Set(allRows
+    .filter(r => r.ref && String(r.ref).trim() !== '')
+    .map(r => r.visitDate || r.visitDateISO)
+    .filter(Boolean)
+  )].sort();
+  sel.innerHTML = '<option value="">📅 ทุกวัน</option>' +
+    dates.map(d => '<option value="' + d + '">' + d + '</option>').join('');
+}
 
+function renderOverviewTable() {
+  const tbody = document.getElementById('overviewTableBody');
+  if (!tbody) return;
+  const countEl = document.getElementById('overviewTableCount');
+
+  const q = (document.getElementById('overviewSearch')?.value || '').toLowerCase();
+  const fs = document.getElementById('overviewFilterStatus')?.value || '';
+  const fd = document.getElementById('overviewFilterDate')?.value || '';
+  const role = currentUser ? currentUser.role : null;
+
+  const allowedStatuses = {
+    Superadmin: null,
+    Admin: null,
+    Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
+    Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
+    Vinai: ['รอตรวจสอบวินัย', 'รอตรวจสอบ']
+  };
+
+  let rows = allRows.filter(r => {
+    if (!r.ref || String(r.ref).trim() === '') return false;
+    if (allowedStatuses[role]) {
+      const normalized = normalizeStatus(r.status);
+      if (!allowedStatuses[role].includes(normalized)) return false;
+    }
+    if (fs && normalizeStatus(r.status) !== fs) return false;
+    if (fd && (r.visitDate || r.visitDateISO) !== fd) return false;
+    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if (countEl) countEl.textContent = rows.length + ' รายการ';
+
+  const totalPages = Math.ceil(rows.length / overviewPageSize) || 1;
+  if (overviewPage > totalPages) overviewPage = totalPages;
+  if (overviewPage < 1) overviewPage = 1;
+
+  const startIdx = (overviewPage - 1) * overviewPageSize;
+  const pageRows = rows.slice(startIdx, startIdx + overviewPageSize);
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">ไม่พบข้อมูล</td></tr>';
+    renderOverviewPagination(0, 0);
+    return;
+  }
+
+  const role2 = currentUser ? currentUser.role : 'User';
+  const isAdminOrSuper = role2 === 'Superadmin' || role2 === 'Admin';
+  const canApproveDiscipline = isAdminOrSuper || hasPermission('approve_discipline');
+  const canRejectDiscipline = isAdminOrSuper || hasPermission('reject_discipline');
+  const canApproveParticipant = isAdminOrSuper || hasPermission('approve_participant');
+  const canConfirmPayment = (role2 === 'Superadmin' || role2 === 'Admin' || hasPermission('confirm_payment'));
+  const canCancel = isAdminOrSuper || hasPermission('cancel');
+
+  tbody.innerHTML = pageRows.map(r => {
+    const s = normalizeStatus(r.status);
+    const badgeClass = {
+      'รอตรวจสอบวินัย': 'badge-discipline-check',
+      'รอตรวจสอบผู้เข้าร่วม': 'badge-participant-check',
+      'รอชำระเงิน': 'badge-payment-pending',
+      'ชำระแล้ว': 'badge-paid',
+      'เสร็จสิ้น': 'badge-completed',
+      'ไม่อนุมัติ': 'badge-rejected',
+      'ยกเลิก': 'badge-cancelled'
+    }[s] || 'badge-discipline-check';
+
+    const rowIdx = allRows.indexOf(r);
+    const isCancelled = s === 'ยกเลิก';
+    const isDone = s === 'เสร็จสิ้น';
+
+    const actions = [];
+    actions.push('<button class="action-icon-btn" title="ดูสลิป" onclick="viewSlip(' + rowIdx + ')">🧾</button>');
+    actions.push('<button class="action-icon-btn" title="รายละเอียด" onclick="viewDetail(' + rowIdx + ')">📋</button>');
+    if (isAdminOrSuper) actions.push('<button class="action-icon-btn" title="แก้ไข" onclick="editBooking(' + rowIdx + ')">✏️</button>');
+    if (canConfirmPayment && s === 'รอชำระเงิน') actions.push('<button class="action-icon-btn btn-approve-icon" title="ยืนยันชำระเงิน" onclick="confirmPayment(' + rowIdx + ')">💳</button>');
+    if (canConfirmPayment && s === 'ชำระแล้ว') actions.push('<button class="action-icon-btn btn-approve-icon" title="เสร็จสิ้น" onclick="confirmPayment(' + rowIdx + ')">✅</button>');
+    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push('<button class="action-icon-btn btn-approve-icon" title="อนุมัติวินัย" onclick="updateStatus(' + rowIdx + ',\'รอตรวจสอบผู้เข้าร่วม\')">✓</button>');
+    if (canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push('<button class="action-icon-btn btn-reject-icon" title="ปฏิเสธวินัย" onclick="updateStatus(' + rowIdx + ',\'ไม่อนุมัติ\')">✗</button>');
+    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push('<button class="action-icon-btn btn-approve-icon" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(' + rowIdx + ',\'รอชำระเงิน\')">✓</button>');
+    if (canCancel && !isCancelled && !isDone) actions.push('<button class="action-icon-btn btn-cancel-icon" title="ยกเลิก" onclick="cancelBooking(' + rowIdx + ')">🚫</button>');
+
+    return '<tr>' +
+      '<td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:13px;cursor:pointer;text-decoration:underline" onclick="viewDetail(' + rowIdx + ')">' + escHtml(r.ref) + '</b></td>' +
+      '<td data-label="ผู้ต้องขัง/คู่เยี่ยม" style="white-space:normal">' +
+        '<div style="font-weight:700;font-size:14px;color:var(--blue)">' + escHtml(r.prisonerName || '—') + '</div>' +
+        '<div style="font-size:11px;color:var(--text2)">#' + escHtml(r.prisonerId || '') + '</div>' +
+        '<div style="border-top:1px dashed var(--border);padding-top:3px;margin-top:3px">' +
+          '<span style="font-size:13px;font-weight:600">' + escHtml(r.visitorName || '') + '</span>' +
+          '<span style="font-size:11px;color:var(--text2);margin-left:3px">' + escHtml(r.visitorPhone || '') + '</span>' +
+        '</div>' +
+      '</td>' +
+      '<td data-label="แดน" style="font-size:14px;font-weight:600">' + escHtml(r.wing || '—') + '</td>' +
+      '<td data-label="ยอด" style="font-size:13px">' + (r.total || 0).toLocaleString() + ' บ.</td>' +
+      '<td data-label="สถานะ" style="white-space:nowrap"><span class="badge ' + badgeClass + '" style="font-size:12px">' + escHtml(s) + '</span></td>' +
+      '<td data-label="วันที่" style="font-size:12px">' + escHtml(r.visitDate || '') + '</td>' +
+      '<td data-label="จัดการ"><div class="action-btns" style="flex-wrap:nowrap">' + actions.join('') + '</div></td>' +
+    '</tr>';
+  }).join('');
+
+  renderOverviewPagination(totalPages, rows.length);
+}
+
+function renderOverviewPagination(totalPages, totalFiltered) {
+  const container = document.getElementById('overviewPagination');
+  if (!container) return;
+  if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+  const maxButtons = 5;
+  let startP = Math.max(1, overviewPage - Math.floor(maxButtons / 2));
+  let endP = Math.min(totalPages, startP + maxButtons - 1);
+  if (endP - startP + 1 < maxButtons) startP = Math.max(1, endP - maxButtons + 1);
+
+  let html = '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center">';
+  html += '<button class="page-btn" onclick="changeOverviewPage(' + (overviewPage - 1) + ')"' + (overviewPage === 1 ? ' disabled' : '') + '>←</button>';
+
+  if (startP > 1) {
+    html += '<button class="page-btn" onclick="changeOverviewPage(1)">1</button>';
+    if (startP > 2) html += '<span style="color:#94a3b8">…</span>';
+  }
+  for (let p = startP; p <= endP; p++) {
+    html += '<button class="page-btn' + (p === overviewPage ? ' active' : '') + '" onclick="changeOverviewPage(' + p + ')">' + p + '</button>';
+  }
+  if (endP < totalPages) {
+    if (endP < totalPages - 1) html += '<span style="color:#94a3b8">…</span>';
+    html += '<button class="page-btn" onclick="changeOverviewPage(' + totalPages + ')">' + totalPages + '</button>';
+  }
+
+  html += '<button class="page-btn" onclick="changeOverviewPage(' + (overviewPage + 1) + ')"' + (overviewPage === totalPages ? ' disabled' : '') + '>→</button>';
+  html += '<span style="font-size:12px;color:var(--text2);margin-left:8px">' + totalFiltered +  ' รายการ</span>';
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function changeOverviewPage(p) {
+  if (p < 1) return;
+  overviewPage = p;
+  renderOverviewTable();
+}
+
+// ===== OVERRIDE renderDashboardHome to include new components =====
 function renderDashboardHomeV2() {
   const role = currentUser && currentUser.role;
   const isFullAccess = role === 'Superadmin' || role === 'Admin';
 
-  // Show/hide dashboard sections based on role
   const showFull = (el) => { if (el) el.style.display = isFullAccess ? '' : 'none'; };
   showFull(document.querySelector('.finance-summary-clean'));
   showFull(document.querySelector('.quick-stats-row'));
   showFull(document.querySelector('.dash-grid'));
   showFull(document.querySelector('.floor-plan-card'));
-  // Hide parent dash-card wrapping recent bookings
-  const recentCard = document.getElementById('recentBookings')?.closest('.dash-card');
-  if (recentCard) recentCard.style.display = isFullAccess ? '' : 'none';
-
-  const recentEl = document.getElementById('recentBookings');
-  if (!recentEl) return;
 
   if (isFullAccess) {
     renderFinanceOverview();
@@ -4227,43 +4252,16 @@ function renderDashboardHomeV2() {
   if (!total) {
     if (isFullAccess) {
       const chartEl = document.getElementById('trendChart');
-      if (chartEl && chartEl.getContext) chartEl.getContext('2d').clearRect(0, 0, chartEl.width, chartEl.height);
+      if (chartEl) d3.select(chartEl).selectAll('*').remove();
     }
     updateDashboardActionCards();
+    const tbody = document.getElementById('overviewTableBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">ไม่พบข้อมูล</td></tr>';
     return;
   }
 
-  if (isFullAccess) {
-    let rhtml = '';
-    allRows.slice(0, 5).forEach(r => {
-      const idx = allRows.indexOf(r);
-      const s = normalizeStatus(r.status);
-      let bcls = 'badge-pending-review';
-      if (s === 'รอชำระเงิน') bcls = 'badge-payment-pending';
-      else if (s === 'ชำระแล้ว') bcls = 'badge-paid';
-      else if (s === 'เสร็จสิ้น') bcls = 'badge-completed';
-      else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
-      else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
-      rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:10px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-           <b style="font-size:13px;color:var(--blue)">${escHtml(r.ref)}</b>
-           <span class="badge ${bcls}" style="font-size:11px;padding:2px 8px;white-space:nowrap">${escHtml(s)}</span>
-         </div>
-         <div style="display:flex;flex-direction:column;gap:2px;font-size:12px">
-           <span><strong style="color:var(--text2)">👤</strong> ${escHtml(r.visitorName || '')}</span>
-           <span><strong style="color:var(--text2)">🏢</strong> ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})</span>
-           <span><strong style="color:var(--text2)">📅</strong> ${escHtml(r.visitDate || '')} • <strong style="color:var(--blue)">${(r.total || 0).toLocaleString()} บ.</strong></span>
-         </div>
-       </div>`;
-    });
-
-    const recentCountEl = document.getElementById('recentCount');
-    if (recentCountEl) recentCountEl.textContent = '(' + allRows.length + ' รายการทั้งหมด)';
-
-    recentEl.innerHTML = rhtml || '<div style="color:#888;font-size:13px;padding:12px;text-align:center">ยังไม่มีข้อมูล</div>';
-  } else {
-    recentEl.innerHTML = '';
-  }
+  buildOverviewDateFilter();
+  renderOverviewTable();
 
   const lastUpdatedEl = document.getElementById('overviewLastUpdated');
   if (lastUpdatedEl) {

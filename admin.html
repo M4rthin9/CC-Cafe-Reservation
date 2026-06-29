@@ -71,6 +71,7 @@
           </div>
            <div class="notif-panel" id="notifPanel" style="display:none;position:absolute;top:40px;right:0;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;width:300px;max-height:400px;overflow-y:auto;z-index:999;"></div>
            <a href="src/guide.html" target="_blank" style="color:#fff;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">📖 คู่มือ</a>
+           <button onclick="toggleDarkMode()" style="color:#fff;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);padding:6px 10px;border-radius:20px;font-size:13px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🌙</button>
            <span id="topDate" style="font-size:13px;opacity:0.85"></span>
        </div>
      </div>
@@ -78,6 +79,12 @@
     <div class="main">
       <!-- HOME DASHBOARD VIEW -->
       <div id="view-home" class="view">
+        <!-- Welcome Banner -->
+        <div id="welcomeBanner" class="welcome-banner"></div>
+
+        <!-- Quick Actions -->
+        <div id="quickActions" class="quick-actions"></div>
+
         <!-- Professional Header -->
         <div class="overview-header">
           <div>
@@ -119,6 +126,16 @@
             </div>
           </div>
         </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ALERTS: Important notifications                 -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="alertsSection" class="alerts-section"></div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PERFORMANCE METRICS                             -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="performanceMetrics" class="metrics-cards"></div>
 
         <!-- ═══════════════════════════════════════════════ -->
         <!-- FINANCE SUMMARY: Clean horizontal layout        -->
@@ -172,6 +189,17 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->
+        <!-- TODAY'S VISITS: Confirmed visits today          -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="todays-visits">
+          <div class="todays-visits-header">
+            <div class="todays-visits-title">📋 การจองวันนี้</div>
+            <span class="todays-visits-count" id="todaysVisitsCount">0 รายการ</span>
+          </div>
+          <div id="todaysVisitsList"></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
         <!-- ROW 4: VISUALIZATIONS (2-col grid)             -->
         <!-- ═══════════════════════════════════════════════ -->
         <div class="dash-grid">
@@ -181,7 +209,7 @@
              </div>
              <div id="financeOverview" style="margin-top:12px">
                <div id="financeSummary" class="finance-summary"></div>
-               <canvas id="financeChart" style="width:100%;max-width:100%;height:240px;display:block;margin-top:10px" aria-label="กราฟแนวโน้มยอดเงิน"></canvas>
+                <div id="financeChart" style="width:100%;max-width:100%;height:240px;display:block;margin-top:10px" aria-label="กราฟแนวโน้มยอดเงิน"></div>
                <div id="financeLegend" class="finance-chart-legend"></div>
              </div>
            </div>
@@ -191,7 +219,7 @@
              </div>
              <div id="statusPipeline" style="margin-top:8px"></div>
              <div class="donut-wrapper">
-               <canvas id="statusDonutChart" width="180" height="180" aria-label="กราฟวงกลมสถานะ"></canvas>
+                <div id="statusDonutChart" style="width:180px;height:180px;" aria-label="กราฟวงกลมสถานะ"></div>
                <div id="donutLegend" class="donut-legend"></div>
              </div>
            </div>
@@ -199,13 +227,13 @@
              <div class="dash-card-h">
                <span>🕒</span> แนวโน้มการจอง 14 วัน
              </div>
-             <canvas id="trendChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟแนวโน้มการจอง"></canvas>
+              <div id="trendChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟแนวโน้มการจอง"></div>
            </div>
            <div class="dash-card">
              <div class="dash-card-h">
                <span>🏢</span> รายได้ตามแดน (Top 5)
              </div>
-             <canvas id="wingRevenueChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟรายได้ตามแดน"></canvas>
+              <div id="wingRevenueChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟรายได้ตามแดน"></div>
            </div>
         </div>
 
@@ -230,17 +258,57 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->
-        <!-- ROW 6: RECENT BOOKINGS (Full Width)            -->
+        <!-- ROW 6: FULL RESERVATION TABLE (Embedded)       -->
         <!-- ═══════════════════════════════════════════════ -->
         <div class="dash-card" style="margin-top:12px;">
-          <div class="dash-card-h"><span>📋</span> การจองล่าสุด <span id="recentCount" style="font-size:12px;color:var(--text2);font-weight:400"></span></div>
-          <div id="recentBookings" style="margin-top:8px"></div>
+          <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span>📋</span> รายการจองทั้งหมด <span id="overviewTableCount" style="font-size:12px;color:var(--text2);font-weight:400"></span>
+            </div>
+            <button class="refresh-btn" onclick="loadData()" aria-label="โหลดข้อมูลใหม่" style="font-size:12px;padding:4px 10px;">🔄 รีเฟรช</button>
+          </div>
+          <div class="overview-filters">
+            <input class="search-box" id="overviewSearch" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="renderOverviewTable()" style="flex:1;min-width:150px;">
+            <select class="filter-select" id="overviewFilterStatus" aria-label="กรองตามสถานะ" onchange="renderOverviewTable()" style="min-width:120px;">
+              <option value="">📌 ทุกสถานะ</option>
+              <option value="รอตรวจสอบวินัย">🔍 รอวินัย</option>
+              <option value="รอตรวจสอบผู้เข้าร่วม">👥 รอผู้เข้าร่วม</option>
+              <option value="รอชำระเงิน">💳 รอชำระ</option>
+              <option value="ชำระแล้ว">✅ ชำระแล้ว</option>
+              <option value="เสร็จสิ้น">✔️ เสร็จสิ้น</option>
+              <option value="ไม่อนุมัติ">❌ ไม่อนุมัติ</option>
+              <option value="ยกเลิก">🚫 ยกเลิก</option>
+            </select>
+            <select class="filter-select" id="overviewFilterDate" aria-label="กรองตามวันที่" onchange="renderOverviewTable()" style="min-width:120px;">
+              <option value="">📅 ทุกวัน</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="overview-table">
+              <thead>
+                <tr>
+                  <th style="width:100px;">เลขอ้างอิง</th>
+                  <th>ผู้ต้องขัง / คู่เยี่ยม</th>
+                  <th style="width:60px;">แดน</th>
+                  <th style="width:80px;">ยอด</th>
+                  <th style="width:90px;">สถานะ</th>
+                  <th style="width:90px;">วันที่</th>
+                  <th style="width:110px;">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="overviewTableBody"></tbody>
+            </table>
+          </div>
+          <div id="overviewPagination" style="margin-top:8px;"></div>
         </div>
 
       </div>
 
       <!-- RESERVATIONS VIEW -->
       <div id="view-reservations" class="view" style="display:none" role="main">
+        <!-- Summary Bar -->
+        <div id="reservationSummary" class="summary-bar"></div>
+
         <!-- Search Bar -->
         <div class="controls">
           <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
@@ -325,6 +393,9 @@
           <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">📊 รายงาน</h1>
           <div style="font-size:13px;color:var(--text2)">รายงานประจำวัน — กรองข้อมูลด้านล่างเพื่อดึงข้อมูล</div>
         </div>
+
+        <!-- Report Summary Cards -->
+        <div id="reportSummary" class="report-cards"></div>
 
         <div class="controls" style="margin-bottom:16px">
           <input class="search-box" id="reportsSearchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / Ref / ผู้ต้องขัง" oninput="renderReportsView()">
@@ -502,7 +573,7 @@
       <div id="view-settings" class="view" style="display:none">
         <div style="margin-bottom:12px">
           <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">⚙️ ตั้งค่าระบบ</h1>
-          <div style="font-size:13px;color:var(--text2)">ตั้งค่า偏好 · บันทึกไปยัง Apps Script</div>
+          <div style="font-size:13px;color:var(--text2)">ตั้งค่า · บันทึกไปยัง Apps Script</div>
         </div>
         <div class="dash-card" style="padding:20px;max-width:600px;">
           <div style="font-size:14px;font-weight:600;margin-bottom:16px;">📊 การแสดงผล</div>
@@ -686,6 +757,7 @@
 </div>
 
   <script src="src/js/config.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="src/js/utils.js" defer></script>
   <script src="src/js/admin.js" defer></script>
 
