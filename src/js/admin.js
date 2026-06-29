@@ -13,8 +13,8 @@ const SIDEBAR_MENU = {
   Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'users', 'prisoners', 'settings'],
   Admin: ['home', 'reservations', 'reports', 'eventlog', 'prisoners'],
   Finance: ['reservations', 'reports'],
-  Vinai: ['reservations', 'reports'],
-  Tadtel: ['reservations', 'reports'],
+  Vinai: ['home', 'reservations', 'reports'],
+  Tadtel: ['home', 'reservations', 'reports'],
   User: ['home']
 };
 
@@ -4202,60 +4202,81 @@ const _origRenderDashboardHome = typeof renderDashboardHome === 'function' ? ren
 
 function renderDashboardHomeV2() {
   const role = currentUser && currentUser.role;
+  const isFullAccess = role === 'Superadmin' || role === 'Admin';
+
+  // Show/hide dashboard sections based on role
+  const showFull = (el) => { if (el) el.style.display = isFullAccess ? '' : 'none'; };
+  showFull(document.querySelector('.finance-summary-clean'));
+  showFull(document.querySelector('.quick-stats-row'));
+  showFull(document.querySelector('.dash-grid'));
+  showFull(document.querySelector('.floor-plan-card'));
+  // Hide parent dash-card wrapping recent bookings
+  const recentCard = document.getElementById('recentBookings')?.closest('.dash-card');
+  if (recentCard) recentCard.style.display = isFullAccess ? '' : 'none';
 
   const recentEl = document.getElementById('recentBookings');
   if (!recentEl) return;
 
-  renderFinanceOverview();
-  renderFinanceRibbon();
+  if (isFullAccess) {
+    renderFinanceOverview();
+    renderFinanceRibbon();
+  }
 
   const total = allRows.length;
 
   if (!total) {
-    recentEl.innerHTML = '<div style="color:#888;font-size:12px">ยังไม่มีข้อมูล</div>';
-    const chartEl = document.getElementById('trendChart');
-    if (chartEl && chartEl.getContext) chartEl.getContext('2d').clearRect(0, 0, chartEl.width, chartEl.height);
+    if (isFullAccess) {
+      const chartEl = document.getElementById('trendChart');
+      if (chartEl && chartEl.getContext) chartEl.getContext('2d').clearRect(0, 0, chartEl.width, chartEl.height);
+    }
+    updateDashboardActionCards();
     return;
   }
 
-  let rhtml = '';
-  allRows.slice(0, 5).forEach(r => {
-    const idx = allRows.indexOf(r);
-    const s = normalizeStatus(r.status);
-    let bcls = 'badge-pending-review';
-    if (s === 'รอชำระเงิน') bcls = 'badge-payment-pending';
-    else if (s === 'ชำระแล้ว') bcls = 'badge-paid';
-    else if (s === 'เสร็จสิ้น') bcls = 'badge-completed';
-    else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
-    else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
-    rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:10px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;flex-direction:column;gap:6px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-         <b style="font-size:13px;color:var(--blue)">${escHtml(r.ref)}</b>
-         <span class="badge ${bcls}" style="font-size:11px;padding:2px 8px;white-space:nowrap">${escHtml(s)}</span>
-       </div>
-       <div style="display:flex;flex-direction:column;gap:2px;font-size:12px">
-         <span><strong style="color:var(--text2)">👤</strong> ${escHtml(r.visitorName || '')}</span>
-         <span><strong style="color:var(--text2)">🏢</strong> ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})</span>
-         <span><strong style="color:var(--text2)">📅</strong> ${escHtml(r.visitDate || '')} • <strong style="color:var(--blue)">${(r.total || 0).toLocaleString()} บ.</strong></span>
-       </div>
-     </div>`;
-  });
+  if (isFullAccess) {
+    let rhtml = '';
+    allRows.slice(0, 5).forEach(r => {
+      const idx = allRows.indexOf(r);
+      const s = normalizeStatus(r.status);
+      let bcls = 'badge-pending-review';
+      if (s === 'รอชำระเงิน') bcls = 'badge-payment-pending';
+      else if (s === 'ชำระแล้ว') bcls = 'badge-paid';
+      else if (s === 'เสร็จสิ้น') bcls = 'badge-completed';
+      else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
+      else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
+      rhtml += `<div onclick="viewDetail(${idx});switchView('reservations')" style="padding:10px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+           <b style="font-size:13px;color:var(--blue)">${escHtml(r.ref)}</b>
+           <span class="badge ${bcls}" style="font-size:11px;padding:2px 8px;white-space:nowrap">${escHtml(s)}</span>
+         </div>
+         <div style="display:flex;flex-direction:column;gap:2px;font-size:12px">
+           <span><strong style="color:var(--text2)">👤</strong> ${escHtml(r.visitorName || '')}</span>
+           <span><strong style="color:var(--text2)">🏢</strong> ${escHtml(r.prisonerName || '')} (#${escHtml(r.prisonerId || '')})</span>
+           <span><strong style="color:var(--text2)">📅</strong> ${escHtml(r.visitDate || '')} • <strong style="color:var(--blue)">${(r.total || 0).toLocaleString()} บ.</strong></span>
+         </div>
+       </div>`;
+    });
 
-  const recentCountEl = document.getElementById('recentCount');
-  if (recentCountEl) recentCountEl.textContent = '(' + allRows.length + ' รายการทั้งหมด)';
+    const recentCountEl = document.getElementById('recentCount');
+    if (recentCountEl) recentCountEl.textContent = '(' + allRows.length + ' รายการทั้งหมด)';
 
-  recentEl.innerHTML = rhtml || '<div style="color:#888;font-size:13px;padding:12px;text-align:center">ยังไม่มีข้อมูล</div>';
+    recentEl.innerHTML = rhtml || '<div style="color:#888;font-size:13px;padding:12px;text-align:center">ยังไม่มีข้อมูล</div>';
+  } else {
+    recentEl.innerHTML = '';
+  }
 
   const lastUpdatedEl = document.getElementById('overviewLastUpdated');
   if (lastUpdatedEl) {
     lastUpdatedEl.textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   }
 
-  drawReservationTrendChart();
-  drawStatusDonutChart();
-  drawWingRevenueChart();
-  buildFloorPlanDateFilter();
-  renderFloorPlan();
+  if (isFullAccess) {
+    drawReservationTrendChart();
+    drawStatusDonutChart();
+    drawWingRevenueChart();
+    buildFloorPlanDateFilter();
+    renderFloorPlan();
+  }
 
   updateDashboardActionCards();
 }
