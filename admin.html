@@ -133,6 +133,11 @@
         <div id="alertsSection" class="alerts-section"></div>
 
         <!-- ═══════════════════════════════════════════════ -->
+        <!-- PAYMENT QUEUE: Pending payments quick-view      -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="paymentQueueSection" class="payment-queue-section" style="display:none;"></div>
+
+        <!-- ═══════════════════════════════════════════════ -->
         <!-- PERFORMANCE METRICS                             -->
         <!-- ═══════════════════════════════════════════════ -->
         <div id="performanceMetrics" class="metrics-cards"></div>
@@ -309,6 +314,21 @@
         <!-- Summary Bar -->
         <div id="reservationSummary" class="summary-bar"></div>
 
+        <!-- Date Quick-Nav -->
+        <div class="date-quicknav" id="dateQuickNav">
+          <div class="date-quicknav-label">📅 เลือกวันที่:</div>
+          <div class="date-quicknav-btns">
+            <button class="date-qnav-btn" onclick="jumpToDate(-1)" title="เมื่อวาน">◀ เมื่อวาน</button>
+            <button class="date-qnav-btn today" onclick="jumpToDate(0)" title="วันนี้">🟢 วันนี้</button>
+            <button class="date-qnav-btn" onclick="jumpToDate(1)" title="พรุ่งนี้">พรุ่งนี้ ▶</button>
+            <button class="date-qnav-btn clear" onclick="clearDateFilter()" title="ล้างวันที่">✕ ล้าง</button>
+          </div>
+          <div class="date-quicknav-current" id="dateQuickNavCurrent"></div>
+        </div>
+
+        <!-- Day Summary Panel (shown when date is selected) -->
+        <div class="day-summary-panel" id="daySummaryPanel" style="display:none;"></div>
+
         <!-- Search Bar -->
         <div class="controls">
           <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
@@ -359,11 +379,11 @@
             <thead>
                 <tr>
                   <th scope="col" style="width:32px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()" style="cursor:pointer;"></th>
-                  <th scope="col">เลขอ้างอิง</th>
-                  <th scope="col">ผู้ต้องขัง / คู่เยี่ยม</th>
-                  <th scope="col">แดน</th>
-                  <th scope="col">ยอด</th>
-                  <th scope="col">สถานะ</th>
+                  <th scope="col" class="sortable-th" onclick="sortTableBy('ref')">เลขอ้างอิง <span class="sort-arrow" id="sort-ref"></span></th>
+                  <th scope="col" class="sortable-th" onclick="sortTableBy('prisonerName')">ผู้ต้องขัง / คู่เยี่ยม <span class="sort-arrow" id="sort-prisonerName"></span></th>
+                  <th scope="col" class="sortable-th" onclick="sortTableBy('wing')">แดน <span class="sort-arrow" id="sort-wing"></span></th>
+                  <th scope="col" class="sortable-th" onclick="sortTableBy('total')">ยอด <span class="sort-arrow" id="sort-total"></span></th>
+                  <th scope="col" class="sortable-th" onclick="sortTableBy('status')">สถานะ <span class="sort-arrow" id="sort-status"></span></th>
                   <th scope="col">ความคืบหน้า</th>
                   <th scope="col">จัดการ</th>
                 </tr>

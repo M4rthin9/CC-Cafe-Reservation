@@ -419,6 +419,204 @@ function buildWingFilter() {
   });
 }
 
+// ===== DATE QUICK-NAV =====
+function jumpToDate(offset) {
+  const today = new Date();
+  const target = new Date(today);
+  target.setDate(today.getDate() + offset);
+
+  // Find matching visitDate in allRows
+  const isoDate = target.toISOString().slice(0, 10);
+  let matchedDate = '';
+  for (const r of allRows) {
+    if (r.visitDateISO === isoDate) {
+      matchedDate = r.visitDate;
+      break;
+    }
+  }
+
+  const sel = document.getElementById('filterDate');
+  if (matchedDate) {
+    sel.value = matchedDate;
+  } else {
+    // No bookings for that date - set the ISO date as filter value (will show empty)
+    // Try to find closest date
+    sel.value = '';
+  }
+
+  // Update quick-nav button active states
+  document.querySelectorAll('.date-qnav-btn').forEach(btn => btn.classList.remove('active'));
+  const btnIndex = offset === -1 ? 0 : offset === 0 ? 1 : 2;
+  const btns = document.querySelectorAll('.date-qnav-btn');
+  if (btns[btnIndex]) btns[btnIndex].classList.add('active');
+
+  // Update current date display
+  const currentEl = document.getElementById('dateQuickNavCurrent');
+  if (currentEl) {
+    const dateStr = target.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    currentEl.textContent = dateStr;
+  }
+
+  currentPage = 1;
+  renderTable();
+  renderDaySummary();
+}
+
+function clearDateFilter() {
+  const sel = document.getElementById('filterDate');
+  sel.value = '';
+  document.querySelectorAll('.date-qnav-btn').forEach(btn => btn.classList.remove('active'));
+  const currentEl = document.getElementById('dateQuickNavCurrent');
+  if (currentEl) currentEl.textContent = '';
+  document.getElementById('daySummaryPanel').style.display = 'none';
+  currentPage = 1;
+  renderTable();
+}
+
+// ===== DAY SUMMARY PANEL =====
+function renderDaySummary() {
+  const panel = document.getElementById('daySummaryPanel');
+  const fd = document.getElementById('filterDate').value;
+  if (!fd || !panel) {
+    if (panel) panel.style.display = 'none';
+    return;
+  }
+
+  const dayRows = allRows.filter(r => r.visitDate === fd && r.ref && String(r.ref).trim());
+  if (dayRows.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  const counts = {};
+  const statusColors = {
+    'รอตรวจสอบวинัย': '#6366f1',
+    'รอตรวจสอบผู้เข้าร่วม': '#f59e0b',
+    'รอชำระเงิน': '#d97706',
+    'ชำระแล้ว': '#059669',
+    'เสร็จสิ้น': '#4f46e5',
+    'ไม่อนุมัติ': '#ef4444',
+    'ยกเลิก': '#64748b'
+  };
+
+  dayRows.forEach(r => {
+    const s = normalizeStatus(r.status);
+    counts[s] = (counts[s] || 0) + 1;
+  });
+
+  let html = '';
+  Object.keys(counts).forEach(status => {
+    html += `<div class="day-summary-item">
+      <span class="ds-dot" style="background:${statusColors[status] || '#94a3b8'}"></span>
+      <span class="ds-count">${counts[status]}</span>
+      <span class="ds-label">${status}</span>
+    </div>`;
+  });
+
+  const totalAmount = dayRows.reduce((sum, r) => sum + (parseInt(r.total) || 0), 0);
+  html += `<div class="day-summary-total">💰 รวม ${totalAmount.toLocaleString()} บาท</div>`;
+
+  // Batch approve button for discipline check items
+  const pendingDiscipline = dayRows.filter(r => normalizeStatus(r.status) === 'รอตรวจสอบวินัย');
+  if (pendingDiscipline.length > 0 && (currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin' || hasPermission('approve_discipline'))) {
+    html += `<button class="day-summary-batch" onclick="batchApproveDayDiscipline('${fd}')" title="อนุมัติวินัยทั้งหมดสำหรับวันนี้">✓ อนุมัติวินัยทั้งหมด (${pendingDiscipline.length})</button>`;
+  }
+
+  // Batch approve participant items
+  const pendingParticipant = dayRows.filter(r => normalizeStatus(r.status) === 'รอตรวจสอบผู้เข้าร่วม');
+  if (pendingParticipant.length > 0 && (currentUser?.role === 'Superadmin' || currentUser?.role === 'Admin' || hasPermission('approve_participant'))) {
+    html += `<button class="day-summary-batch" style="background:#d97706;" onclick="batchApproveDayParticipant('${fd}')" title="อนุมัติผู้เข้าร่วมทั้งหมดสำหรับวันนี้">✓ อนุมัติผู้เข้าร่วมทั้งหมด (${pendingParticipant.length})</button>`;
+  }
+
+  panel.innerHTML = html;
+  panel.style.display = 'flex';
+}
+
+// Batch approve discipline for a specific day
+async function batchApproveDayDiscipline(dateStr) {
+  const dayRows = allRows.filter(r => r.visitDate === dateStr && normalizeStatus(r.status) === 'รอตรวจสอบวินัย');
+  if (!dayRows.length) return;
+  if (!confirm(`อนุมัติวินัยทั้งหมด ${dayRows.length} รายการสำหรับวันนี้?`)) return;
+
+  let success = 0;
+  for (const row of dayRows) {
+    const idx = allRows.indexOf(row);
+    if (idx < 0) continue;
+    const oldStatus = row.status;
+    row.status = 'รอตรวจสอบผู้เข้าร่วม';
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอตรวจสอบผู้เข้าร่วม' })
+      });
+      const data = await resp.json();
+      if (data.status === 'ok') success++;
+      else row.status = oldStatus;
+    } catch (e) { row.status = oldStatus; }
+  }
+
+  showToast(`อนุมัติวินัยสำเร็จ ${success}/${dayRows.length} รายการ`, success > 0 ? 'success' : 'error');
+  logEvent('batch_approve_discipline', `อนุมัติวินัยทั้งหมด ${dayRows.length} รายการ วันที่ ${dateStr}`);
+  updateStats();
+  renderTable();
+  renderDaySummary();
+  renderDashboardHome();
+}
+
+// Batch approve participants for a specific day
+async function batchApproveDayParticipant(dateStr) {
+  const dayRows = allRows.filter(r => r.visitDate === dateStr && normalizeStatus(r.status) === 'รอตรวจสอบผู้เข้าร่วม');
+  if (!dayRows.length) return;
+  if (!confirm(`อนุมัติผู้เข้าร่วมทั้งหมด ${dayRows.length} รายการสำหรับวันนี้?`)) return;
+
+  let success = 0;
+  for (const row of dayRows) {
+    const idx = allRows.indexOf(row);
+    if (idx < 0) continue;
+    const oldStatus = row.status;
+    row.status = 'รอชำระเงิน';
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอชำระเงิน' })
+      });
+      const data = await resp.json();
+      if (data.status === 'ok') success++;
+      else row.status = oldStatus;
+    } catch (e) { row.status = oldStatus; }
+  }
+
+  showToast(`อนุมัติผู้เข้าร่วมสำเร็จ ${success}/${dayRows.length} รายการ`, success > 0 ? 'success' : 'error');
+  logEvent('batch_approve_participant', `อนุมัติผู้เข้าร่วมทั้งหมด ${dayRows.length} รายการ วันที่ ${dateStr}`);
+  updateStats();
+  renderTable();
+  renderDaySummary();
+  renderDashboardHome();
+}
+
+// ===== QUICK-STATUS: One-click advance from table row =====
+function quickStatusAdvance(idx, action) {
+  const row = allRows[idx];
+  if (!row) return;
+  const s = normalizeStatus(row.status);
+
+  if (action === 'approve_discipline') {
+    updateStatus(idx, 'รอตรวจสอบผู้เข้าร่วม');
+  } else if (action === 'reject') {
+    updateStatus(idx, 'ไมอนุมัติ');
+  } else if (action === 'approve_participant') {
+    updateStatus(idx, 'รอชำระเงิน');
+  } else if (action === 'confirm_payment') {
+    confirmPayment(idx);
+  } else if (action === 'complete') {
+    confirmPayment(idx); // same logic - advances to เสร็จสิ้น
+  } else if (action === 'cancel') {
+    cancelBooking(idx);
+  }
+}
+
 // ===== RENDER TABLE =====
 function renderTable() {
   const q = document.getElementById('searchBox').value.toLowerCase();
@@ -450,6 +648,9 @@ function renderTable() {
   });
   const totalFiltered = rows.length;
   document.getElementById('tableCount').textContent = totalFiltered + ' รายการ';
+
+  // Apply sorting
+  rows = applySorting(rows);
 
   const totalPages = Math.ceil(totalFiltered / pageSize) || 1;
   if (currentPage > totalPages) currentPage = totalPages;
@@ -513,6 +714,35 @@ function renderTable() {
     const canConfirmPayment = (role === 'Superadmin' || role === 'Admin' || hasPermission('confirm_payment'));
     const canCancel = isAdminOrSuper || hasPermission('cancel');
 
+    // Build status action dropdown
+    let statusDropdownHtml = '';
+    const statusOptions = [];
+    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') {
+      statusOptions.push({ value: 'approve_discipline', label: '✓ อนุมัติวินัย' });
+      statusOptions.push({ value: 'reject', label: '✗ ปฏิเสธ' });
+    }
+    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') {
+      statusOptions.push({ value: 'approve_participant', label: '✓ อนุมัติผู้เข้าร่วม' });
+      statusOptions.push({ value: 'reject', label: '✗ ปฏิเสธ' });
+    }
+    if (canConfirmPayment && s === 'รอชำระเงิน') {
+      statusOptions.push({ value: 'confirm_payment', label: '💳 ยืนยันชำระเงิน' });
+    }
+    if (canConfirmPayment && s === 'ชำระแล้ว') {
+      statusOptions.push({ value: 'complete', label: '✅ เสร็จสิ้น' });
+    }
+    if (canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) {
+      statusOptions.push({ value: 'cancel', label: '🚫 ยกเลิก' });
+    }
+
+    if (statusOptions.length > 0) {
+      const optsHtml = statusOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+      statusDropdownHtml = `<select class="status-action-select" onchange="if(this.value)quickStatusAdvance(${rowIdx},this.value);this.selectedIndex=0;" style="margin-left:4px;">
+        <option value="">⚡ เปลี่ยนสถานะ...</option>
+        ${optsHtml}
+      </select>`;
+    }
+
     // Build compact action icons (always visible)
     const actions = [];
     actions.push(`<button class="action-icon-btn" title="ดูสลิป" onclick="viewSlip(${rowIdx})">🧾</button>`);
@@ -547,6 +777,7 @@ function renderTable() {
   }).join('');
   renderPagination(totalPages, totalFiltered);
   renderNotifications();
+  if (typeof renderDaySummary === 'function') renderDaySummary();
 }
 
 function changePage(p) {
@@ -748,9 +979,9 @@ function computeFinanceTimeSeries(rows) {
   return {
     days,
     series: [
-      { id: 'booked', label: 'ยอดจอง', color: '#0B2545', fillTop: 'rgba(11,37,69,0.22)', fillBottom: 'rgba(11,37,69,0.02)', values: days.map(d => byDay[d].booked) },
-      { id: 'paid', label: 'ชำระแล้ว', color: '#2E5238', fillTop: 'rgba(46,82,56,0.2)', fillBottom: 'rgba(46,82,56,0.02)', values: days.map(d => byDay[d].paid) },
-      { id: 'unpaid', label: 'ยังไม่ชำระ', color: '#C8922A', fillTop: 'rgba(200,146,42,0.25)', fillBottom: 'rgba(200,146,42,0.02)', values: days.map(d => byDay[d].unpaid) }
+      { id: 'booked', label: 'ยอดจอง', color: '#4f46e5', fillTop: 'rgba(79,70,229,0.22)', fillBottom: 'rgba(79,70,229,0.02)', values: days.map(d => byDay[d].booked) },
+      { id: 'paid', label: 'ชำระแล้ว', color: '#059669', fillTop: 'rgba(5,150,105,0.2)', fillBottom: 'rgba(5,150,105,0.02)', values: days.map(d => byDay[d].paid) },
+      { id: 'unpaid', label: 'ยังไม่ชำระ', color: '#d97706', fillTop: 'rgba(217,119,6,0.25)', fillBottom: 'rgba(217,119,6,0.02)', values: days.map(d => byDay[d].unpaid) }
     ]
   };
 }
@@ -921,6 +1152,44 @@ function drawFinanceLineChart(container, timeSeries) {
   });
 }
 
+// ===== TABLE SORTING =====
+let sortState = { key: '', dir: 'asc' };
+
+function sortTableBy(key) {
+  if (sortState.key === key) {
+    sortState.dir = sortState.dir === 'asc' ? 'desc' : sortState.dir === 'desc' ? '' : 'asc';
+    if (!sortState.dir) sortState.key = '';
+  } else {
+    sortState.key = key;
+    sortState.dir = 'asc';
+  }
+  document.querySelectorAll('.sort-arrow').forEach(el => { el.textContent = ''; el.classList.remove('active'); });
+  if (sortState.key) {
+    const arrow = document.getElementById('sort-' + sortState.key);
+    if (arrow) {
+      arrow.textContent = sortState.dir === 'asc' ? '▲' : '▼';
+      arrow.classList.add('active');
+    }
+  }
+  renderTable();
+}
+
+function applySorting(rows) {
+  if (!sortState.key || !sortState.dir) return rows;
+  const key = sortState.key;
+  const dir = sortState.dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    let va = a[key] || '';
+    let vb = b[key] || '';
+    if (key === 'total') {
+      va = parseInt(va) || 0;
+      vb = parseInt(vb) || 0;
+      return (va - vb) * dir;
+    }
+    return String(va).localeCompare(String(vb), 'th-TH') * dir;
+  });
+}
+
 let renderDashboardHome = function () {
   // Role‑based KPI visibility
   const role = currentUser && currentUser.role;
@@ -1062,6 +1331,138 @@ let renderDashboardHome = function () {
     lastUpdatedEl.textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   }
 
+  // ===== Welcome Banner =====
+  const welcomeBanner = document.getElementById('welcomeBanner');
+  if (welcomeBanner) {
+    const hour = now.getHours();
+    let greeting = 'สวัสดี';
+    if (hour < 12) greeting = '🌅 สวัสดีตอนเช้า';
+    else if (hour < 17) greeting = '☀️ สวัสดีตอนบ่าย';
+    else greeting = '🌙 สวัสดีตอนเย็น';
+    const userName = currentUser ? (currentUser.name || currentUser.username) : 'ผู้ดูแล';
+    const todayCount = allRows.filter(r => {
+      const rd = r.visitDateISO || '';
+      const todayStr = now.toISOString().slice(0, 10);
+      return rd === todayStr;
+    }).length;
+    welcomeBanner.innerHTML = `
+      <div class="welcome-text">
+        <div class="welcome-greeting">${greeting}, ${escHtml(userName)}!</div>
+        <div class="welcome-sub">วันนี้มีการจอง <strong>${todayCount}</strong> รายการ รอการดำเนินการ</div>
+      </div>`;
+  }
+
+  // ===== Quick Actions =====
+  const quickActions = document.getElementById('quickActions');
+  if (quickActions) {
+    const todayISO = now.toISOString().slice(0, 10);
+    let qaHtml = '';
+    qaHtml += `<button class="quick-action-btn" onclick="switchView('reservations');document.getElementById('filterDate').value='${todayISO}';renderTable();">
+      <span class="qa-icon">📝</span><span class="qa-label">จองใหม่</span></button>`;
+    qaHtml += `<button class="quick-action-btn" onclick="exportToCSV()">
+      <span class="qa-icon">📊</span><span class="qa-label">Export CSV</span></button>`;
+    qaHtml += `<button class="quick-action-btn" onclick="switchView('reservations');document.getElementById('filterStatus').value='รอชำระเงิน';renderTable();">
+      <span class="qa-icon">💰</span><span class="qa-label">คิวชำระเงิน</span></button>`;
+    if (role === 'Superadmin' || role === 'Admin') {
+      qaHtml += `<button class="quick-action-btn" onclick="switchView('users')">
+        <span class="qa-icon">👥</span><span class="qa-label">จัดการผู้ใช้</span></button>`;
+    }
+    quickActions.innerHTML = qaHtml;
+  }
+
+  // ===== Alerts (Overdue Payments) =====
+  const alertsSection = document.getElementById('alertsSection');
+  if (alertsSection) {
+    const overduePayments = allRows.filter(r => {
+      const s = normalizeStatus(r.status);
+      if (s !== 'รอชำระเงิน') return false;
+      const ts = r.timestamp ? new Date(r.timestamp) : null;
+      if (!ts || isNaN(ts)) return false;
+      const diff = (now - ts) / (1000 * 60 * 60 * 24);
+      return diff > 2;
+    });
+    if (overduePayments.length > 0) {
+      let alertHtml = `<h3>⚠️ แจ้งเตือน (${overduePayments.length})</h3>`;
+      overduePayments.slice(0, 5).forEach(r => {
+        const idx = allRows.indexOf(r);
+        alertHtml += `<div class="alert-item" onclick="viewDetail(${idx})">
+          <span class="alert-icon">💳</span>
+          <div class="alert-info"><b>${escHtml(r.ref)}</b> — ${escHtml(r.visitorName)} — รอชำระเงิน</div>
+        </div>`;
+      });
+      alertsSection.innerHTML = alertHtml;
+      alertsSection.style.display = 'block';
+    } else {
+      alertsSection.style.display = 'none';
+    }
+  }
+
+  // ===== Payment Queue Quick-View =====
+  const paymentQueueSection = document.getElementById('paymentQueueSection');
+  if (paymentQueueSection) {
+    const pendingPayments = allRows.filter(r => normalizeStatus(r.status) === 'รอชำระเงิน');
+    if (pendingPayments.length > 0) {
+      let pqHtml = `<div class="pq-header">
+        <div class="pq-title">💰 คิวชำระเงิน <span class="pq-count">${pendingPayments.length} รายการ</span></div>
+        <a class="pq-viewall" onclick="switchView('reservations');document.getElementById('filterStatus').value='รอชำระเงิน';renderTable();">ดูทั้งหมด →</a>
+      </div><div class="pq-list">`;
+      pendingPayments.slice(0, 5).forEach(r => {
+        const idx = allRows.indexOf(r);
+        const slipHtml = r.slipImage
+          ? `<img class="pq-slip-thumb" src="${escHtml(r.slipImage)}" alt="สลิป" onerror="this.style.display='none'">`
+          : `<div class="pq-slip-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--text2);font-size:18px;">🧾</div>`;
+        pqHtml += `<div class="pq-item" onclick="viewDetail(${idx})">
+          ${slipHtml}
+          <div class="pq-info">
+            <div class="pq-ref">${escHtml(r.ref)}</div>
+            <div class="pq-name">${escHtml(r.visitorName)} · ${escHtml(r.prisonerName || '')}</div>
+          </div>
+          <div class="pq-amount">${(parseInt(r.total) || 0).toLocaleString()} บ.</div>
+          <button class="pq-action" onclick="event.stopPropagation();confirmPayment(${idx})">💳 ยืนยัน</button>
+        </div>`;
+      });
+      pqHtml += '</div>';
+      paymentQueueSection.innerHTML = pqHtml;
+      paymentQueueSection.style.display = 'block';
+    } else {
+      paymentQueueSection.style.display = 'none';
+    }
+  }
+
+  // ===== Today's Visits =====
+  const todaysVisitsList = document.getElementById('todaysVisitsList');
+  const todaysVisitsCount = document.getElementById('todaysVisitsCount');
+  if (todaysVisitsList) {
+    const todayISO = now.toISOString().slice(0, 10);
+    const todayBookings = allRows.filter(r => {
+      return (r.visitDateISO || '') === todayISO;
+    });
+    if (todaysVisitsCount) todaysVisitsCount.textContent = todayBookings.length + ' รายการ';
+    if (todayBookings.length === 0) {
+      todaysVisitsList.innerHTML = '<div style="color:#888;font-size:13px;padding:12px;text-align:center">ไม่มีการจองวันนี้</div>';
+    } else {
+      let tvHtml = '';
+      todayBookings.forEach(r => {
+        const idx = allRows.indexOf(r);
+        const s = normalizeStatus(r.status);
+        let bcls = 'badge-pending-review';
+        if (s === 'รอชำระเงิน') bcls = 'badge-payment-pending';
+        else if (s === 'ชำระแล้ว') bcls = 'badge-paid';
+        else if (s === 'เสร็จสิ้น') bcls = 'badge-completed';
+        else if (s === 'ไม่อนุมัติ') bcls = 'badge-rejected';
+        else if (s === 'ยกเลิก') bcls = 'badge-cancelled';
+        tvHtml += `<div class="today-visit-item" onclick="viewDetail(${idx});switchView('reservations')">
+          <div class="tvi-left">
+            <b style="color:var(--blue);font-size:13px">${escHtml(r.ref)}</b>
+            <span style="font-size:12px;color:var(--text2)">${escHtml(r.visitorName)} · ${escHtml(r.prisonerName || '')}</span>
+          </div>
+          <span class="badge ${bcls}" style="font-size:11px">${escHtml(s)}</span>
+        </div>`;
+      });
+      todaysVisitsList.innerHTML = tvHtml;
+    }
+  }
+
   // Trend Chart
   drawReservationTrendChart();
 }
@@ -1117,7 +1518,7 @@ function drawReservationTrendChart() {
     .append('rect')
     .attr('x', d => x(d.day)).attr('width', x.bandwidth())
     .attr('y', chartH).attr('height', 0).attr('rx', 2)
-    .attr('fill', d => d.val > 0 ? '#0B2545' : '#E8E0D1')
+    .attr('fill', d => d.val > 0 ? '#4f46e5' : '#E8E0D1')
     .transition().duration(500).delay((d, i) => i * 30)
     .attr('y', d => y(d.val)).attr('height', d => chartH - y(d.val));
 
@@ -1125,7 +1526,7 @@ function drawReservationTrendChart() {
   g.selectAll('.bar-top').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
     .append('rect')
     .attr('x', d => x(d.day)).attr('width', x.bandwidth()).attr('height', 2.5)
-    .attr('y', chartH).attr('fill', '#D4AF37').attr('opacity', 0)
+    .attr('y', chartH).attr('fill', '#d97706').attr('opacity', 0)
     .transition().duration(500).delay((d, i) => i * 30)
     .attr('y', d => d.val > 0 ? y(d.val) : chartH).attr('opacity', d => d.val > 0 ? 1 : 0);
 
@@ -1133,7 +1534,7 @@ function drawReservationTrendChart() {
   g.selectAll('.val-label').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
     .append('text')
     .attr('x', d => x(d.day) + x.bandwidth() / 2).attr('y', d => y(d.val) - 5)
-    .attr('text-anchor', 'middle').attr('fill', '#1C2433')
+    .attr('text-anchor', 'middle').attr('fill', '#1e1b4b')
     .attr('font-size', '10px').attr('font-weight', 'bold')
     .attr('font-family', "'Sarabun', sans-serif")
     .attr('opacity', 0)
@@ -1779,8 +2180,52 @@ ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้�
              <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
            </div>
          </div>` : ''}
-     </div>
+      </div>
    `;
+
+  // ===== Status Action Bar in Detail Modal =====
+  const isAdminOrSuperDetail = role === 'Superadmin' || role === 'Admin';
+  const canApproveDisciplineDetail = isAdminOrSuperDetail || hasPermission('approve_discipline');
+  const canRejectDisciplineDetail = isAdminOrSuperDetail || hasPermission('reject_discipline');
+  const canApproveParticipantDetail = isAdminOrSuperDetail || hasPermission('approve_participant');
+  const canConfirmPaymentDetail = (role === 'Superadmin' || role === 'Admin' || hasPermission('confirm_payment'));
+  const canCancelDetail = isAdminOrSuperDetail || hasPermission('cancel');
+  const isCancelledDetail = s === 'ยกเลิก';
+  const normalizedDetail = normalizeStatus(s);
+
+  let actionBtns = [];
+  if (canApproveDisciplineDetail && normalizedDetail === 'รอตรวจสอบวินัย') {
+    actionBtns.push({ label: '✓ อนุมัติวินัย', cls: 'btn-approve', onclick: `updateStatus(${idx},'รอตรวจสอบผู้เข้าร่วม')` });
+    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn-reject', onclick: `updateStatus(${idx},'ไม่อนุมัติ')` });
+  }
+  if (canApproveParticipantDetail && normalizedDetail === 'รอตรวจสอบผู้เข้าร่วม') {
+    actionBtns.push({ label: '✓ อนุมัติผู้เข้าร่วม', cls: 'btn-approve', onclick: `approveParticipantInDetail(${idx})` });
+    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn-reject', onclick: `rejectParticipantInDetail(${idx})` });
+  }
+  if (canConfirmPaymentDetail && normalizedDetail === 'รอชำระเงิน') {
+    actionBtns.push({ label: '💳 ยืนยันชำระเงิน', cls: 'btn-approve', onclick: `confirmPayment(${idx})` });
+  }
+  if (canConfirmPaymentDetail && normalizedDetail === 'ชำระแล้ว') {
+    actionBtns.push({ label: '✅ เสร็จสิ้น', cls: 'btn-approve', onclick: `confirmPayment(${idx})` });
+  }
+  if (canCancelDetail && !isCancelledDetail && normalizedDetail !== 'เสร็จสิ้น') {
+    actionBtns.push({ label: '🚫 ยกเลิก', cls: 'btn-reject', onclick: `cancelBooking(${idx})` });
+  }
+
+  if (actionBtns.length > 0) {
+    const actionBtnsHtml = actionBtns.map(b =>
+      `<button class="${b.cls}" onclick="${b.onclick}" style="font-size:13px;padding:8px 16px;white-space:nowrap;">${b.label}</button>`
+    ).join('');
+    const modalBody = document.getElementById('detailModalBody');
+    if (modalBody) {
+      modalBody.innerHTML += `
+        <div class="detail-modal-action-bar" style="margin-top:16px;padding:12px 14px;border-top:2px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end;">
+          <span style="font-size:12px;color:var(--text2);margin-right:auto;">⚡ เปลี่ยนสถานะ:</span>
+          ${actionBtnsHtml}
+        </div>`;
+    }
+  }
+
   document.getElementById('detailModalBg').classList.add('show');
 }
 
@@ -2267,15 +2712,15 @@ function printReport() {
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
   body { font-family: 'Sarabun', system-ui, sans-serif; padding: 20px 24px; margin:0; color:#000; background:#fff; line-height:1.5; font-size:14px; }
-  h1 { font-size:22px; margin:0 0 4px; font-weight:700; text-align:center; color: #0B2545; }
-  h2 { font-size:16px; margin:0 0 2px; font-weight:700; color: #1C2433; }
+  h1 { font-size:22px; margin:0 0 4px; font-weight:700; text-align:center; color: #312e81; }
+  h2 { font-size:16px; margin:0 0 2px; font-weight:700; color: #1e1b4b; }
   .meta { font-size:12px; color:#555; text-align:center; margin-bottom:20px; }
   
   /* Table/Ref Block */
   .table-block { 
     margin-bottom:20px; 
     page-break-inside: avoid; 
-    border: 2px solid #0B2545; 
+    border: 2px solid #312e81; 
     border-radius: 8px; 
     overflow: hidden;
     background:#fff;
@@ -2286,14 +2731,14 @@ function printReport() {
     align-items: center;
     justify-content: space-between;
     padding: 10px 14px;
-    background: #0B2545;
+    background: #312e81;
     color: #fff;
   }
   .table-num {
     font-size: 15px;
     font-weight: 700;
-    background: #D4AF37;
-    color: #1C2433;
+    background: #d97706;
+    color: #1e1b4b;
     padding: 4px 14px;
     border-radius: 4px;
   }
@@ -2326,13 +2771,13 @@ function printReport() {
   }
   .info-section.visitor {
     background: #f0f4ff;
-    border-color: #0B2545;
+    border-color: #312e81;
   }
   .section-title {
     font-weight: 700;
     font-size: 13px;
     margin-bottom: 6px;
-    color: #0B2545;
+    color: #312e81;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -2347,7 +2792,7 @@ function printReport() {
   }
   .info-line b {
     font-weight: 600;
-    color: #1C2433;
+    color: #1e1b4b;
   }
   
   /* Extra visitors */
@@ -2374,7 +2819,7 @@ function printReport() {
     content: "•";
     position: absolute;
     left: 0;
-    color: #D4AF37;
+    color: #d97706;
     font-weight: bold;
   }
   
@@ -2392,12 +2837,12 @@ function printReport() {
     color: #555;
   }
   .visit-date-info b {
-    color: #0B2545;
+    color: #312e81;
     font-size: 15px;
   }
   .people-count {
-    background: #D4AF37;
-    color: #1C2433;
+    background: #d97706;
+    color: #1e1b4b;
     padding: 6px 16px;
     border-radius: 6px;
     font-weight: 700;
@@ -2422,7 +2867,7 @@ function printReport() {
     padding: 24px;
   }
   .grand-box {
-    border: 3px solid #0B2545;
+    border: 3px solid #312e81;
     border-radius: 10px;
     padding: 24px 32px;
     background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
@@ -2432,11 +2877,11 @@ function printReport() {
   .grand-title {
     font-size: 18px;
     font-weight: 800;
-    color: #0B2545;
+    color: #312e81;
     text-align: center;
     margin-bottom: 16px;
     padding-bottom: 10px;
-    border-bottom: 2px solid #0B2545;
+    border-bottom: 2px solid #312e81;
   }
   .grand-item {
     display: flex;
@@ -2452,12 +2897,12 @@ function printReport() {
   .grand-item .g-number {
     font-weight: 800;
     font-size: 20px;
-    color: #0B2545;
+    color: #312e81;
   }
   .grand-total {
     margin-top: 16px;
     padding-top: 16px;
-    border-top: 3px solid #D4AF37;
+    border-top: 3px solid #d97706;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -2465,12 +2910,12 @@ function printReport() {
   .grand-total .g-label {
     font-size: 16px;
     font-weight: 600;
-    color: #1C2433;
+    color: #1e1b4b;
   }
   .grand-total .g-number {
     font-size: 26px;
     font-weight: 900;
-    color: #D4AF37;
+    color: #d97706;
   }
   
   .footer-note {
@@ -3747,10 +4192,10 @@ function printMonthlyReport() {
       .section-title { font-weight: 600; margin-bottom: 6px; }
       .finance-section { background: #fff5f5; border: 1px solid #c62828; }
       .finance-section .section-title { color: #c62828; }
-      .prisoner-section { background: #f0f8ff; border: 1px solid #0B2545; }
-      .prisoner-section .section-title { color: #0B2545; }
-      .visitor-section { background: #f5fff0; border: 1px solid #2E5238; }
-      .visitor-section .section-title { color: #2E5238; }
+      .prisoner-section { background: #f0f8ff; border: 1px solid #312e81; }
+      .prisoner-section .section-title { color: #312e81; }
+      .visitor-section { background: #f5fff0; border: 1px solid #059669; }
+      .visitor-section .section-title { color: #059669; }
     </style>
     </head><body>
     <div class="no-print print-preview-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:'Sarabun',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
@@ -3966,7 +4411,7 @@ function drawWingRevenueChart() {
   // value labels
   g.selectAll('.val-label').data(sorted).enter().append('text')
     .attr('x', d => x(d[1]) + 6).attr('y', d => y(d[0]) + y.bandwidth() / 2).attr('dy', '0.35em')
-    .attr('fill', '#1C2433').attr('font-size', '11px').attr('font-weight', '700')
+    .attr('fill', '#1e1b4b').attr('font-size', '11px').attr('font-weight', '700')
     .attr('font-family', "'Sarabun', sans-serif")
     .text(d => d[1].toLocaleString() + ' บ.');
 
