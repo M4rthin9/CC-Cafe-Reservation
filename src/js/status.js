@@ -372,16 +372,20 @@ function getStatusPill(status) {
 
 // ===== SHOW/HIDE PAYMENT =====
 function showPayment() {
-  document.getElementById('paymentArea').style.display = 'none';
-  document.getElementById('paymentForm').style.display = 'block';
+  const paymentArea = document.getElementById('paymentArea');
+  const paymentForm = document.getElementById('paymentForm');
+  if (paymentArea) paymentArea.style.display = 'none';
+  if (paymentForm) paymentForm.style.display = 'block';
   setTimeout(() => {
     const el = document.getElementById('paymentForm');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 50);
 }
 function hidePayment() {
-  document.getElementById('paymentArea').style.display = 'block';
-  document.getElementById('paymentForm').style.display = 'none';
+  const paymentArea = document.getElementById('paymentArea');
+  const paymentForm = document.getElementById('paymentForm');
+  if (paymentArea) paymentArea.style.display = 'block';
+  if (paymentForm) paymentForm.style.display = 'none';
 }
 
 // ===== DRAG & DROP =====
@@ -564,8 +568,9 @@ function resetSearch() {
 // ===== OVERLAY =====
 function setOverlay(show, msg) {
   const el = document.getElementById('overlay');
-  el.classList.toggle('show', show);
-  if (msg) document.getElementById('overlayMsg').textContent = msg;
+  if (el) el.classList.toggle('show', show);
+  const msgEl = document.getElementById('overlayMsg');
+  if (msg && msgEl) msgEl.textContent = msg;
 }
 
 function parseThaiDateToISO(dateStr) {

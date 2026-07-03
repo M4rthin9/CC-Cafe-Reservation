@@ -75,7 +75,8 @@ async function pollData() {
     if (oldRefs === newRefs) return;
 
     allRows = data.rows || [];
-    document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
+    const lastUpdated = document.getElementById('lastUpdated');
+    if (lastUpdated) lastUpdated.textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
 
     const activeView = document.querySelector('.view:not([style*="display: none"])');
     if (activeView) {
@@ -83,7 +84,6 @@ async function pollData() {
       if (viewId === 'home') renderDashboardHome();
       else if (viewId === 'reservations') renderTable();
       else if (viewId === 'reports') renderReportsView();
-
     }
   } catch (e) { /* silent */ }
 }
@@ -120,6 +120,7 @@ let overviewPage = 1;
 const overviewPageSize = 10;
 let currentUser = null;
 let prisonerMaster = [];
+let _dashboardCache = { timestamp: 0, data: null };
 
 // ===== TOAST NOTIFICATIONS =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -225,14 +226,12 @@ async function doLogin() {
     const filterStatusEl = document.getElementById('filterStatus');
     const btnExport = document.getElementById('btnExport');
     const btnPrint = document.getElementById('btnPrint');
-    const btnPrintVinai = document.getElementById('btnPrintVinai');
     const btnExportPhones = document.getElementById('btnExportPhones');
     const btnSyncWings = document.getElementById('btnSyncWings');
     const btnNewBooking = document.getElementById('btnNewBooking');
     if (filterStatusEl) filterStatusEl.style.display = isAdminOrSuper ? '' : 'none';
     if (btnExport) btnExport.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrint) btnPrint.style.display = isAdminOrSuper ? '' : 'none';
-    if (btnPrintVinai) btnPrintVinai.style.display = isAdminOrSuper ? '' : 'none';
     if (btnExportPhones) btnExportPhones.style.display = isAdminOrSuper ? '' : 'none';
     if (btnSyncWings) btnSyncWings.style.display = isAdminOrSuper ? '' : 'none';
     if (btnNewBooking) btnNewBooking.style.display = isAdminOrSuper ? '' : 'none';
@@ -306,7 +305,8 @@ function doLogout() {
 
 // ===== LOAD DATA =====
 async function loadData() {
-  document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
+  const tableBody = document.getElementById('tableBody');
+  if (tableBody) tableBody.innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -605,7 +605,7 @@ function quickStatusAdvance(idx, action) {
   if (action === 'approve_discipline') {
     updateStatus(idx, 'รอตรวจสอบผู้เข้าร่วม');
   } else if (action === 'reject') {
-    updateStatus(idx, 'ไมอนุมัติ');
+    updateStatus(idx, 'ไม่อนุมัติ');
   } else if (action === 'approve_participant') {
     updateStatus(idx, 'รอชำระเงิน');
   } else if (action === 'confirm_payment') {
@@ -2413,8 +2413,6 @@ async function approveAllVisitorsInDetail(idx) {
     closeDetailModal();
   }
 }
-
-// ===== EXPORT FILTERED DATA AS CSV =====
 
 // ===== EXPORT FILTERED DATA AS CSV =====
 function exportFilteredCSV() {
@@ -4680,6 +4678,9 @@ function changeOverviewPage(p) {
 function renderDashboardHomeV2() {
   const role = currentUser && currentUser.role;
   const isFullAccess = role === 'Superadmin' || role === 'Admin';
+  
+  const homeView = document.getElementById('view-home');
+  if (homeView && homeView.style.display === 'none') return;
 
   const showFull = (el) => { if (el) el.style.display = isFullAccess ? '' : 'none'; };
   showFull(document.querySelector('.finance-summary-clean'));
@@ -4687,9 +4688,13 @@ function renderDashboardHomeV2() {
   showFull(document.querySelector('.dash-grid'));
   showFull(document.querySelector('.floor-plan-card'));
 
-  if (isFullAccess) {
+  const cacheKey = allRows.map(r => r.ref + '|' + r.status).join(',');
+  const now = Date.now();
+  
+  if (isFullAccess && (_dashboardCache.data !== cacheKey || now - _dashboardCache.timestamp > 5000)) {
     renderFinanceOverview();
     renderFinanceRibbon();
+    _dashboardCache = { timestamp: now, data: cacheKey };
   }
 
   const total = allRows.length;
@@ -5632,8 +5637,10 @@ function addNote(ref, text) {
 
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeEditModal(); } });
-document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-document.getElementById('userInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+const passInputEl = document.getElementById('passInput');
+if (passInputEl) passInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+const userInputEl = document.getElementById('userInput');
+if (userInputEl) userInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
 // === UX/UI UPGRADE FUNCTIONS ===
 
