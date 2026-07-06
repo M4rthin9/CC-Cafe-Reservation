@@ -613,7 +613,7 @@ async function cancelCurrentBooking() {
   setOverlay(true, 'กำลังยกเลิก...');
   try {
     const result = await appsScriptPost({
-      action: 'cancelBooking',
+      action: 'publicCancelBooking',
       ref: row.ref
     });
     if (result.status !== 'ok') throw new Error(result.message || 'ยกเลิกไม่สำเร็จ');

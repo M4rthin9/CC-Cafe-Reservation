@@ -419,7 +419,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
   }
 
   // ===== Public actions (no login required) =====
-  const publicActions = ['uploadSlip', 'updateSlipAndStatus', 'cancelBooking'];
+  const publicActions = ['uploadSlip', 'updateSlipAndStatus', 'publicCancelBooking'];
  if (publicActions.includes(action) && (username === 'public' || !username)) {
    // allow public slip upload / payment confirmation
  } else if (!publicActions.includes(action) && !isAuthorized(username, pass)) {
@@ -470,10 +470,26 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
          return jsonResp({ status: 'ok' });
        }
      }
-     return jsonResp({ status: 'error', message: 'Ref not found' });
-   }
+      return jsonResp({ status: 'error', message: 'Ref not found' });
+    }
 
-   // ── UPDATE STATUS (approve / reject / mark paid etc.) ──
+    // ── PUBLIC SELF-SERVICE CANCEL (no auth required) ──
+    if (action === 'publicCancelBooking') {
+      const sheet = getMainSheet();
+      const data  = sheet.getDataRange().getValues();
+      const refIdx    = data[0].indexOf('ref');
+      const statusIdx = data[0].indexOf('status');
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+          sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
+          logEvent('public', 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
+          return jsonResp({ status: 'ok' });
+        }
+      }
+      return jsonResp({ status: 'error', message: 'Ref not found' });
+    }
+
+    // ── UPDATE STATUS (approve / reject / mark paid etc.) ──
    if (action === 'updateStatus') {
      const sheet = getMainSheet();
      const data  = sheet.getDataRange().getValues();
