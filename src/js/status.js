@@ -259,6 +259,21 @@ function renderResult(row) {
     `;
   }
 
+  const isCancelled = sLower === 'ยกเลิก';
+  const isDone = sLower === 'เสร็จสิ้น';
+  const showCancel = !isCancelled && !isDone;
+  let cancelBlock = '';
+  if (showCancel) {
+    cancelBlock = `
+      <div class="cancel-section">
+        <button class="btn-danger" onclick="cancelCurrentBooking()">
+          <i class="ti ti-x"></i> ยกเลิกการจอง
+        </button>
+        <p class="cancel-hint">* การยกเลิกไม่สามารถกู้คืนได้</p>
+      </div>
+    `;
+  }
+
   area.innerHTML = `
     <div class="result-card">
       <div class="result-header">
@@ -280,7 +295,7 @@ function renderResult(row) {
       </div>
     </div>
 
-    <div id="paymentArea">${paymentBlock}</div>
+    <div id="paymentArea">${paymentBlock}${cancelBlock}</div>
 
     <div id="paymentForm" style="display:none">
       <div class="section-title" style="margin-top:1rem;">
@@ -586,6 +601,31 @@ function parseThaiDateToISO(dateStr) {
     return `${year}-${month}-${day}`;
   }
   return String(dateStr).trim();
+}
+
+// ===== CANCEL BOOKING =====
+async function cancelCurrentBooking() {
+  const row = currentBooking;
+  if (!row) return;
+
+  if (!confirm(`⚠️ ยืนยันยกเลิกการจองนี้?\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
+
+  setOverlay(true, 'กำลังยกเลิก...');
+  try {
+    const result = await appsScriptPost({
+      action: 'cancelBooking',
+      ref: row.ref
+    });
+    if (result.status !== 'ok') throw new Error(result.message || 'ยกเลิกไม่สำเร็จ');
+  } catch (err) {
+    console.error('Cancel error:', err);
+    setOverlay(false);
+    alert(`❌ ไม่สามารถยกเลิกการจองได้: ${err.message || 'กรุณาลองใหม่อีกครั้ง'}`);
+    return;
+  }
+  setOverlay(false);
+  row.status = 'ยกเลิก';
+  renderResult(row);
 }
 
 // ===== DEMO DATA =====

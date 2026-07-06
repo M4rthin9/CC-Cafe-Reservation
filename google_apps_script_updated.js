@@ -419,7 +419,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
   }
 
   // ===== Public actions (no login required) =====
-  const publicActions = ['uploadSlip', 'updateSlipAndStatus'];
+  const publicActions = ['uploadSlip', 'updateSlipAndStatus', 'cancelBooking'];
  if (publicActions.includes(action) && (username === 'public' || !username)) {
    // allow public slip upload / payment confirmation
  } else if (!publicActions.includes(action) && !isAuthorized(username, pass)) {
