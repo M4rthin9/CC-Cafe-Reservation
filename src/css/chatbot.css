@@ -6,14 +6,15 @@
 
 /* ===== CSS VARIABLES ===== */
 :root {
-  --chat-bg: #0A0A0A;
+  --chat-bg: #0c0a1d;
   --chat-bg-dark: #000000;
-  --chat-bg-light: #171717;
+  --chat-bg-light: #1e1035;
   --chat-text: #FAFAFA;
   --chat-text-muted: #A3A3A3;
-  --chat-border: #262626;
-  --chat-user-bg: #262626;
+  --chat-border: #2d1f4e;
+  --chat-user-bg: #7c3aed;
   --chat-user-text: #FAFAFA;
+  --chat-accent: #7c3aed;
 }
 
 /* ===== KEYFRAME ANIMATIONS ===== */
@@ -136,7 +137,7 @@
 
 /* ===== CHAT HEADER ===== */
 .chat-header {
-  background: linear-gradient(135deg, #111111 0%, #0A0A0A 50%, #111111 100%);
+  background: linear-gradient(135deg, #7c3aed 0%, #0c0a1d 50%, #7c3aed 100%);
   background-size: 200% 100%;
   color: var(--white);
   padding: 16px 18px;
@@ -255,7 +256,7 @@
   text-align: right;
   color: var(--chat-user-text);
   padding: 10px 14px;
-  background: linear-gradient(135deg, #262626 0%, #1F1F1F 100%);
+  background: linear-gradient(135deg, #2d1f4e 0%, #1e1035 100%);
   border-radius: 16px 4px 16px 16px;
   border: 1px solid rgba(255,255,255,0.08);
   margin-left: 40px;

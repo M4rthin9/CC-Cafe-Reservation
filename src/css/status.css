@@ -1,6 +1,6 @@
 /* ============================================================
    STATUS.CSS — Status Check Page
-   Black & White / Dark Monochromatic Theme
+   Government Formal Theme — Navy & Gold
    ============================================================ */
 
 /* ===== APP CONTAINER ===== */
@@ -15,7 +15,7 @@
   text-align: center;
   margin-bottom: var(--space-6);
   padding: var(--space-6) var(--space-5);
-  background: linear-gradient(160deg, #0A0A0A 0%, #171717 60%, #0A0A0A 100%);
+  background: linear-gradient(160deg, #0a1628 0%, #1e3a8a 60%, #0a1628 100%);
   border-radius: var(--radius-xl);
   color: var(--white);
   position: relative;
@@ -91,7 +91,7 @@
 }
 
 .section-title i {
-  color: var(--black);
+  color: var(--primary);
   font-size: var(--text-lg);
 }
 
@@ -134,9 +134,10 @@
 
 .tab-btn.active {
   background: var(--bg-elevated);
-  color: var(--black);
+  color: var(--primary);
   box-shadow: var(--shadow-sm);
   font-weight: var(--weight-semibold);
+  border-bottom: 2px solid var(--primary);
 }
 
 .tab-btn:hover:not(.active) {
@@ -174,8 +175,8 @@
 
 .tab-content input:focus {
   outline: none;
-  border-color: var(--black);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.12);
   background: var(--bg-elevated);
 }
 
@@ -204,8 +205,8 @@
 
 .search-input:focus {
   outline: none;
-  border-color: var(--black);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.12);
 }
 
 .search-input::placeholder {
@@ -215,7 +216,7 @@
 
 .search-btn {
   padding: var(--space-2) var(--space-4);
-  background: var(--black);
+  background: var(--primary);
   color: var(--white);
   border: none;
   border-radius: var(--radius-md);
@@ -231,7 +232,7 @@
 }
 
 .search-btn:hover {
-  background: var(--gray-800);
+  background: var(--primary-dark);
 }
 
 .search-btn:disabled {
@@ -274,9 +275,12 @@
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
-.status-card.status-pending::before { background: var(--gray-400); }
-.status-card.status-approved::before { background: var(--gray-800); }
-.status-card.status-rejected::before { background: var(--black); }
+.status-card.status-pending::before { background: var(--accent); }
+.status-card.status-approved::before { background: var(--green); }
+.status-card.status-rejected::before { background: var(--red); }
+.status-card.status-cancelled::before { background: var(--gray-500); }
+.status-card.status-paid::before { background: var(--primary); }
+.status-card.status-completed::before { background: var(--primary); }
 
 .status-header {
   display: flex;
@@ -295,7 +299,7 @@
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   font-family: var(--font-mono);
-  color: var(--black);
+  color: var(--primary);
   letter-spacing: 0.5px;
 }
 
@@ -318,27 +322,39 @@
 }
 
 .status-badge.pending {
-  background: var(--gray-200);
-  color: var(--gray-700);
-  border: 1px solid var(--border);
+  background: var(--accent-light);
+  color: var(--accent-dark);
+  border: 1px solid var(--accent);
 }
 
 .status-badge.approved {
-  background: var(--gray-100);
-  color: var(--black);
-  border: 1px solid var(--gray-400);
+  background: var(--green-50);
+  color: var(--green);
+  border: 1px solid var(--green);
 }
 
 .status-badge.rejected {
-  background: var(--black);
-  color: var(--white);
-  border: 1px solid var(--black);
+  background: var(--red-100);
+  color: var(--red);
+  border: 1px solid var(--red);
 }
 
 .status-badge.cancelled {
-  background: var(--gray-200);
-  color: var(--gray-600);
-  border: 1px solid var(--border);
+  background: var(--gray-100);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-strong);
+}
+
+.status-badge.paid {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.status-badge.completed {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border: 1px solid var(--primary);
 }
 
 .visitor-info {
@@ -459,7 +475,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--gray-400);
+  background: var(--primary);
   flex-shrink: 0;
   margin-top: 7px;
 }
@@ -550,8 +566,9 @@
 }
 
 .payment-value.highlight {
-  color: var(--black);
+  color: var(--primary);
   font-size: var(--text-base);
+  font-weight: var(--weight-bold);
 }
 
 .upload-section {
@@ -588,13 +605,13 @@
 }
 
 .upload-area:hover {
-  border-color: var(--gray-400);
-  background: var(--gray-100);
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 .upload-area.dragover {
-  border-color: var(--black);
-  background: var(--gray-100);
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 .upload-area i {
@@ -637,12 +654,12 @@
   border: none;
 }
 
-.change-slip:hover { color: var(--black); }
+.change-slip:hover { color: var(--primary); }
 
 .confirm-slip {
   width: 100%;
   padding: var(--space-3);
-  background: var(--black);
+  background: var(--primary);
   color: var(--white);
   border: none;
   border-radius: var(--radius-md);
@@ -657,7 +674,7 @@
 }
 
 .confirm-slip:hover {
-  background: var(--gray-800);
+  background: var(--primary-dark);
 }
 
 .confirm-slip:disabled {
@@ -681,7 +698,7 @@
   align-items: flex-start;
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--gray-100);
+  background: var(--primary-light);
   gap: var(--space-3);
 }
 
@@ -693,7 +710,7 @@
 .result-ref strong {
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
-  color: var(--black);
+  color: var(--primary);
   font-family: var(--font-mono);
   letter-spacing: 0.5px;
 }
@@ -763,18 +780,18 @@
 }
 
 .approval-badge.yes {
-  background: var(--gray-100);
-  color: var(--black);
+  background: var(--green-50);
+  color: var(--green);
 }
 
 .approval-badge.no {
-  background: var(--black);
-  color: var(--white);
+  background: var(--red-100);
+  color: var(--red);
 }
 
 .approval-badge.pending {
-  background: var(--gray-200);
-  color: var(--gray-700);
+  background: var(--accent-light);
+  color: var(--accent-dark);
 }
 
 /* ===== ERROR LAYOUT ===== */
@@ -859,9 +876,9 @@
 }
 
 .btn-link:hover {
-  border-color: var(--black);
-  color: var(--black);
-  background: var(--gray-100);
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
 }
 
 /* ===== PAYMENT SECTION (inline) ===== */
@@ -900,8 +917,9 @@
 }
 
 .rejected-notice {
-  background: var(--gray-100);
-  border: 1px solid var(--border);
+  background: var(--red-100);
+  border: 1px solid var(--red);
+  border-left: 4px solid var(--red);
 }
 
 .rejected-notice h3 {
@@ -918,12 +936,13 @@
 }
 
 .paid-notice {
-  background: var(--gray-100);
-  border: 1px solid var(--border);
+  background: var(--green-50);
+  border: 1px solid var(--green);
+  border-left: 4px solid var(--green);
 }
 
 .paid-notice h3 {
-  color: var(--text);
+  color: var(--green);
   font-size: var(--text-base);
   font-weight: var(--weight-bold);
   margin-bottom: var(--space-1);
@@ -951,13 +970,13 @@
 }
 
 .upload-area:hover {
-  border-color: var(--gray-400);
-  background: var(--gray-100);
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 .upload-area.drag-over {
-  border-color: var(--black);
-  background: var(--gray-100);
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 .upload-area input[type="file"] {
@@ -1005,7 +1024,7 @@
 
 .upload-progress-bar {
   height: 100%;
-  background: var(--black);
+  background: var(--primary);
   border-radius: var(--radius-full);
   transition: width 0.3s ease;
   width: 0%;
@@ -1021,15 +1040,15 @@
 }
 
 .alert-strip.err {
-  background: var(--gray-100);
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: var(--red-100);
+  border: 1px solid var(--red);
+  color: var(--red);
 }
 
 .alert-strip.success {
-  background: var(--gray-100);
-  border: 1px solid var(--gray-600);
-  color: var(--text);
+  background: var(--green-50);
+  border: 1px solid var(--green);
+  color: var(--green);
 }
 
 .alert-strip.warn {
@@ -1042,7 +1061,7 @@
 .btn-primary {
   width: 100%;
   padding: var(--space-3) var(--space-4);
-  background: var(--black);
+  background: var(--primary);
   color: var(--white);
   border: none;
   border-radius: var(--radius-lg);
@@ -1058,7 +1077,7 @@
 }
 
 .btn-primary:hover {
-  background: var(--gray-800);
+  background: var(--primary-dark);
   transform: translateY(-1px);
   box-shadow: var(--shadow-lg);
 }
@@ -1084,9 +1103,9 @@
 }
 
 .btn-secondary:hover {
-  border-color: var(--black);
-  color: var(--black);
-  background: var(--bg-elevated);
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
 }
 
 /* ===== OVERLAY ===== */
@@ -1227,8 +1246,10 @@
   background: #fee2e2;
 }
 
-/* ===== STATUS COLORS (B&W) ===== */
-.status-color-pending { color: var(--gray-700); }
-.status-color-approved { color: var(--black); }
-.status-color-rejected { color: var(--gray-600); }
-.status-color-cancelled { color: var(--gray-500); }
+/* ===== STATUS COLORS ===== */
+.status-color-pending { color: var(--accent); }
+.status-color-approved { color: var(--green); }
+.status-color-rejected { color: var(--red); }
+.status-color-cancelled { color: var(--text-tertiary); }
+.status-color-paid { color: var(--primary); }
+.status-color-completed { color: var(--primary); }

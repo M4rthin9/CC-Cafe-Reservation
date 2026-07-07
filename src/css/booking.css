@@ -1,6 +1,6 @@
 /* ============================================================
    BOOKING.CSS — Booking Form
-   Black & White / Dark Monochromatic Theme
+   Government Formal Theme — Navy & Gold
    ============================================================ */
 
 /* ===== APP CONTAINER ===== */
@@ -15,7 +15,7 @@
   text-align: center;
   margin-bottom: var(--space-6);
   padding: var(--space-6) var(--space-5);
-  background: linear-gradient(160deg, #0A0A0A 0%, #171717 60%, #0A0A0A 100%);
+  background: linear-gradient(160deg, #0a1628 0%, #1e3a8a 60%, #0a1628 100%);
   border-radius: var(--radius-xl);
   color: var(--white);
   position: relative;
@@ -113,17 +113,17 @@
 }
 
 .step-circle.active {
-  background: var(--black);
+  background: var(--primary);
   color: var(--white);
-  border-color: var(--black);
-  box-shadow: 0 0 0 4px rgba(0,0,0,0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.15);
 }
 
 .step-circle.done {
-  background: var(--gray-700);
+  background: var(--accent);
   color: var(--white);
-  border-color: var(--gray-700);
-  box-shadow: 0 0 0 4px rgba(0,0,0,0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(194, 154, 56, 0.15);
 }
 
 .step-label {
@@ -134,7 +134,7 @@
 }
 
 .step-label.active {
-  color: var(--black);
+  color: var(--primary);
   font-weight: var(--weight-semibold);
 }
 
@@ -147,7 +147,7 @@
   transition: background var(--duration-normal);
 }
 
-.step-line.done { background: var(--gray-700); }
+.step-line.done { background: var(--accent); }
 
 /* ===== SECTION CARDS ===== */
 .section {
@@ -175,7 +175,7 @@
 }
 
 .section-title i {
-  color: var(--black);
+  color: var(--primary);
   font-size: var(--text-lg);
 }
 
@@ -222,8 +222,8 @@ select {
 
 input:focus, select:focus {
   outline: none;
-  border-color: var(--black);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.12);
   background: var(--bg-elevated);
 }
 
@@ -260,9 +260,9 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 }
 
 .cal-nav:hover {
-  border-color: var(--black);
-  color: var(--black);
-  background: var(--gray-100);
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
 }
 
 .day-names {
@@ -303,17 +303,17 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 }
 
 .day-btn:hover:not(.full-day):not(.past):not(.holiday):not(.weekend) {
-  border-color: var(--black);
-  color: var(--black);
-  background: var(--gray-100);
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
 }
 
 .day-btn.selected {
-  background: var(--black);
+  background: var(--primary);
   color: var(--white);
-  border-color: var(--black);
+  border-color: var(--primary);
   font-weight: var(--weight-semibold);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.25);
 }
 
 .day-btn.full-day {
@@ -348,7 +348,7 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 
 .selected-date-display {
   font-size: var(--text-sm);
-  color: var(--black);
+  color: var(--primary);
   font-weight: var(--weight-semibold);
   margin-top: var(--space-2);
   min-height: 20px;
@@ -374,8 +374,8 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 
 /* ===== RULES ===== */
 .rules {
-  background: var(--gray-100);
-  border-left: 3px solid var(--black);
+  background: var(--primary-light);
+  border-left: 3px solid var(--primary);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   padding: var(--space-3) var(--space-4);
   margin-bottom: var(--space-4);
@@ -384,7 +384,7 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
   line-height: var(--leading-loose);
 }
 
-.rules strong { color: var(--black); }
+.rules strong { color: var(--primary); }
 
 /* ===== CONSENT ===== */
 .consent-row {
@@ -400,8 +400,8 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 }
 
 .consent-row:has(input:checked) {
-  border-color: var(--black);
-  background: var(--gray-100);
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 .consent-row input[type=checkbox] {
@@ -409,7 +409,7 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
   height: 18px;
   flex-shrink: 0;
   margin-top: 2px;
-  accent-color: var(--black);
+  accent-color: var(--primary);
   cursor: pointer;
 }
 
@@ -424,7 +424,7 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 .btn-primary {
   width: 100%;
   padding: var(--space-3) var(--space-4);
-  background: var(--black);
+  background: var(--primary);
   color: var(--white);
   border: none;
   border-radius: var(--radius-lg);
@@ -440,7 +440,7 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 }
 
 .btn-primary:hover {
-  background: var(--gray-800);
+  background: var(--primary-dark);
   transform: translateY(-1px);
   box-shadow: var(--shadow-lg);
 }
@@ -466,9 +466,9 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 }
 
 .btn-secondary:hover {
-  border-color: var(--black);
-  color: var(--black);
-  background: var(--bg-elevated);
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
 }
 
 /* ===== PAGES ===== */
@@ -499,7 +499,7 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 
 /* ===== CONFIRM HERO ===== */
 .confirm-hero {
-  background: linear-gradient(135deg, #0A0A0A 0%, #171717 100%);
+  background: linear-gradient(135deg, #0a1628 0%, #1e3a8a 100%);
   color: var(--white);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
@@ -598,19 +598,19 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 .success-icon {
   width: 80px;
   height: 80px;
-  background: var(--gray-100);
+  background: var(--accent-light);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--space-5);
   font-size: 40px;
-  border: 3px solid var(--border);
+  border: 3px solid var(--accent);
   animation: scaleIn 0.5s var(--ease-bounce);
 }
 
 .ref-box {
-  background: linear-gradient(160deg, #0A0A0A 0%, #171717 100%);
+  background: linear-gradient(160deg, #0a1628 0%, #1e3a8a 100%);
   border-radius: var(--radius-lg);
   padding: var(--space-5) var(--space-8);
   display: inline-block;
@@ -659,9 +659,9 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 }
 
 .status-pending {
-  background: var(--gray-200);
-  color: var(--gray-700);
-  border: 1px solid var(--border);
+  background: var(--accent-light);
+  color: var(--accent-dark);
+  border: 1px solid var(--accent);
 }
 
 /* ===== OVERLAY ===== */
@@ -747,7 +747,7 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 
 .suggestion-item .pwing {
   font-size: var(--text-xs);
-  color: var(--black);
+  color: var(--primary);
   font-weight: var(--weight-semibold);
 }
 
@@ -806,11 +806,11 @@ input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 
 .dept-report strong { color: var(--text); }
 
-.booking-report { border-color: var(--black); }
-.table-report { border-color: var(--gray-600); }
-.disciplinary-report { border-color: var(--gray-600); }
-.kitchen-report { border-color: var(--gray-500); }
-.bakery-report { border-color: var(--gray-400); }
+.booking-report { border-color: var(--primary); }
+.table-report { border-color: var(--navy-600); }
+.disciplinary-report { border-color: var(--crimson); }
+.kitchen-report { border-color: var(--green); }
+.bakery-report { border-color: var(--accent); }
 
 /* ===== BOOKING DETAILS ===== */
 .booking-details {

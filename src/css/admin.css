@@ -1,14 +1,14 @@
 :root {
-  --navy: #1e1b4b;
-  --crimson: #4f46e5;
-  --antique-gold: #d97706;
+  --navy: #0c0a1d;
+  --crimson: #7c3aed;
+  --antique-gold: #ec4899;
 
-  --primary: #4f46e5;
-  --primary-dark: #4338ca;
+  --primary: #7c3aed;
+  --primary-dark: #6d28d9;
 
   --bg: #f8fafc;
   --bg2: #ffffff;
-  --bg-sidebar: #1e1b4b;
+  --bg-sidebar: #0c0a1d;
   --border: #e2e8f0;
   --border-hover: #cbd5e1;
 
@@ -16,15 +16,15 @@
   --text2: #475569;
   --text-muted: #94a3b8;
 
-  --blue: #4f46e5;
-  --blue-dark: #312e81;
-  --blue-light: #eef2ff;
+  --blue: #7c3aed;
+  --blue-dark: #4c1d95;
+  --blue-light: #f5f3ff;
 
   --green: #059669;
   --green-light: #ecfdf5;
 
-  --gold: #d97706;
-  --gold-light: #fffbeb;
+  --gold: #ec4899;
+  --gold-light: #fdf2f8;
 
   --red: #dc2626;
   --red-light: #fef2f2;
@@ -33,13 +33,13 @@
   --radius-sm: 8px;
 
   --status-pending: #94a3b8;
-  --status-discipline: #6366f1;
-  --status-participant: #f59e0b;
-  --status-payment: #d97706;
+  --status-discipline: #7c3aed;
+  --status-participant: #d946ef;
+  --status-payment: #f97316;
   --status-paid: #059669;
-  --status-completed: #4f46e5;
+  --status-completed: #8b5cf6;
   --status-rejected: #ef4444;
-  --status-cancelled: #64748b;
+  --status-cancelled: #78716c;
   
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
@@ -106,7 +106,7 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
   align-items: center; 
   justify-content: center; 
   padding: 1rem; 
-  background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%); 
+  background: linear-gradient(135deg, #0c0a1d 0%, #7c3aed 100%); 
 }
 .login-box { 
   background: rgba(255, 255, 255, 0.9); 
@@ -156,7 +156,7 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
 .login-btn { 
   width: 100%; 
   padding: 13px; 
-  background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%); 
+  background: linear-gradient(135deg, #0c0a1d 0%, #7c3aed 100%); 
   color: #fff; 
   border: none; 
   border-radius: var(--radius-sm); 
@@ -168,7 +168,7 @@ body { background: var(--bg); font-family: 'Sarabun', sans-serif; color: var(--t
   transition: all 0.2s ease; 
 }
 .login-btn:hover { 
-  background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%); 
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); 
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(79, 70, 229, 0.45);
 }
@@ -506,7 +506,7 @@ tr:hover td { background: #f8f9fa; }
 }
 
 .badge-pending-review    { background: rgba(148, 163, 184, 0.12); color: #475569; border-color: rgba(148, 163, 184, 0.25); }
-.badge-discipline-check  { background: rgba(99, 102, 241, 0.12); color: #4338ca; border-color: rgba(99, 102, 241, 0.25); }
+.badge-discipline-check  { background: rgba(124, 58, 237, 0.12); color: #7c3aed; border-color: rgba(124, 58, 237, 0.25); }
 .badge-participant-check { background: rgba(245, 158, 11, 0.12); color: #92400e; border-color: rgba(245, 158, 11, 0.25); }
 .badge-payment-pending   { background: rgba(217, 119, 6, 0.12); color: #92400e; border-color: rgba(217, 119, 6, 0.25); }
 .badge-paid              { background: rgba(5, 150, 105, 0.12); color: #065f46; border-color: rgba(5, 150, 105, 0.25); }
@@ -883,7 +883,7 @@ input[type="date"], #filterDate {
   padding: 10px 12px;
   background: var(--bg2);
 }
-.finance-kpi-item.total { border-color: rgba(79, 70, 229, 0.25); background: #eef2ff; }
+.finance-kpi-item.total { border-color: rgba(124, 58, 237, 0.25); background: #f5f3ff; }
 .finance-kpi-item.paid { border-color: rgba(5, 150, 105, 0.35); background: #ecfdf5; }
 .finance-kpi-item.unpaid { border-color: rgba(217, 119, 6, 0.4); background: #fffbeb; }
 .finance-kpi-label {
@@ -900,7 +900,7 @@ input[type="date"], #filterDate {
 }
 .finance-kpi-item.total .finance-kpi-val { color: var(--blue); }
 .finance-kpi-item.paid .finance-kpi-val { color: #059669; }
-.finance-kpi-item.unpaid .finance-kpi-val { color: #d97706; }
+.finance-kpi-item.unpaid .finance-kpi-val { color: #ec4899; }
 .finance-kpi-sub {
   font-size: 10px;
   color: var(--text2);
@@ -1521,7 +1521,7 @@ input[type="date"], #filterDate {
   margin-top: 4px;
   line-height: 1.2;
 }
-.stat-card.blue { border-left: 4px solid var(--blue); background: linear-gradient(135deg, #eef2ff 0%, #fff 100%); }
+.stat-card.blue { border-left: 4px solid var(--blue); background: linear-gradient(135deg, #f5f3ff 0%, #fff 100%); }
 .stat-card.yellow { border-left: 4px solid var(--gold); background: linear-gradient(135deg, #fffbeb 0%, #fff 100%); }
 .stat-card.green { border-left: 4px solid var(--green); background: linear-gradient(135deg, #ecfdf5 0%, #fff 100%); }
 .stat-card.red { border-left: 4px solid var(--red); background: linear-gradient(135deg, #fef2f2 0%, #fff 100%); }
@@ -1530,7 +1530,7 @@ input[type="date"], #filterDate {
 .finance-ribbon {
   display: flex;
   align-items: center;
-  background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 60%, #6366f1 100%);
+  background: linear-gradient(135deg, #0c0a1d 0%, #7c3aed 60%, #8b5cf6 100%);
   border-radius: 14px;
   padding: 16px 20px;
   margin-bottom: 16px;
@@ -1703,7 +1703,7 @@ input[type="date"], #filterDate {
   letter-spacing: 0.5px;
 }
 .floor-table.occupied .ft-status-badge { background: #dc2626; color: #fff; }
-.floor-table.reserved .ft-status-badge { background: #d97706; color: #fff; }
+.floor-table.reserved .ft-status-badge { background: #ec4899; color: #fff; }
 .floor-table.available .ft-status-badge { background: #16a34a; color: #fff; }
 
 .floor-legend {
@@ -1722,7 +1722,7 @@ input[type="date"], #filterDate {
   margin-right: 2px;
 }
 .fl-dot.occupied { background: #dc2626; }
-.fl-dot.reserved { background: #d97706; }
+.fl-dot.reserved { background: #ec4899; }
 .fl-dot.available { background: #16a34a; }
 
 /* === RESPONSIVE: Finance Ribbon === */
@@ -2194,7 +2194,9 @@ input[type="date"], #filterDate {
 
 /* === WELCOME BANNER === */
 .welcome-banner {
-  background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #0c0a1d 0%, #7c3aed 100%); 
+
+
   border-radius: 14px;
   padding: 20px 24px;
   margin-bottom: 20px;
@@ -2750,16 +2752,16 @@ mark.search-highlight {
 
 /* === DARK MODE === */
 body.dark-mode {
-  --bg: #0f172a;
-  --bg2: #1e293b;
-  --border: #334155;
-  --border-hover: #475569;
+  --bg: #0c0a1d;
+  --bg2: #1e1035;
+  --border: #2d1f4e;
+  --border-hover: #4a3370;
   --text: #f1f5f9;
   --text2: #94a3b8;
   --text-muted: #64748b;
-  --blue-light: #1e3a5f;
+  --blue-light: #2d1f4e;
   --green-light: #14532d;
-  --gold-light: #422006;
+  --gold-light: #3b1f3d;
   --red-light: #450a0a;
 }
 body.dark-mode .login-box { background: rgba(30, 41, 59, 0.95); }
@@ -2769,7 +2771,7 @@ body.dark-mode .topbar { background: #0f172a; }
 body.dark-mode .sidebar { background: #0f0e2a; }
 body.dark-mode table { background: var(--bg2); }
 body.dark-mode tr:hover td { background: #1e293b; }
-body.dark-mode .welcome-banner { background: linear-gradient(135deg, #0f0e2a 0%, #312e81 100%); }
+body.dark-mode .welcome-banner { background: linear-gradient(135deg, #0c0a1d 0%, #4c1d95 100%); }
 body.dark-mode .todays-visits,
 body.dark-mode .metric-card,
 body.dark-mode .report-card,
@@ -2803,7 +2805,7 @@ body.dark-mode .quick-action-btn { background: var(--bg2); border-color: var(--b
 /* === D3.JS CHART STYLES === */
 .d3-tooltip {
   position: absolute;
-  background: rgba(30, 27, 75, 0.95);
+  background: rgba(12, 10, 29, 0.95);
   color: #fff;
   padding: 8px 12px;
   border-radius: 6px;
@@ -2823,7 +2825,7 @@ body.dark-mode .quick-action-btn { background: var(--bg2); border-color: var(--b
   left: 16px;
   border-width: 5px;
   border-style: solid;
-  border-color: rgba(30, 27, 75, 0.95) transparent transparent transparent;
+  border-color: rgba(12, 10, 29, 0.95) transparent transparent transparent;
 }
 .slice { cursor: pointer; }
 .slice path { transition: opacity 0.15s; }
@@ -2987,7 +2989,7 @@ body.dark-mode .quick-action-btn { background: var(--bg2); border-color: var(--b
   display: flex;
   gap: 12px;
   padding: 14px 16px;
-  background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, #f5f3ff 0%, #f8fafc 100%);
   border: 1px solid rgba(79,70,229,0.2);
   border-radius: var(--radius);
   margin-bottom: 12px;
