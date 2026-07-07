@@ -1287,6 +1287,11 @@ function ensureSettingsHeaders(sheet) {
   sheet.setFrozenRows(1);
 }
 
+function listAllSheets() {
+  const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+  return sheets.map(s => ({ name: s.getName(), rows: s.getLastRow(), cols: s.getLastColumn() }));
+}
+
 function jsonResp(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
