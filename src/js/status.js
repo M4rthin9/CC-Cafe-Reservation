@@ -1,11 +1,11 @@
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptPost(payload) {
-  const resp = await fetch(APPS_SCRIPT_URL, {
+  const resp = await appsScriptFetch('', {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
-  });
+  }, 2);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const text = await resp.text();
   try {
@@ -17,7 +17,7 @@ async function appsScriptPost(payload) {
 
 async function appsScriptGet(params) {
   const qs = new URLSearchParams(params).toString();
-  const resp = await fetch(APPS_SCRIPT_URL + '?' + qs, { redirect: 'follow' });
+  const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 2);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const text = await resp.text();
   try {
@@ -71,24 +71,41 @@ async function doSearch() {
   document.getElementById('thankYouArea').style.display = 'none';
 
   let rows = [];
-  try {
-    const data = await appsScriptGet({ action: 'getAll' });
-    if (data.status === 'ok') rows = data.rows || [];
-    else throw new Error(data.message || 'error');
-  } catch (err) {
-    console.error('Fetch error:', err);
-    if (APPS_SCRIPT_URL.includes('YOUR_GOOGLE')) {
-      rows = getDemoRows();
-    } else {
-      setOverlay(false);
-      document.getElementById('searchBtn').disabled = false;
-      renderError('ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง');
-      return;
+  let retryCount = 0;
+  const maxRetries = 2;
+  while (retryCount <= maxRetries) {
+    try {
+      if (retryCount > 0) {
+        setOverlay(true, `กำลังลองใหม่ (ครั้งที่ ${retryCount}/${maxRetries})...`);
+      }
+      const data = await appsScriptGet({ action: 'getAll' });
+      if (data.status === 'ok') { rows = data.rows || []; break; }
+      else throw new Error(data.message || 'error');
+    } catch (err) {
+      retryCount++;
+      console.error('Fetch error (attempt ' + retryCount + '):', err);
+      if (retryCount > maxRetries) {
+        if (APPS_SCRIPT_URL.includes('YOUR_GOOGLE')) {
+          rows = getDemoRows();
+          break;
+        } else {
+          setOverlay(false);
+          document.getElementById('searchBtn').disabled = false;
+          const errMsg = err.message || '';
+          if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError') || errMsg.includes('abort') || err.name === 'AbortError') {
+            renderErrorWithRetry('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ — กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองอีกครั้ง');
+          } else if (errMsg.includes('HTTP 5') || errMsg.includes('HTTP 4')) {
+            renderErrorWithRetry('เซิร์ฟเวอร์มีปัญหา (HTTP Error) — กรุณาลองใหม่อีกครั้ง');
+          } else {
+            renderErrorWithRetry('ไม่สามารถเชื่อมต่อระบบได้ — ' + (errMsg || 'กรุณาลองใหม่อีกครั้ง'));
+          }
+          return;
+        }
+      }
     }
-  } finally {
-    setOverlay(false);
-    document.getElementById('searchBtn').disabled = false;
   }
+  setOverlay(false);
+  document.getElementById('searchBtn').disabled = false;
 
   // Filter - find upcoming bookings (not cancelled and not past completed)
   let found = null;
@@ -138,6 +155,28 @@ function renderError(msg) {
       <div class="error-icon">⚠️</div>
       <div class="error-title">เกิดข้อผิดพลาด</div>
       <div class="error-message">${msg}</div>
+    </div>`;
+}
+
+function renderErrorWithRetry(msg) {
+  const area = document.getElementById('resultArea');
+  area.style.display = 'block';
+  area.innerHTML = `
+    <div class="error-card">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title">เกิดข้อผิดพลาด</div>
+      <div class="error-message">${msg}</div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;">
+        <button class="btn-primary" onclick="doSearch()" style="font-size:13px;">
+          <i class="ti ti-refresh"></i> ลองอีกครั้ง
+        </button>
+        <button class="btn-secondary" onclick="resetConnection()" style="font-size:13px;">
+          <i class="ti ti-plug"></i> รีเซ็ตการเชื่อมต่อ
+        </button>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:var(--text2);">
+        หรือลองเปิด <a href="javascript:void(0)" onclick="checkConnection().then(r => alert('Connected: ' + r.connected + '\\n' + r.message))" style="color:var(--accent)">ตรวจสอบการเชื่อมต่อ</a>
+      </div>
     </div>`;
 }
 

@@ -51,6 +51,7 @@
        <a class="sb-link" data-view="eventlog" onclick="switchView('eventlog');return false">📝 <span class="sb-text">บันทึกการทำงาน</span></a>
        <a class="sb-link" data-view="users" id="sbUsers" style="display:none" onclick="switchView('users');return false">👥 <span class="sb-text">จัดการผู้ใช้</span></a>
        <a class="sb-link" data-view="prisoners" id="sbPrisoners" style="display:none" onclick="switchView('prisoners');return false">🔒 <span class="sb-text">ผู้ต้องขัง</span></a>
+       <a class="sb-link" data-view="connection" id="sbConnection" style="display:none" onclick="switchView('connection');return false">🔗 <span class="sb-text">การเชื่อมต่อ</span></a>
        <a class="sb-link" data-view="settings" id="sbSettings" style="display:none" onclick="switchView('settings');return false">⚙️ <span class="sb-text">ตั้งค่า</span></a>
      </nav>
     <div class="sb-bottom">
@@ -65,7 +66,8 @@
          <h1 id="topTitle">🏛️ ระบบตรวจสอบการจองเยี่ยม</h1>
          <div style="font-size:12px;opacity:0.8">ทัณฑสถานบำบัดพิเศษกลาง</div>
        </div>
-       <div class="topbar-right">
+        <div class="topbar-right">
+<span id="connIndicator" style="display:none;font-size:11px;padding:4px 8px;border-radius:12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);margin-right:6px;cursor:help" onclick="checkConnection()" title="คลิกเพื่อทดสอบการเชื่อมต่อ">🔗 <span id="connDot">⚪</span></span>
 <div class="notif-bell" id="notifBell" style="display:none;cursor:pointer;padding:6px 10px;border-radius:8px;transition:background 0.15s;position:relative;" onclick="toggleNotifPanel()" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background=''">
             🔔<span class="notif-badge" id="notifBadge" style="display:none;"></span>
           </div>
@@ -590,6 +592,33 @@
       </div>
 
       <!-- SETTINGS VIEW -->
+      <div id="view-connection" class="view" style="display:none">
+        <div style="margin-bottom:12px">
+          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">🔗 การเชื่อมต่อระบบ</h1>
+          <div style="font-size:13px;color:var(--text2)">ทดสอบ · จัดการ URL การเชื่อมต่อกับ Google Apps Script</div>
+        </div>
+        <div class="dash-card" style="padding:20px;max-width:600px;" id="connCard">
+          <div id="connTestResult" style="margin-bottom:16px;"></div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">🔌 ทดสอบการเชื่อมต่อ</div>
+          <button class="btn-approve" onclick="testConnectionHandler()" id="connTestBtn" style="min-width:140px">
+            🔄 ทดสอบการเชื่อมต่อ
+          </button>
+          <div style="font-size:14px;font-weight:600;margin:18px 0 8px;border-top:1px solid var(--border);padding-top:16px;">📋 URL ปัจจุบัน</div>
+          <div style="background:var(--gray-100);padding:8px 12px;border-radius:6px;font-size:11px;word-break:break-all;color:var(--text2);margin-bottom:12px;" id="connCurrentUrl">—</div>
+          <div style="font-size:14px;font-weight:600;margin:12px 0 8px;">✏️ อัปเดต URL</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="connUrlInput" class="search-box" style="flex:1;font-size:12px;" placeholder="https://script.google.com/macros/s/.../exec">
+            <button class="btn-primary" onclick="saveConnectionUrl()" style="white-space:nowrap;">💾 บันทึก</button>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:6px;">เมื่อบันทึกแล้วระบบจะใช้ URL ใหม่ทันที และล้างแคชเก่า</div>
+          <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;display:flex;gap:8px;">
+            <button class="btn-cancel" onclick="clearConnectionCache()">🗑️ ล้างแคช</button>
+            <button class="btn-secondary" onclick="copyConnectionUrl()">📋 คัดลอก URL</button>
+          </div>
+          <div id="connDiagnostic" style="margin-top:16px;font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:12px;"></div>
+        </div>
+      </div>
+
       <div id="view-settings" class="view" style="display:none">
         <div style="margin-bottom:12px">
           <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">⚙️ ตั้งค่าระบบ</h1>
@@ -790,6 +819,7 @@
     <a href="#" class="bottom-nav-item" data-view="eventlog" onclick="switchView('eventlog');return false">📝<br><span>บันทึก</span></a>
     <a href="#" class="bottom-nav-item" data-view="users" id="bnUsers" style="display:none" onclick="switchView('users');return false">👥<br><span>ผู้ใช้</span></a>
     <a href="#" class="bottom-nav-item" data-view="prisoners" id="bnPrisoners" style="display:none" onclick="switchView('prisoners');return false">🔒<br><span>ผู้ต้องขัง</span></a>
+    <a href="#" class="bottom-nav-item" data-view="connection" id="bnConnection" style="display:none" onclick="switchView('connection');return false">🔗<br><span>เชื่อมต่อ</span></a>
     <a href="#" class="bottom-nav-item" data-view="settings" id="bnSettings" style="display:none" onclick="switchView('settings');return false">⚙️<br><span>ตั้งค่า</span></a>
   </nav>
 

@@ -10,8 +10,8 @@ const PERMISSIONS = {
 
 // Sidebar menu visibility by role
 const SIDEBAR_MENU = {
-  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'users', 'prisoners', 'settings'],
-  Admin: ['home', 'reservations', 'reports', 'eventlog', 'prisoners'],
+  Superadmin: ['home', 'reservations', 'reports', 'eventlog', 'users', 'prisoners', 'connection', 'settings'],
+  Admin: ['home', 'reservations', 'reports', 'eventlog', 'prisoners', 'connection'],
   Finance: ['reservations', 'reports'],
   Vinai: ['home', 'reservations', 'reports'],
   Tadtel: ['home', 'reservations', 'reports'],
@@ -59,12 +59,12 @@ function stopPolling() {
 async function pollData() {
   if (!currentUser) return;
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'getAll', username: currentUser.username, password: currentUser.password })
-    });
+    }, 1);
     if (!resp.ok) return;
     const text = await resp.text();
     const data = JSON.parse(text);
@@ -237,7 +237,7 @@ async function doLogin() {
     if (btnNewBooking) btnNewBooking.style.display = isAdminOrSuper ? '' : 'none';
 
     // Show role-specific sidebar links and bottom nav
-    ['sbUsers', 'sbPrisoners', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnSettings'].forEach(id => {
+    ['sbUsers', 'sbPrisoners', 'sbConnection', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnConnection', 'bnSettings'].forEach(id => {
       const viewName = id.replace(/^(sb|bn)/, '').toLowerCase();
       const el = document.getElementById(id);
       if (el) {
@@ -250,6 +250,7 @@ async function doLogin() {
     loadData();
     startPolling();
     loadPrisonerMaster();
+    updateConnectionIndicator();
     showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณ ' + (currentUser.displayName || currentUser.username), 'success');
 
   } catch (e) {
@@ -291,7 +292,7 @@ function doLogout() {
     link.style.display = '';
   });
   // Hide role-specific elements
-  ['sbUsers', 'sbPrisoners', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnSettings'].forEach(id => {
+  ['sbUsers', 'sbPrisoners', 'sbConnection', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnConnection', 'bnSettings'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -873,6 +874,8 @@ function switchView(v) {
     renderUsersView();
   } else if (v === 'prisoners') {
     renderPrisonersView();
+  } else if (v === 'connection') {
+    renderConnectionView();
   } else if (v === 'settings') {
     renderSettingsView();
   }
@@ -5725,4 +5728,107 @@ function updateDashboardActionCards() {
   if (statThisWeek) statThisWeek.textContent = weekCount;
   if (statThisMonth) statThisMonth.textContent = monthCount;
   if (statTotal) statTotal.textContent = bookings.length;
+}
+
+// ===== CONNECTION MANAGER =====
+async function updateConnectionIndicator() {
+  const el = document.getElementById('connIndicator');
+  const dot = document.getElementById('connDot');
+  if (!el || !dot) return;
+  el.style.display = 'inline-flex';
+  dot.textContent = '⏳';
+  el.title = 'กำลังทดสอบการเชื่อมต่อ...';
+  try {
+    const result = await testConnection();
+    if (result.connected) {
+      dot.textContent = '🟢';
+      el.title = 'เชื่อมต่อสำเร็จ — ' + (result.message || 'OK');
+    } else {
+      dot.textContent = '🔴';
+      el.title = 'เชื่อมต่อล้มเหลว — ' + (result.message || 'ไม่สามารถเชื่อมต่อได้');
+    }
+  } catch (e) {
+    dot.textContent = '🔴';
+    el.title = 'เชื่อมต่อล้มเหลว';
+  }
+}
+
+function renderConnectionView() {
+  document.getElementById('view-connection').style.display = '';
+  document.getElementById('connCurrentUrl').textContent = APPS_SCRIPT_URL || '—';
+  document.getElementById('connUrlInput').value = APPS_SCRIPT_URL || '';
+  const diagnostic = document.getElementById('connDiagnostic');
+  const cachedUrl = (() => { try { return localStorage.getItem('gas_discovered_url'); } catch(e) {} })();
+  const resolvedUrl = (() => { try { return localStorage.getItem('cc_resolved_url'); } catch(e) {} })();
+  diagnostic.innerHTML = `
+    <div style="margin-bottom:6px;font-weight:600;color:var(--text)">🩺 การวินิจฉัย</div>
+    <div>Cached URL: ${cachedUrl || '—'}</div>
+    <div>Resolved URL: ${resolvedUrl || '—'}</div>
+    <div>Status: ${getConnectionStatus()}</div>
+  `;
+}
+
+async function testConnectionHandler() {
+  const btn = document.getElementById('connTestBtn');
+  const resultDiv = document.getElementById('connTestResult');
+  if (!btn || !resultDiv) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังทดสอบ...';
+  resultDiv.innerHTML = '<div style="color:var(--text2);font-size:13px;">⏳ กำลังเชื่อมต่อ...</div>';
+  try {
+    const result = await testConnection();
+    if (result.connected) {
+      resultDiv.innerHTML = `<div style="background:#d1fae5;color:#065f46;padding:10px 14px;border-radius:8px;font-size:13px;">
+        ✅ <strong>เชื่อมต่อสำเร็จ</strong><br>
+        <span style="font-size:11px;">${result.message || ''}</span>
+        ${result.detail ? '<br><span style="font-size:10px;">Sheet: ' + (result.detail.spreadsheetName || '—') + '</span>' : ''}
+      </div>`;
+      updateConnectionIndicator();
+    } else {
+      resultDiv.innerHTML = `<div style="background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:13px;">
+        ❌ <strong>เชื่อมต่อล้มเหลว</strong><br>
+        <span style="font-size:11px;">${result.message || 'ไม่ทราบสาเหตุ'}</span>
+      </div>`;
+      updateConnectionIndicator();
+    }
+  } catch (e) {
+    resultDiv.innerHTML = `<div style="background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:13px;">
+      ❌ <strong>ข้อผิดพลาด:</strong> ${e.message || 'ไม่ทราบสาเหตุ'}
+    </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 ทดสอบการเชื่อมต่อ';
+  }
+}
+
+function saveConnectionUrl() {
+  const input = document.getElementById('connUrlInput');
+  const url = input ? input.value.trim() : '';
+  if (!url || !url.includes('macros/s/')) {
+    showToast('❌ URL ไม่ถูกต้อง — ต้องมี "macros/s/" อยู่ใน URL', 'error');
+    return;
+  }
+  const success = setBackendUrl(url);
+  if (success) {
+    document.getElementById('connCurrentUrl').textContent = url;
+    showToast('✅ อัปเดต URL สำเร็จ — กำลังทดสอบการเชื่อมต่อ...', 'success');
+    updateConnectionIndicator();
+    testConnectionHandler();
+  } else {
+    showToast('❌ ไม่สามารถบันทึก URL ได้', 'error');
+  }
+}
+
+function clearConnectionCache() {
+  clearBackendCache();
+  document.getElementById('connTestResult').innerHTML = '';
+  renderConnectionView();
+  showToast('🗑️ ล้างแคชการเชื่อมต่อแล้ว — รีเฟรชหน้าเพื่อใช้ URL ปัจจุบัน', 'success');
+}
+
+function copyConnectionUrl() {
+  const url = APPS_SCRIPT_URL || '';
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('📋 คัดลอก URL แล้ว', 'success'))
+    .catch(() => prompt('คัดลอก URL ด้านล่าง (Ctrl+C):', url));
 }

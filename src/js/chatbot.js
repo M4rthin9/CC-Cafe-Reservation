@@ -102,14 +102,19 @@ function formatI18n(key, params = {}, lang = getLang()) {
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptGet(params) {
   const qs = new URLSearchParams(params).toString();
-  const resp = await fetch(APPS_SCRIPT_URL + '?' + qs, { redirect: 'follow' });
-  if (!resp.ok) throw new Error('HTTP ' + resp.status);
-  const text = await resp.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error('Invalid JSON response: ' + text.slice(0, 100));
+  let lastErr;
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    try {
+      const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 1);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const text = await resp.text();
+      return JSON.parse(text);
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+    }
   }
+  throw lastErr || new Error('Failed to fetch');
 }
 
 function normalizeStatus(s) {
@@ -183,8 +188,12 @@ async function fetchBookingByRef(ref) {
     const data = await appsScriptGet({ action: 'getAll' });
     if (data.status === 'ok') rows = data.rows || [];
   } catch (err) {
-    console.error('Fetch error:', err);
-    rows = getDemoRows();
+    console.error('[Chatbot] Fetch error:', err);
+    if (APPS_SCRIPT_URL.includes('YOUR_GOOGLE')) {
+      rows = getDemoRows();
+    } else {
+      return null;
+    }
   }
   return rows.find(r => (r.ref || '').toUpperCase() === ref.toUpperCase()) || null;
 }
@@ -466,6 +475,12 @@ async function getBotResponse(message) {
   if (refMatch) {
     const ref = refMatch[1].toUpperCase();
     const booking = await fetchBookingByRef(ref);
+    if (booking === null && !APPS_SCRIPT_URL.includes('YOUR_GOOGLE')) {
+      const lang = activeLang;
+      if (lang === 'th') return '⚠️ ไม่สามารถเชื่อมต่อระบบได้ในขณะนี้ — กรุณาลองใหม่ภายหลัง หรือใช้หน้า "ตรวจสอบสถานะ"';
+      if (lang === 'zh') return '⚠️ 目前无法连接系统 — 请稍后再试或使用"查询状态"页面';
+      return '⚠️ Cannot connect to the system at the moment — please try again later or use the "Check Status" page';
+    }
     if (!booking) {
       return formatI18n('noBookingFound', { ref: escHtml(ref) }, activeLang);
     }

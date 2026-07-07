@@ -49,6 +49,16 @@ function doGetHandler(e) {
     return jsonResp({ url: ScriptApp.getService().getUrl() });
   }
 
+  // ===== RESOLVE URL (public — returns both raw and resolved URL for redirect capture) =====
+  if (action === 'resolveUrl') {
+    return jsonResp({
+      status: 'ok',
+      url: ScriptApp.getService().getUrl(),
+      resolvedUrl: ScriptApp.getService().getUrl(),
+      message: 'resolveUrl endpoint reached successfully'
+    });
+  }
+
   if (action === 'getAll') {
     const sheet = getMainSheet();
     const data  = sheet.getDataRange().getValues();

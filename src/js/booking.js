@@ -347,7 +347,7 @@ async function loadPrisonerMaster() {
   if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขังจากฐานข้อมูล...';
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?action=getPrisoners');
+    const resp = await appsScriptFetch('?action=getPrisoners', { redirect: 'follow', credentials: 'omit' }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 
@@ -869,12 +869,12 @@ async function submitBooking() {
   // overlay already shown from duplicate check; do NOT add again
   let submitSuccess = false;
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(data)
-    });
+    }, 2);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const result = JSON.parse(await resp.text());
     if (result.status !== 'ok') throw new Error(result.message || 'ไม่สำเร็จ');
@@ -1007,7 +1007,7 @@ function resetAll() {
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptGet(params) {
   const qs = new URLSearchParams(params).toString();
-  const resp = await fetch(APPS_SCRIPT_URL + '?' + qs, { redirect: 'follow' });
+  const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 2);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const text = await resp.text();
   try { return JSON.parse(text); }
@@ -1032,6 +1032,43 @@ async function fetchAllReservations() {
     }
   }
   throw lastErr || new Error('Cannot load reservations');
+}
+
+// ===== CONNECTION BANNER =====
+function showConnBanner(type, msg) {
+  const existing = document.getElementById('connBanner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'connBanner';
+  banner.style.cssText = 'padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+  if (type === 'error') {
+    banner.style.background = '#fee2e2';
+    banner.style.color = '#991b1b';
+    banner.style.border = '1px solid #fecaca';
+    banner.innerHTML = `<span>${msg}</span>
+      <button onclick="retryLoadBookingCounts()" style="margin-left:auto;padding:4px 12px;border-radius:6px;border:1px solid #991b1b;background:transparent;color:#991b1b;cursor:pointer;font-size:12px;">ลองใหม่</button>`;
+  } else if (type === 'success') {
+    banner.style.background = '#d1fae5';
+    banner.style.color = '#065f46';
+    banner.style.border = '1px solid #a7f3d0';
+    banner.innerHTML = `<span>${msg}</span>`;
+  } else {
+    banner.style.background = '#fef3c7';
+    banner.style.color = '#92400e';
+    banner.style.border = '1px solid #fde68a';
+    banner.innerHTML = `<span>${msg}</span>`;
+  }
+  const target = document.querySelector('.section') || document.getElementById('calTitle')?.parentElement?.parentElement;
+  if (target && target.parentElement) {
+    target.parentElement.insertBefore(banner, target);
+  }
+}
+
+async function retryLoadBookingCounts() {
+  const existing = document.getElementById('connBanner');
+  if (existing) existing.remove();
+  showConnBanner('warn', '⏳ กำลังโหลดข้อมูลอีกครั้ง...');
+  await loadBookingCounts();
 }
 
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
@@ -1064,11 +1101,16 @@ async function loadBookingCounts() {
 
         bookings[dateKey] = (bookings[dateKey] || 0) + 1;
       });
+      const existing = document.getElementById('connBanner');
+      if (existing) existing.remove();
+      console.log('[Calendar] Loaded booking counts from server');
     } else {
       console.warn('[Calendar] No rows in response');
+      showConnBanner('warn', '⚠️ ไม่พบข้อมูลการจองจากเซิร์ฟเวอร์ — แสดงข้อมูลว่าง');
     }
   } catch (err) {
     console.error('[Calendar] loadBookingCounts failed:', err);
+    showConnBanner('error', '⚠️ ไม่สามารถโหลดข้อมูลจากเซิร์ฟเวอร์ได้ — จำนวนที่ว่างอาจไม่ถูกต้อง');
   }
   renderCalendar();
 }
