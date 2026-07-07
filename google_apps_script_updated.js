@@ -702,7 +702,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
 
     const updatableFields = [
       'visitorName', 'visitorPhone', 'visitorId', 'relation', 'religion', 'allergy',
-      'prisonerName', 'prisonerId', 'wing', 'visitDate',
+      'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitDateISO',
       'visitorCount', 'total', 'status',
       'extraVisitorNames', 'extraVisitorReligions', 'extraVisitorAllergies', 'extraVisitorApproved'
     ];

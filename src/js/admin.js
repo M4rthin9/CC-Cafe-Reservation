@@ -5146,7 +5146,7 @@ function editBooking(idx) {
         </div>
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">📅 วันที่เยี่ยม</label>
-          <input type="text" id="editVisitDate" class="search-box" value="${esc(r.visitDate)}" style="width:100%;">
+          <input type="date" id="editVisitDate" class="search-box" value="${r.visitDateISO || ''}" style="width:100%;">
         </div>
         <div>
           <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">👥 จำนวนผู้เข้าร่วม</label>
@@ -5284,7 +5284,13 @@ async function saveBookingEdit(idx) {
     prisonerName: document.getElementById('editPrisonerName').value.trim(),
     prisonerId: document.getElementById('editPrisonerId').value.trim(),
     wing: document.getElementById('editWing').value.trim(),
-    visitDate: document.getElementById('editVisitDate').value.trim(),
+    visitDateISO: document.getElementById('editVisitDate').value,
+    visitDate: (() => {
+      const iso = document.getElementById('editVisitDate').value;
+      if (!iso) return '';
+      const d = new Date(iso + 'T00:00:00');
+      return d.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    })(),
     visitorCount: parseInt(document.getElementById('editVisitorCount').value) || 1,
     total: parseInt(document.getElementById('editTotal').value) || 0,
     status: document.getElementById('editStatus').value,
