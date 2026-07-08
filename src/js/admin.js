@@ -949,8 +949,8 @@ function computeFinanceStats(rows) {
 function getRowVisitDateKey(r) {
   let key = r.visitDateISO;
   if (!key && r.visitDate) {
-    const ts = r.timestamp ? new Date(r.timestamp.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1')) : null;
-    if (ts && !isNaN(ts)) key = ts.toISOString().slice(0, 10);
+    const d = r.visitDate instanceof Date ? r.visitDate : new Date(r.visitDate);
+    if (!isNaN(d)) key = d.toISOString().slice(0, 10);
   }
   if (key && !/^\d{4}-\d{2}-\d{2}$/.test(String(key).trim())) {
     const parsed = new Date(key);

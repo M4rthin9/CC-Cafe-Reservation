@@ -277,6 +277,10 @@ function getAllReservations_() {
         let val = row[i];
         obj[h] = val instanceof Date ? (h === 'visitDateISO' ? formatDateISO(val) : Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')) : val;
       });
+      if (!obj.visitDateISO && obj.visitDate) {
+        const d = obj.visitDate instanceof Date ? obj.visitDate : new Date(obj.visitDate);
+        if (!isNaN(d)) obj.visitDateISO = formatDateISO(d);
+      }
       return obj;
     });
 
