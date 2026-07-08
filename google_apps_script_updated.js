@@ -60,6 +60,13 @@ function doGetHandler(e) {
   }
 
   if (action === 'getAll') {
+    // Try cache first (30 sec TTL — reservations change frequently)
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get('allReservations');
+    if (cached) {
+      return jsonResp({ status: 'ok', rows: JSON.parse(cached) });
+    }
+
     const sheet = getMainSheet();
     const data  = sheet.getDataRange().getValues();
     if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
@@ -86,7 +93,11 @@ function doGetHandler(e) {
         });
         return obj;
       });
-    return jsonResp({ status: 'ok', rows: rows.reverse() });
+    const reversed = rows.reverse();
+    try {
+      cache.put('allReservations', JSON.stringify(reversed), 30);
+    } catch (e) { }
+    return jsonResp({ status: 'ok', rows: reversed });
   }
 
   // New: get event logs (can be called with username)
@@ -100,6 +111,13 @@ function doGetHandler(e) {
 
   // ===== Prisoner master data for booking autocomplete (public) =====
   if (action === 'getPrisoners') {
+    // Try script cache first (10 min TTL)
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get('prisoners');
+    if (cached) {
+      return jsonResp({ status: 'ok', prisoners: JSON.parse(cached) });
+    }
+
     // Public endpoint - MUST read from Prisoner Database sheet (ไม่ใช่ sheet การจอง)
     const sheet = getPrisonerSheet();
     const data = sheet.getDataRange().getValues();
@@ -131,8 +149,14 @@ function doGetHandler(e) {
       });
     }
 
-// Sort by name (Thai friendly)
     prisoners.sort((a, b) => a.prisonerName.localeCompare(b.prisonerName, 'th'));
+
+    // Cache for 10 minutes (600 seconds)
+    try {
+      cache.put('prisoners', JSON.stringify(prisoners), 600);
+    } catch (e) {
+      Logger.log('Cache put failed: ' + e.toString());
+    }
 
     return jsonResp({ status: 'ok', prisoners: prisoners });
   }
@@ -163,22 +187,12 @@ function doGetHandler(e) {
   // ===== NEW: Connection test / health check endpoint =====
   if (action === 'testConnection') {
     try {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const allSheets = listAllSheets();
-      const mainSheet = getMainSheet();
-      const mainSheetInfo = {
-        name: mainSheet.getName(),
-        rows: mainSheet.getLastRow(),
-        cols: mainSheet.getLastColumn(),
-        headers: mainSheet.getLastRow() > 0 ? mainSheet.getRange(1, 1, 1, mainSheet.getLastColumn()).getValues()[0] : []
-      };
+      const ss = getSpreadsheet();
       return jsonResp({
         status: 'ok',
         message: 'Connection successful',
         spreadsheetName: ss.getName(),
         spreadsheetId: ss.getId(),
-        allSheets: allSheets,
-        mainSheet: mainSheetInfo,
         timestamp: new Date().toISOString()
       });
     } catch (e) {
@@ -196,7 +210,7 @@ function doGetHandler(e) {
       return jsonResp({ status: 'error', message: 'Unauthorized' });
     }
     try {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const ss = getSpreadsheet();
       const allSheets = listAllSheets();
       const mainSheet = getMainSheet();
       
@@ -322,6 +336,7 @@ function doPostHandler(e) {
       new Date().toISOString()
     ]);
 
+    invalidateUserCache(adminUser);
     logEvent(adminUser, 'create_user', newUsername, { role: newRole });
     return jsonResp({ status: 'ok', message: 'ผู้ใช้ถูกสร้างสำเร็จ', user: { username: newUsername, role: newRole } });
   }
@@ -425,6 +440,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
       }
     } catch(mailErr) { /* ignore */ }
 
+    invalidateReservationsCache();
     return jsonResp({ status: 'ok', ref: body.ref });
   }
 
@@ -439,6 +455,13 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
 
  // ── get all reservations (POST) ──
  if (action === 'getAll') {
+   // Try cache first (30 sec TTL)
+   const cache = CacheService.getScriptCache();
+   const cached = cache.get('allReservations');
+   if (cached) {
+     return jsonResp({ status: 'ok', rows: JSON.parse(cached) });
+   }
+
    const sheet = getMainSheet();
    const data = sheet.getDataRange().getValues();
    if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
@@ -464,7 +487,11 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
        });
        return obj;
      });
-   return jsonResp({ status: 'ok', rows: rows.reverse() });
+   const reversed = rows.reverse();
+   try {
+     cache.put('allReservations', JSON.stringify(reversed), 30);
+   } catch (e) { }
+   return jsonResp({ status: 'ok', rows: reversed });
  }
 
    // ── CANCEL BOOKING ──
@@ -474,16 +501,17 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
      const refIdx    = data[0].indexOf('ref');
      const statusIdx = data[0].indexOf('status');
      for (let i = 1; i < data.length; i++) {
-       if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
-         sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
-         logEvent(username, 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
-         return jsonResp({ status: 'ok' });
-       }
+      if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+          sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
+          logEvent(username, 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
+          invalidateReservationsCache();
+          return jsonResp({ status: 'ok' });
+        }
+      }
+       return jsonResp({ status: 'error', message: 'Ref not found' });
      }
-      return jsonResp({ status: 'error', message: 'Ref not found' });
-    }
 
-    // ── PUBLIC SELF-SERVICE CANCEL (no auth required) ──
+     // ── PUBLIC SELF-SERVICE CANCEL (no auth required) ──
     if (action === 'publicCancelBooking') {
       const sheet = getMainSheet();
       const data  = sheet.getDataRange().getValues();
@@ -493,6 +521,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
         if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
           sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
           logEvent('public', 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
+          invalidateReservationsCache();
           return jsonResp({ status: 'ok' });
         }
       }
@@ -506,15 +535,16 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
      const refIdx    = data[0].indexOf('ref');
      const statusIdx = data[0].indexOf('status');
      for (let i = 1; i < data.length; i++) {
-       if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
-         const oldStatus = data[i][statusIdx];
-         sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
-         logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
-         return jsonResp({ status: 'ok' });
-       }
-     }
-     return jsonResp({ status: 'error', message: 'Ref not found' });
-   }
+        if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
+          const oldStatus = data[i][statusIdx];
+          sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
+          logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
+          invalidateReservationsCache();
+          return jsonResp({ status: 'ok' });
+        }
+      }
+      return jsonResp({ status: 'error', message: 'Ref not found' });
+    }
 
   // ── UPDATE VISITOR APPROVAL (per person) ──
   if (action === 'updateVisitorApproval') {
@@ -594,6 +624,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     if (tIdx  > -1) sheet.getRange(row, tIdx  + 1).setValue(correctTotal);
 
     logEvent(username, 'visitor_approval_updated', body.ref, { visitorApproved: body.visitorApproved, extraVisitorApproved: body.extraVisitorApproved, visitorCount: correctVisitorCount, total: correctTotal }, 'success');
+    invalidateReservationsCache();
     return jsonResp({ status: 'ok', visitorCount: correctVisitorCount, total: correctTotal });
   }
 
@@ -631,6 +662,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
           sheet.getRange(i + 1, slipIdx + 1).setValue(slipVal);
         }
         logEvent(username, 'slip_and_status_updated', body.ref, { status: body.status }, 'success');
+        invalidateReservationsCache();
         return jsonResp({ status: 'ok' });
       }
     }
@@ -663,6 +695,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
         if (body.newPassword) {
           sheet.getRange(row, headers.indexOf('password') + 1).setValue(body.newPassword);
         }
+        invalidateUserCache(targetUser);
         logEvent(username, 'update_user', targetUser, { role: body.role, displayName: body.displayName }, 'success');
         return jsonResp({ status: 'ok', message: 'อัปเดตผู้ใช้สำเร็จ' });
       }
@@ -690,6 +723,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][usernameIdx]).toLowerCase() === String(targetUser).toLowerCase()) {
         sheet.deleteRow(i + 1);
+        invalidateUserCache(targetUser);
         logEvent(username, 'delete_user', targetUser, {}, 'success');
         return jsonResp({ status: 'ok', message: 'ลบผู้ใช้สำเร็จ' });
       }
@@ -733,6 +767,7 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
           }
         });
         logEvent(username, 'update_booking', body.ref, changes, 'success');
+        invalidateReservationsCache();
         return jsonResp({ status: 'ok', message: 'แก้ไขการจองสำเร็จ' });
       }
     }
@@ -829,6 +864,13 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
       }
     });
 
+    // Invalidate prisoner cache so next getPrisoners fetches fresh data
+    try {
+      CacheService.getScriptCache().remove('prisoners');
+    } catch (e) {
+      Logger.log('Cache remove failed: ' + e.toString());
+    }
+
     logEvent(username, 'import_prisoners', '', { added, updated, errors: errors.length }, 'success');
     return jsonResp({ status: 'ok', message: `นำเข้าสำเร็จ: เพิ่ม ${added} รายการ, อัปเดต ${updated} รายการ`, added, updated, errors });
   }
@@ -886,6 +928,13 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
         sheet.getRange(i + 1, wingBookingIdx + 1).setValue(newWing);
         updated++;
       }
+    }
+
+    // Invalidate prisoner cache since wings may have changed
+    try {
+      CacheService.getScriptCache().remove('prisoners');
+    } catch (e) {
+      Logger.log('Cache remove failed: ' + e.toString());
     }
 
     logEvent(username, 'sync_prisoner_wings', '', { updated: updated }, 'success');
@@ -949,12 +998,8 @@ function getEventLogs(params) {
 
 // ===== EVENT LOG SHEET =====
 function getEventLogSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(EVENTLOG_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(EVENTLOG_SHEET);
-    ensureEventLogHeaders(sheet);
-  }
+  const sheet = getCachedSheet(EVENTLOG_SHEET);
+  ensureEventLogHeaders(sheet);
   return sheet;
 }
 
@@ -969,14 +1014,35 @@ function ensureEventLogHeaders(sheet) {
   sheet.setFrozenRows(1);
 }
 
+// ===== EXECUTION-SCOPED CACHE (reduces repeated SpreadsheetApp calls) =====
+const _execCache = {
+  ss: null,
+  sheets: {}
+};
+
+function getSpreadsheet() {
+  if (!_execCache.ss) {
+    _execCache.ss = SpreadsheetApp.getActiveSpreadsheet();
+  }
+  return _execCache.ss;
+}
+
+function getCachedSheet(name) {
+  if (!_execCache.sheets[name]) {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      sheet = ss.insertSheet(name);
+    }
+    _execCache.sheets[name] = sheet;
+  }
+  return _execCache.sheets[name];
+}
+
 // ===== MAIN RESERVATION SHEET =====
 function getMainSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
-    ensureHeaders(sheet);
-  }
+  const sheet = getCachedSheet(SHEET_NAME);
+  ensureHeaders(sheet);
   return sheet;
 }
 
@@ -1034,12 +1100,8 @@ function saveSlipToDrive(ref, base64Data, mimeTypeOverride, fileNameOverride) {
 
 // ===== PRISONER MASTER DATABASE =====
 function getPrisonerSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(PRISONER_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(PRISONER_SHEET);
-    ensurePrisonerHeaders(sheet);
-  }
+  const sheet = getCachedSheet(PRISONER_SHEET);
+  ensurePrisonerHeaders(sheet);
   return sheet;
 }
 
@@ -1056,11 +1118,7 @@ function ensurePrisonerHeaders(sheet) {
 
 // ===== USER MANAGEMENT =====
 function getUsersSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(USERS_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(USERS_SHEET);
-  }
+  const sheet = getCachedSheet(USERS_SHEET);
   ensureUserHeadersAndUsers(sheet);
   return sheet;
 }
@@ -1088,6 +1146,18 @@ function ensureUserHeadersAndUsers(sheet) {
   }
 }
 
+function invalidateUserCache(username) {
+  try {
+    CacheService.getScriptCache().remove('user_' + username.toLowerCase());
+  } catch (e) { }
+}
+
+function invalidateReservationsCache() {
+  try {
+    CacheService.getScriptCache().remove('allReservations');
+  } catch (e) { }
+}
+
 function seedDefaultUsers(sheet) {
   const now = new Date().toISOString();
   const defaultUsers = [
@@ -1105,6 +1175,14 @@ function seedDefaultUsers(sheet) {
 }
 
 function getUserByUsername(username) {
+  // Try script cache first (5 min TTL)
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'user_' + username.toLowerCase();
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
   const sheet = getUsersSheet();
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return null;
@@ -1113,6 +1191,10 @@ function getUserByUsername(username) {
     if (String(data[i][headers.indexOf('username')]).toLowerCase() === String(username).toLowerCase()) {
       const user = {};
       headers.forEach((h, idx) => user[h] = data[i][idx]);
+      // Cache for 5 minutes
+      try {
+        cache.put(cacheKey, JSON.stringify(user), 300);
+      } catch (e) { }
       return user;
     }
   }
@@ -1133,11 +1215,7 @@ function getAllUsers() {
 
 // ===== ROLES MANAGEMENT =====
 function getRolesSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName('Roles');
-  if (!sheet) {
-    sheet = ss.insertSheet('Roles');
-  }
+  const sheet = getCachedSheet('Roles');
   ensureRolesHeaders(sheet);
   return sheet;
 }
@@ -1245,12 +1323,8 @@ function requirePermission(username, perm) {
 
 // ===== NOTES SHEET =====
 function getNotesSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(NOTES_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(NOTES_SHEET);
-    ensureNotesHeaders(sheet);
-  }
+  const sheet = getCachedSheet(NOTES_SHEET);
+  ensureNotesHeaders(sheet);
   return sheet;
 }
 
@@ -1267,12 +1341,8 @@ function ensureNotesHeaders(sheet) {
 
 // ===== SETTINGS SHEET (backup of ScriptProperties) =====
 function getSettingsSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SETTINGS_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(SETTINGS_SHEET);
-    ensureSettingsHeaders(sheet);
-  }
+  const sheet = getCachedSheet(SETTINGS_SHEET);
+  ensureSettingsHeaders(sheet);
   return sheet;
 }
 
@@ -1288,7 +1358,7 @@ function ensureSettingsHeaders(sheet) {
 }
 
 function listAllSheets() {
-  const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+  const sheets = getSpreadsheet().getSheets();
   return sheets.map(s => ({ name: s.getName(), rows: s.getLastRow(), cols: s.getLastColumn() }));
 }
 

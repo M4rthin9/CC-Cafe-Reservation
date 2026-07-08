@@ -4454,18 +4454,55 @@ function validatePhone(val) {
   return { cleaned, valid: cleaned.length === 10, error: 'เบอร์โทรศัพท์ต้องมี 10 ตัวเลข' };
 }
 
+// ===== PRISONER CACHE HELPERS (shared with booking.js) =====
+const PRISONER_CACHE_KEY = 'cc_prisoner_cache';
+const PRISONER_CACHE_TTL = 30 * 60 * 1000;
+
+function loadPrisonerFromCache() {
+  try {
+    const raw = localStorage.getItem(PRISONER_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (Date.now() - cached.timestamp > PRISONER_CACHE_TTL) {
+      localStorage.removeItem(PRISONER_CACHE_KEY);
+      return null;
+    }
+    return cached.data;
+  } catch (e) {
+    return null;
+  }
+}
+
+function savePrisonerToCache(data) {
+  try {
+    localStorage.setItem(PRISONER_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (e) { }
+}
+
 // ===== PRISONER MASTER DATA =====
 async function loadPrisonerMaster() {
   const statusEl = document.getElementById('nbPrisonerLoadStatus');
-  if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขัง...';
+
+  // Try localStorage cache first
+  const cached = loadPrisonerFromCache();
+  if (cached) {
+    prisonerMaster = cached;
+    if (statusEl) {
+      statusEl.textContent = `✓ โหลดสำเร็จ (${prisonerMaster.length} คน)`;
+      statusEl.style.color = 'var(--green)';
+    }
+  } else {
+    if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขัง...';
+  }
 
   try {
-    const resp = await appsScriptFetch('?action=getPrisoners', {}, 1);
+    const resp = await appsScriptFetch('?action=getPrisoners', {}, 0);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 
     if (data.status === 'ok' && Array.isArray(data.prisoners)) {
       prisonerMaster = data.prisoners;
+      savePrisonerToCache(prisonerMaster);
       if (statusEl) {
         statusEl.textContent = `✓ โหลดสำเร็จ (${prisonerMaster.length} คน)`;
         statusEl.style.color = 'var(--green)';
@@ -4474,6 +4511,10 @@ async function loadPrisonerMaster() {
       throw new Error('Invalid response');
     }
   } catch (e) {
+    if (cached) {
+      console.warn('[PrisonerMaster] Background refresh failed, using cached data:', e.message);
+      return;
+    }
     console.error('[PrisonerMaster]', e);
     if (statusEl) {
       statusEl.textContent = '⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้ — กรอกเองไม่ได้';

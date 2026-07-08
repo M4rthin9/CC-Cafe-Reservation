@@ -338,21 +338,68 @@ function copyDeptReport(dept) {
 
 // ===== PRISONER MASTER DATA (from Google Sheet via Apps Script) =====
 
+const PRISONER_CACHE_KEY = 'cc_prisoner_cache';
+const PRISONER_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 let prisonerMaster = [];
 
+function loadPrisonerFromCache() {
+  try {
+    const raw = localStorage.getItem(PRISONER_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (Date.now() - cached.timestamp > PRISONER_CACHE_TTL) {
+      localStorage.removeItem(PRISONER_CACHE_KEY);
+      return null;
+    }
+    return cached.data;
+  } catch (e) {
+    return null;
+  }
+}
+
+function savePrisonerToCache(data) {
+  try {
+    localStorage.setItem(PRISONER_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (e) {
+    /* storage full - ignore */
+  }
+}
+
 async function loadPrisonerMaster() {
-  await initBackendUrl();
   const statusEl = document.getElementById('prisonerLoadStatus');
-  if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขังจากฐานข้อมูล...';
+
+  // Show cached data immediately if available
+  const cached = loadPrisonerFromCache();
+  if (cached) {
+    prisonerMaster = cached;
+    if (statusEl) {
+      statusEl.textContent = `✓ โหลดรายชื่อสำเร็จ (${prisonerMaster.length} คน)`;
+      statusEl.style.color = 'var(--green)';
+    }
+    // Still refresh in background below
+  } else {
+    if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขังจากฐานข้อมูล...';
+  }
+
+  // Wait for URL to be ready (short timeout — bootstrap already has a URL)
+  try {
+    await Promise.race([
+      waitForUrlReady(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+    ]);
+  } catch (e) {
+    // proceed with whatever URL is set — bootstrap already set APPS_SCRIPT_URL
+  }
 
   try {
-    const resp = await appsScriptFetch('?action=getPrisoners', { redirect: 'follow', credentials: 'omit' }, 1);
+    const resp = await appsScriptFetch('?action=getPrisoners', { redirect: 'follow', credentials: 'omit' }, 0);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 
     if (data.status === 'ok' && Array.isArray(data.prisoners)) {
       prisonerMaster = data.prisoners;
+      savePrisonerToCache(prisonerMaster);
       if (statusEl) {
         statusEl.textContent = `✓ โหลดรายชื่อสำเร็จ (${prisonerMaster.length} คน)`;
         statusEl.style.color = 'var(--green)';
@@ -361,6 +408,11 @@ async function loadPrisonerMaster() {
       throw new Error('Invalid response from server');
     }
   } catch (e) {
+    // If we already have cached data, don't overwrite the success message
+    if (cached) {
+      console.warn('[PrisonerMaster] Background refresh failed, using cached data:', e.message);
+      return;
+    }
     console.error('[PrisonerMaster] Fetch failed:', e);
     if (statusEl) {
       let msg = '⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้';

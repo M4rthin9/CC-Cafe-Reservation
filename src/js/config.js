@@ -1,4 +1,4 @@
-let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx5WHrh9Q6J6tIny31A32K0aE45I1I9kcczGUgVSDmwAJSC-uxWryjRpeRGNKNtvrxC/exec';
+let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxTSArgb7oEqtn6731cw3Dh-1a0hQ3h2hEEg4Yb-btxS58FHDyzkvaKbDEsNPmYPiB1LA/exec';
 const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
 const RESOLVED_URL_KEY = 'cc_resolved_url';
@@ -38,7 +38,7 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
 }
 
 async function appsScriptFetch(path, params, retries) {
-  const maxRetries = retries || 2;
+  const maxRetries = (retries !== undefined && retries !== null) ? retries : 1;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const url = path ? APPS_SCRIPT_URL + path : APPS_SCRIPT_URL;
