@@ -27,6 +27,11 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
   try {
     const resp = await fetch(url, { ...opts, signal: controller.signal });
     return resp;
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error(`เซิร์ฟเวอร์ไม่ตอบกลับภายใน ${Math.round(ms / 1000)} วินาที — กรุณาลองใหม่อีกครั้ง`);
+    }
+    throw e;
   } finally {
     clearTimeout(timer);
   }
@@ -59,6 +64,7 @@ async function appsScriptFetch(path, params, retries) {
 }
 window.appsScriptFetch = appsScriptFetch;
 window.API_FETCH_TIMEOUT = API_FETCH_TIMEOUT;
+window.waitForUrlReady = waitForUrlReady;
 
 async function initBackendUrl() {
   try {
@@ -87,27 +93,33 @@ async function initBackendUrl() {
   }
 }
 
+function isValidExecUrl(url) {
+  return url && url.includes('/macros/s/') && !url.includes('user_content_key');
+}
+
 async function resolveBackendUrl() {
   const stored = localStorage.getItem(RESOLVED_URL_KEY);
-  if (stored) {
+  if (stored && isValidExecUrl(stored)) {
     APPS_SCRIPT_URL = stored;
+    _connectionStatus = 'connected';
     _onUrlReady();
     return stored;
   }
+  // Stale/echo URL — clear and re-discover
+  try { localStorage.removeItem(RESOLVED_URL_KEY); } catch (e) { }
+  try { localStorage.removeItem(BACKEND_DISCOVERED_KEY); } catch (e) { }
+
   try {
-    const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=testConnection', {
-      redirect: 'follow', cache: 'no-store', credentials: 'omit'
-    });
+    const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', {
+      redirect: 'follow', cache: 'no-store'
+    }, 15000);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const resolved = resp.url;
-    if (resolved && resolved.includes('macros/s/')) {
-      if (resolved !== APPS_SCRIPT_URL) {
-        console.log('[Backend] resolveBackendUrl captured resolved URL:', resolved);
-        APPS_SCRIPT_URL = resolved;
-      }
-      localStorage.setItem(RESOLVED_URL_KEY, resolved);
+    const data = await resp.json();
+    if (data && data.url && data.url.includes('/macros/s/')) {
+      APPS_SCRIPT_URL = data.url;
+      localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url);
+      _connectionStatus = 'connected';
     }
-    _connectionStatus = 'connected';
     _onUrlReady();
     return APPS_SCRIPT_URL;
   } catch (e) {
@@ -165,6 +177,15 @@ window.clearBackendCache = clearBackendCache;
 
 // ── Bootstrap: load cached URL on script start ──
 (function bootstrap() {
+  // Remove stale echo URLs from cache
+  try {
+    const stale = localStorage.getItem(RESOLVED_URL_KEY);
+    if (stale && !isValidExecUrl(stale)) {
+      console.warn('[Backend] Removing stale echo URL from cache:', stale);
+      localStorage.removeItem(RESOLVED_URL_KEY);
+    }
+  } catch (e) { }
+
   const cached = (() => { try { return localStorage.getItem(BACKEND_DISCOVERED_KEY); } catch (e) { } })();
   const resolved = (() => { try { return localStorage.getItem(RESOLVED_URL_KEY); } catch (e) { } })();
 
@@ -172,22 +193,27 @@ window.clearBackendCache = clearBackendCache;
     APPS_SCRIPT_URL = resolved;
     console.log('[Backend] Using resolved URL:', resolved);
     _connectionStatus = 'connected';
-    return; // URL already validated, no need to ping server
+    _onUrlReady();
+    return;
   }
   if (cached) {
     APPS_SCRIPT_URL = cached;
     console.log('[Backend] Using cached URL:', cached);
-    // Fire a lightweight check in background (non-blocking, with timeout)
-    fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' }, 10000)
+    // Background check: discover the proper exec URL (not echo URL)
+    fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' }, 15000)
       .then(r => r.json())
       .then(data => {
-        if (data && data.url && data.url.includes('macros/s/') && data.url !== APPS_SCRIPT_URL) {
-          console.log('[Backend] Bootstrap discovered updated URL:', data.url);
-          APPS_SCRIPT_URL = data.url;
+        if (data && data.url && data.url.includes('/macros/s/')) {
+          if (data.url !== APPS_SCRIPT_URL) {
+            console.log('[Backend] Bootstrap discovered updated URL:', data.url);
+            APPS_SCRIPT_URL = data.url;
+          }
           try { localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url); } catch (e) { }
+          _connectionStatus = 'connected';
         }
       })
-      .catch(() => { /* silent — cached URL is fine */ });
+      .catch(() => { /* silent — cached URL is fine */ })
+      .finally(() => _onUrlReady());
     return;
   }
   // No cached URL — do a full discovery with timeout
@@ -195,7 +221,7 @@ window.clearBackendCache = clearBackendCache;
   fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' }, 15000)
     .then(r => r.json())
     .then(data => {
-      if (data && data.url && data.url.includes('macros/s/')) {
+      if (data && data.url && data.url.includes('/macros/s/')) {
         if (data.url !== APPS_SCRIPT_URL) {
           console.log('[Backend] Bootstrap discovered new URL:', data.url);
           APPS_SCRIPT_URL = data.url;
@@ -204,19 +230,8 @@ window.clearBackendCache = clearBackendCache;
         _connectionStatus = 'connected';
       }
     })
-    .catch(() => {
-      // Fallback: try to capture redirect via testConnection
-      fetchWithTimeout(APPS_SCRIPT_URL + '?action=testConnection', { redirect: 'follow', cache: 'no-store', credentials: 'omit' }, 15000)
-        .then(r => {
-          if (r.ok && r.url && r.url.includes('macros/s/') && r.url !== APPS_SCRIPT_URL) {
-            console.log('[Backend] Bootstrap captured resolved URL:', r.url);
-            APPS_SCRIPT_URL = r.url;
-            try { localStorage.setItem(RESOLVED_URL_KEY, r.url); } catch (e) { }
-            _connectionStatus = 'connected';
-          }
-        })
-        .catch(() => { console.warn('[Backend] Bootstrap discovery & resolution both failed'); });
-    });
+    .catch(() => { /* silent — default URL will be used */ })
+    .finally(() => _onUrlReady());
 })();
 
 async function window$checkConnection() {

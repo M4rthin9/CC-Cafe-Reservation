@@ -177,6 +177,9 @@ async function doLogin() {
   }
 
   try {
+    // Wait for backend URL resolution (avoids 302→GET conversion on POST)
+    if (window.waitForUrlReady) await window.waitForUrlReady();
+
     const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
