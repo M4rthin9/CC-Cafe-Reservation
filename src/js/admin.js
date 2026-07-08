@@ -1190,16 +1190,20 @@ let renderDashboardHome = function () {
   // Status Pipeline Visualization
   const statusOrder = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
   const statusLabels = { 'รอตรวจสอบวินัย': 'วินัย', 'รอตรวจสอบผู้เข้าร่วม': 'ผู้เข้าร่วม', 'รอชำระเงิน': 'ชำระเงิน', 'ชำระแล้ว': 'ชำระแล้ว', 'เสร็จสิ้น': 'เสร็จ', 'ไม่อนุมัติ': 'ปฏิเสธ', 'ยกเลิก': 'ยกเลิก' };
+  const statusColors = { 'รอตรวจสอบวินัย': '#3b82f6', 'รอตรวจสอบผู้เข้าร่วม': '#f97316', 'รอชำระเงิน': '#eab308', 'ชำระแล้ว': '#22c55e', 'เสร็จสิ้น': '#6366f1', 'ไม่อนุมัติ': '#ef4444', 'ยกเลิก': '#64748b' };
   const statusCounts = {}; statusOrder.forEach(s => statusCounts[s] = 0);
   allRows.forEach(r => { const s = normalizeStatus(r.status); if (statusCounts[s] !== undefined) statusCounts[s]++; });
   const grandTotal = allRows.length;
+  const isDark = document.documentElement.classList.contains('dark');
   let pipelineHtml = '<div class="status-pipeline">';
   statusOrder.forEach(status => {
     const pct = grandTotal ? Math.round(statusCounts[status] / grandTotal * 100) : 0;
-    const colors = { 'รอตรวจสอบวินัย': 'var(--status-discipline)', 'รอตรวจสอบผู้เข้าร่วม': 'var(--status-participant)', 'รอชำระเงิน': 'var(--status-payment)', 'ชำระแล้ว': 'var(--status-paid)', 'เสร็จสิ้น': 'var(--status-completed)', 'ไม่อนุมัติ': 'var(--status-rejected)', 'ยกเลิก': 'var(--status-cancelled)' };
-    pipelineHtml += `<div class="status-pipeline-item" style="flex:1;min-width:55px;padding:6px 4px;border-radius:8px;background:${colors[status]}22;border:1px solid ${colors[status]}33;text-align:center">
+    const c = statusColors[status];
+    const bgR = parseInt(c.slice(1,3), 16), bgG = parseInt(c.slice(3,5), 16), bgB = parseInt(c.slice(5,7), 16);
+    const textColor = isDark ? '#f1f5f9' : '#0f172a';
+    pipelineHtml += `<div class="status-pipeline-item" style="flex:1;min-width:55px;padding:6px 4px;border-radius:8px;background:rgba(${bgR},${bgG},${bgB},0.13);border:1px solid rgba(${bgR},${bgG},${bgB},0.2);text-align:center">
         <div style="font-size:10px;color:var(--text2);margin-bottom:2px">${statusLabels[status]}</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${statusCounts[status]}</div>
+        <div style="font-size:14px;font-weight:700;color:${textColor}">${statusCounts[status]}</div>
         <div style="font-size:9px;color:var(--text2)" class="status-pct">${pct}% ของทั้งหมด</div>
       </div>`;
   });
