@@ -5543,7 +5543,7 @@ async function updateConnectionIndicator() {
     const result = await testConnection();
     if (result.connected) {
       dot.textContent = '🟢';
-      el.title = 'เชื่อมต่อสำเร็จ — ' + (result.message || 'OK');
+      el.title = 'เชื่อมต่อสำเร็จ — ' + (result.message || 'OK') + (result.spreadsheetError ? ' (⚠️ ' + result.spreadsheetError + ')' : '');
     } else {
       dot.textContent = '🔴';
       el.title = 'เชื่อมต่อล้มเหลว — ' + (result.message || 'ไม่สามารถเชื่อมต่อได้');
@@ -5579,10 +5579,15 @@ async function testConnectionHandler() {
   try {
     const result = await testConnection();
     if (result.connected) {
+      const sheetLine = result.detail && result.detail.spreadsheetName
+        ? '<br><span style="font-size:10px;">Sheet: ' + result.detail.spreadsheetName + '</span>'
+        : '';
+      const warnLine = result.spreadsheetError
+        ? '<br><span style="font-size:11px;color:#92400e;">⚠️ เชื่อมต่อสคริปต์ได้ แต่ไม่สามารถเปิด Sheet ได้: ' + result.spreadsheetError + '</span>'
+        : '';
       resultDiv.innerHTML = `<div style="background:#d1fae5;color:#065f46;padding:10px 14px;border-radius:8px;font-size:13px;">
         ✅ <strong>เชื่อมต่อสำเร็จ</strong><br>
-        <span style="font-size:11px;">${result.message || ''}</span>
-        ${result.detail ? '<br><span style="font-size:10px;">Sheet: ' + (result.detail.spreadsheetName || '—') + '</span>' : ''}
+        <span style="font-size:11px;">${result.message || ''}</span>${sheetLine}${warnLine}
       </div>`;
       updateConnectionIndicator();
     } else {

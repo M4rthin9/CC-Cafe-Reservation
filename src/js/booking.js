@@ -1067,24 +1067,41 @@ async function appsScriptGet(params) {
 }
 
 async function fetchAllReservations() {
-  const attempts = [
-    { action: 'getAll' },
-    { action: 'getAll', username: 'public' }
-  ];
+   // Try cache-only approach first for calendar counts
+   try {
+     const cache = localStorage.getItem('calendar_cache');
+     const cacheTime = localStorage.getItem('calendar_cache_time');
+     if (cache && cacheTime && (Date.now() - parseInt(cacheTime)) < 60000) {
+       const data = JSON.parse(cache);
+       if (data && data.status === 'ok' && Array.isArray(data.rows)) return data.rows;
+     }
+   } catch (e) {}
 
-  let lastErr = null;
-  for (const params of attempts) {
-    try {
-      const data = await appsScriptGet(params);
-      if (data && data.status === 'ok' && Array.isArray(data.rows)) return data.rows;
-      if (data && data.status === 'error') throw new Error(data.message || 'Unknown server error');
-      throw new Error('Invalid getAll response');
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr || new Error('Cannot load reservations');
-}
+   const attempts = [
+     { action: 'getAll' },
+     { action: 'getAll', username: 'public' }
+   ];
+
+   let lastErr = null;
+   for (const params of attempts) {
+     try {
+       const data = await appsScriptGet(params);
+       if (data && data.status === 'ok' && Array.isArray(data.rows)) {
+         // Cache successful response locally
+         try {
+           localStorage.setItem('calendar_cache', JSON.stringify(data));
+           localStorage.setItem('calendar_cache_time', String(Date.now()));
+         } catch (e) {}
+         return data.rows;
+       }
+       if (data && data.status === 'error') throw new Error(data.message || 'Unknown server error');
+       throw new Error('Invalid getAll response');
+     } catch (err) {
+       lastErr = err;
+     }
+   }
+   throw lastErr || new Error('Cannot load reservations');
+ }
 
 // ===== CONNECTION BANNER =====
 function showConnBanner(type, msg) {
@@ -1125,46 +1142,50 @@ async function retryLoadBookingCounts() {
 
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
-  await initBackendUrl();
-  // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
-  const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
-  try {
-    const rows = await fetchAllReservations();
-    if (rows) {
-      bookings = {};
-      rows.forEach(r => {
-        if (!r.visitDateISO) return;
-        if (!activeStatuses.includes(r.status)) return;
+   await initBackendUrl();
+   // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
+   const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+   try {
+     const rows = await fetchAllReservations();
+     if (rows && Array.isArray(rows)) {
+       bookings = {};
+       rows.forEach(r => {
+         if (!r.visitDateISO) return;
+         if (!activeStatuses.includes(r.status)) return;
 
-        // ✅ normalize visitDateISO → "YYYY-MM-DD"
-        let dateKey = String(r.visitDateISO).trim();
+         // ✅ normalize visitDateISO → "YYYY-MM-DD"
+         let dateKey = String(r.visitDateISO).trim();
 
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
-          const parsed = new Date(dateKey);
-          if (!isNaN(parsed)) {
-            const y = parsed.getFullYear();
-            const m = String(parsed.getMonth() + 1).padStart(2, '0');
-            const d = String(parsed.getDate()).padStart(2, '0');
-            dateKey = `${y}-${m}-${d}`;
-          } else {
-            return; // parse ไม่ได้ ข้ามไป
-          }
-        }
+         if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+           const parsed = new Date(dateKey);
+           if (!isNaN(parsed)) {
+             const y = parsed.getFullYear();
+             const m = String(parsed.getMonth() + 1).padStart(2, '0');
+             const d = String(parsed.getDate()).padStart(2, '0');
+             dateKey = `${y}-${m}-${d}`;
+           } else {
+             return; // parse ไม่ได้ ข้ามไป
+           }
+         }
 
-        bookings[dateKey] = (bookings[dateKey] || 0) + 1;
-      });
-      const existing = document.getElementById('connBanner');
-      if (existing) existing.remove();
-      console.log('[Calendar] Loaded booking counts from server');
-    } else {
-      console.warn('[Calendar] No rows in response');
-      showConnBanner('warn', '⚠️ ไม่พบข้อมูลการจองจากเซิร์ฟเวอร์ — แสดงข้อมูลว่าง');
-    }
-  } catch (err) {
-    console.error('[Calendar] loadBookingCounts failed:', err);
-    showConnBanner('error', '⚠️ ไม่สามารถโหลดข้อมูลจากเซิร์ฟเวอร์ได้ — จำนวนที่ว่างอาจไม่ถูกต้อง');
-  }
-  renderCalendar();
+         bookings[dateKey] = (bookings[dateKey] || 0) + 1;
+       });
+       const existing = document.getElementById('connBanner');
+       if (existing) existing.remove();
+       console.log('[Calendar] Loaded booking counts from server');
+     } else {
+       console.warn('[Calendar] No rows in response, using empty bookings');
+       if (!bookings || Object.keys(bookings).length === 0) {
+         showConnBanner('warn', '⚠️ ไม่พบข้อมูลการจองจากเซิร์ฟเวอร์ — แสดงข้อมูลว่าง');
+       }
+     }
+   } catch (err) {
+     console.error('[Calendar] loadBookingCounts failed:', err);
+     if (!bookings || Object.keys(bookings).length === 0) {
+       showConnBanner('error', '⚠️ ไม่สามารถโหลดข้อมูลจากเซิร์ฟเวอร์ได้ — จำนวนที่ว่างอาจไม่ถูกต้อง');
+     }
+   }
+   renderCalendar();
 }
 
 // Initialize calendar immediately, then load data from server

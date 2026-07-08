@@ -23,7 +23,17 @@ const PERMISSIONS = {
 const _execCache = { ss: null, sheets: {} };
 
 function getSpreadsheet() {
-  if (!_execCache.ss) _execCache.ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (_execCache.ss) return _execCache.ss;
+  // Prefer a stored Spreadsheet ID (set via Script Properties) so the script
+  // works even when it is not bound to a spreadsheet. Fall back to the active
+  // spreadsheet for bound deployments.
+  try {
+    const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+    _execCache.ss = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
+  } catch (e) {
+    _execCache.ss = null;
+    throw new Error('Cannot open spreadsheet: ' + e.toString());
+  }
   return _execCache.ss;
 }
 
@@ -66,7 +76,7 @@ function doGetHandler(e) {
   }
 
   if (action === 'getAll') {
-    if (!isAuthorized(username, pass)) return jsonResp({ status: 'error', message: 'Unauthorized' });
+    // Public endpoint for calendar booking counts (no auth required)
     return getAllReservations_();
   }
 
@@ -117,13 +127,26 @@ function doGetHandler(e) {
     return jsonResp({ status: 'ok', users: getAllUsers().map(u => ({ username: u.username, role: u.role, displayName: u.displayName || u.username, createdAt: u.createdAt })) });
   }
 
+  // Lightweight connectivity check — does NOT touch the spreadsheet, so it
+  // always reports whether the script endpoint itself is reachable.
+  if (action === 'ping') {
+    return jsonResp({ status: 'ok', pong: true, timestamp: new Date().toISOString() });
+  }
+
   if (action === 'testConnection') {
+    const result = { status: 'ok', message: 'Connected', timestamp: new Date().toISOString() };
     try {
       const ss = getSpreadsheet();
-      return jsonResp({ status: 'ok', message: 'Connection successful', spreadsheetName: ss.getName(), spreadsheetId: ss.getId(), timestamp: new Date().toISOString() });
+      result.spreadsheetName = ss.getName();
+      result.spreadsheetId = ss.getId();
     } catch (e) {
-      return jsonResp({ status: 'error', message: 'Connection failed: ' + e.toString() });
+      // The script endpoint is reachable but the spreadsheet could not be
+      // opened (e.g. not bound / missing SPREADSHEET_ID). Report connectivity
+      // as OK but flag the sheet problem so the UI can surface a warning.
+      result.spreadsheetError = e.toString();
+      result.message = 'Connected to script, but spreadsheet unavailable';
     }
+    return jsonResp(result);
   }
 
   if (action === 'getSheetInfo') {
@@ -152,6 +175,11 @@ function doPostHandler(e) {
   const pass = body.pass || body.password || '';
   const publicActions = ['uploadSlip', 'updateSlipAndStatus', 'publicCancelBooking'];
 
+  // Lightweight connectivity check (no auth, no sheet access)
+  if (action === 'ping') {
+    return jsonResp({ status: 'ok', pong: true, timestamp: new Date().toISOString() });
+  }
+
   if (action === 'login') {
     return handleLogin(body);
   }
@@ -169,6 +197,7 @@ function doPostHandler(e) {
     return jsonResp({ status: 'error', message: 'Unauthorized' });
   }
 
+  // Note: getAll for calendar counts is public - no auth needed
   switch (action) {
     case 'getAll': return getAllReservations_();
     case 'cancelBooking': return handleCancelBooking(body, username);
@@ -197,34 +226,40 @@ function doPostHandler(e) {
 }
 
 function getAllReservations_() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get('allReservations');
-  if (cached) return jsonResp({ status: 'ok', rows: JSON.parse(cached) });
+   const cache = CacheService.getScriptCache();
+   const cached = cache.get('allReservations');
+   if (cached) {
+     try {
+       return jsonResp({ status: 'ok', rows: JSON.parse(cached) });
+     } catch (e) {
+       cache.remove('allReservations');
+     }
+   }
 
-  const sheet = getMainSheet();
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
+   const sheet = getMainSheet();
+   const data = sheet.getDataRange().getValues();
+   if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
 
-  const headers = data[0];
-  const refIdx = headers.indexOf('ref');
-  const rows = data.slice(1)
-    .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
-    .map(row => {
-      const obj = {};
-      headers.forEach((h, i) => {
-        let val = row[i];
-        if (val instanceof Date) {
-          val = h === 'visitDateISO' ? formatDateISO(val) : Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
-        }
-        obj[h] = val;
-      });
-      return obj;
-    });
+   const headers = data[0];
+   const refIdx = headers.indexOf('ref');
+   const rows = data.slice(1)
+     .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
+     .map(row => {
+       const obj = {};
+       headers.forEach((h, i) => {
+         let val = row[i];
+         if (val instanceof Date) {
+           val = h === 'visitDateISO' ? formatDateISO(val) : Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+         }
+         obj[h] = val;
+       });
+       return obj;
+     });
 
-  const reversed = rows.reverse();
-  try { cache.put('allReservations', JSON.stringify(reversed), 30); } catch (e) {}
-  return jsonResp({ status: 'ok', rows: reversed });
-}
+   const reversed = rows.reverse();
+   try { cache.put('allReservations', JSON.stringify(reversed), 30); } catch (e) {}
+   return jsonResp({ status: 'ok', rows: reversed });
+ }
 
 function formatDateISO(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');

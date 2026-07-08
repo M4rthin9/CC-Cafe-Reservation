@@ -1,4 +1,4 @@
-let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTRJDlgqQpuywVUCYoJKoJObqJ8j_w3sJvUwbA2OzJNU8ulIzGqETPVpnqTnQPbJL6gg/exec';
+let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyhMECfTB5potORjbmWow3zsa9AUy65x3XEU3Sl2i1f3Vy9kZRD-8Bu_zHHYHwUzsaxMg/exec';
 const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
 const RESOLVED_URL_KEY = 'cc_resolved_url';
@@ -130,22 +130,58 @@ async function resolveBackendUrl() {
   }
 }
 
+// Lightweight connectivity probe. Uses the ultra-fast `ping` action (no
+// spreadsheet access) and retries once to absorb Google Apps Script cold
+// starts, which can otherwise exceed the client timeout on the first call.
+async function pingConnection(retries) {
+  const max = (retries !== undefined && retries !== null) ? retries : 1;
+  for (let attempt = 0; attempt <= max; attempt++) {
+    try {
+      const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=ping', {
+        method: 'GET', redirect: 'follow', cache: 'no-store', credentials: 'omit'
+      }, 15000);
+      if (!resp.ok) return { connected: false, status: resp.status, message: 'HTTP ' + resp.status };
+      const data = await resp.json();
+      if (data && data.status === 'ok' && data.pong) return { connected: true, message: 'Connected', detail: data };
+      return { connected: false, message: data.message || 'Unexpected response' };
+    } catch (e) {
+      if (attempt === max) return { connected: false, message: e.message || 'Network error' };
+      await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+    }
+  }
+  return { connected: false, message: 'Network error' };
+}
+
+// Full connection test: verifies the endpoint (ping) and, if reachable, also
+// reports whether the bound spreadsheet is accessible.
 async function testConnection() {
   try {
-    const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=testConnection', {
-      method: 'GET', redirect: 'follow', cache: 'no-store', credentials: 'omit'
-    }, 15000);
-    if (!resp.ok) {
+    const ping = await pingConnection(1);
+    if (!ping.connected) {
       _connectionStatus = 'disconnected';
-      return { connected: false, status: resp.status, message: 'HTTP ' + resp.status };
+      return ping;
     }
-    const data = await resp.json();
-    if (data && data.status === 'ok') {
-      _connectionStatus = 'connected';
-      return { connected: true, message: data.message || 'Connected', detail: data };
+    // Endpoint is reachable — try to enrich with spreadsheet details.
+    try {
+      const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=testConnection', {
+        method: 'GET', redirect: 'follow', cache: 'no-store', credentials: 'omit'
+      }, 15000);
+      if (resp.ok) {
+        const data = await resp.json();
+        _connectionStatus = 'connected';
+        return {
+          connected: true,
+          message: data.spreadsheetError ? data.message : (data.message || 'Connected'),
+          detail: data,
+          spreadsheetError: data.spreadsheetError || null
+        };
+      }
+    } catch (e) {
+      // ping already proved connectivity; treat spreadsheet detail as optional
+      Logger && Logger.warn('testConnection detail failed: ' + e.message);
     }
-    _connectionStatus = 'disconnected';
-    return { connected: false, message: data.message || 'Unexpected response' };
+    _connectionStatus = 'connected';
+    return { connected: true, message: 'Connected', detail: ping.detail };
   } catch (e) {
     _connectionStatus = 'disconnected';
     return { connected: false, message: e.message || 'Network error' };
