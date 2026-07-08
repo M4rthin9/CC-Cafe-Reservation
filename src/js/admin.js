@@ -1046,117 +1046,32 @@ function renderFinanceOverview() {
 
 function drawFinanceLineChart(container, timeSeries) {
   if (!container || !timeSeries) return;
-  d3.select(container).selectAll('*').remove();
-
+  container.innerHTML = '';
   const { days, series } = timeSeries;
-  const allVals = series.flatMap(s => s.values);
-  const maxVal = Math.max(1, ...allVals);
-  const hasData = allVals.some(v => v > 0);
-  const ch = 200;
-
+  const hasData = series.some(s => s.values.some(v => v > 0));
   if (!hasData) {
-    d3.select(container).append('div')
-      .style('text-align', 'center').style('color', '#94a3b8')
-      .style('padding', '40px 0').style('font-size', '13px')
-      .style('font-family', "'Sarabun', sans-serif")
-      .text('ยังไม่มียอดจองในช่วง 14 วันนี้');
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มียอดจองในช่วง 14 วันนี้</div>';
     return;
   }
-
-  const w = container.offsetWidth || 520;
-  const pad = { top: 24, right: 20, bottom: 32, left: 52 };
-  const cw = w - pad.left - pad.right;
-  const chartH = ch - pad.top - pad.bottom;
-
-  const svg = d3.select(container).append('svg').attr('width', w).attr('height', ch);
-  const defs = svg.append('defs');
-  series.forEach(s => {
-    const lg = defs.append('linearGradient').attr('id', 'grad-' + s.id)
-      .attr('x1', '0').attr('y1', '0').attr('x2', '0').attr('y2', '1');
-    lg.append('stop').attr('offset', '0%').attr('stop-color', s.fillTop);
-    lg.append('stop').attr('offset', '100%').attr('stop-color', s.fillBottom);
-  });
-  const g = svg.append('g').attr('transform', 'translate(' + pad.left + ',' + pad.top + ')');
-
-  const x = d3.scaleBand().domain(days).range([0, cw]);
-  const y = d3.scaleLinear().domain([0, maxVal * 1.1]).range([chartH, 0]);
-
-  // grid lines
-  g.selectAll('.grid').data(y.ticks(4)).enter().append('line')
-    .attr('x1', 0).attr('x2', cw)
-    .attr('y1', d => y(d)).attr('y2', d => y(d))
-    .attr('class', 'grid-line');
-
-  // y-axis labels
-  g.selectAll('.y-label').data(y.ticks(4)).enter().append('text')
-    .attr('x', -8).attr('y', d => y(d) + 3).attr('text-anchor', 'end')
-    .attr('fill', '#6B7280').attr('font-size', '9px').attr('font-family', "'Sarabun', sans-serif")
-    .text(d => formatChartBahtShort(d));
-
-  // x-axis labels
-  const step = days.length > 10 ? 2 : 1;
-  g.selectAll('.x-label').data(days.filter((d, i) => i % step === 0 || i === days.length - 1))
-    .enter().append('text')
-    .attr('x', d => x(d) + x.bandwidth() / 2).attr('y', chartH + 16).attr('text-anchor', 'middle')
-    .attr('fill', '#3F4755').attr('font-size', '9px').attr('font-family', "'Sarabun', sans-serif")
-    .text(d => new Date(d + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' }));
-
-  // area + line generator
-  const areaGen = d3.area()
-    .x(d => x(d.day) + x.bandwidth() / 2)
-    .y0(chartH)
-    .y1(d => y(d.val))
-    .curve(d3.curveMonotoneX);
-  const lineGen = d3.line()
-    .x(d => x(d.day) + x.bandwidth() / 2)
-    .y(d => y(d.val))
-    .curve(d3.curveMonotoneX);
-
-  // draw series (reversed: booked behind, unpaid in front)
-  [...series].reverse().forEach(s => {
-    const pts = days.map((day, i) => ({ day, val: s.values[i] }));
-
-    // area
-    g.append('path').datum(pts)
-      .attr('class', 'area-fill')
-      .attr('fill', 'url(#grad-' + s.id + ')').attr('opacity', 0)
-      .attr('d', areaGen)
-      .transition().duration(600)
-      .attr('opacity', 1);
-
-    // line
-    g.append('path').datum(pts)
-      .attr('class', 'line-path')
-      .attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 2.5)
-      .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
-      .attr('opacity', 0)
-      .attr('d', lineGen)
-      .transition().duration(600)
-      .attr('opacity', 1);
-
-    // dots + hover
-    const dots = g.selectAll('.dot-' + s.id).data(pts).enter().append('circle')
-      .attr('cx', d => x(d.day) + x.bandwidth() / 2)
-      .attr('cy', d => y(d.val))
-      .attr('r', 0)
-      .attr('fill', '#fff').attr('stroke', s.color).attr('stroke-width', 2)
-      .attr('opacity', d => d.val > 0 ? 1 : 0);
-
-    dots.transition().duration(600).delay((d, i) => i * 30)
-      .attr('r', d => d.val > 0 ? 4 : 0);
-
-    dots.on('mouseenter', function (ev, d) {
-      d3.select(this).transition().duration(150).attr('r', 6);
-      const tip = d3.select(container).append('div').attr('class', 'chart-tooltip');
-      tip.html(
-        '<strong>' + new Date(d.day + 'T12:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }) + '</strong><br>' +
-        s.label + ': <strong>' + d.val.toLocaleString('th-TH') + ' บาท</strong>'
-      ).style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 28) + 'px');
-    }).on('mouseleave', function () {
-      d3.select(this).transition().duration(150).attr('r', 4);
-      d3.select(container).selectAll('.d3-tooltip').remove();
-    });
-  });
+  const isDark = document.documentElement.classList.contains('dark');
+  const formatDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+  const options = {
+    chart: { type: 'area', height: 240, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false }, zoom: { enabled: false }, redrawOnWindowResize: true },
+    colors: series.map(s => s.color),
+    dataLabels: { enabled: false },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05, stops: [0, 100] } },
+    grid: { borderColor: isDark ? '#334155' : '#e2e8f0', strokeDashArray: 4, padding: { left: 0, right: 0 } },
+    legend: { show: true, position: 'bottom', fontSize: '12px', fontFamily: "'Sarabun', sans-serif", labels: { colors: isDark ? '#cbd5e1' : '#475569' } },
+    markers: { size: 4, strokeWidth: 2, hover: { size: 6 } },
+    stroke: { curve: 'smooth', width: 2.5 },
+    tooltip: { theme: isDark ? 'dark' : 'light', x: { formatter: (v) => formatDate(days[v]) } },
+    xaxis: { type: 'category', categories: days.map(d => formatDate(d)), axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" } } },
+    yaxis: { labels: { formatter: (v) => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(v), style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" } } }
+  };
+  const apexSeries = series.map(s => ({ name: s.label, data: s.values }));
+  const chart = new ApexCharts(container, { ...options, series: apexSeries });
+  chart.render();
+  container._apexChart = chart;
 }
 
 // ===== TABLE SORTING =====
@@ -1238,7 +1153,7 @@ let renderDashboardHome = function () {
     const elM = document.getElementById('statThisMonth'); if (elM) elM.textContent = '0';
     const elV = document.getElementById('statUniqueVisitors'); if (elV) elV.textContent = '0';
     const chartEl = document.getElementById('trendChart');
-    if (chartEl) d3.select(chartEl).selectAll('*').remove();
+    if (chartEl && chartEl._apexChart) { chartEl._apexChart.destroy(); chartEl._apexChart = null; }
     return;
   }
 
@@ -1477,7 +1392,7 @@ let renderDashboardHome = function () {
 function drawReservationTrendChart() {
   const container = document.getElementById('trendChart');
   if (!container) return;
-  d3.select(container).selectAll('*').remove();
+  if (container._apexChart) { container._apexChart.destroy(); }
 
   const dateCounts = {};
   const today = new Date();
@@ -1500,96 +1415,40 @@ function drawReservationTrendChart() {
   });
 
   const values = days.map(d => dateCounts[d]);
-  const maxVal = Math.max(1, ...values);
+  if (values.every(v => v === 0)) {
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มีข้อมูลการจอง</div>';
+    return;
+  }
 
-  const cw = container.offsetWidth || 620;
-  const ch = 220;
-  const pad = { top: 18, right: 8, bottom: 28, left: 32 };
-  const chartW = cw - pad.left - pad.right;
-  const chartH = ch - pad.top - pad.bottom;
+  const isDark = document.documentElement.classList.contains('dark');
+  const formatDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
 
-  const svg = d3.select(container).append('svg').attr('width', cw).attr('height', ch);
-  const g = svg.append('g').attr('transform', 'translate(' + pad.left + ',' + pad.top + ')');
+  const options = {
+    chart: { type: 'bar', height: 220, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false }, redrawOnWindowResize: true, animations: { enabled: true, easing: 'easeinout', speed: 500, animateGradually: { enabled: true, delay: 30 } } },
+    colors: ['#1e3a8a'],
+    plotOptions: { bar: { borderRadius: 3, columnWidth: '60%', dataLabels: { position: 'top' } } },
+    dataLabels: { enabled: true, formatter: (v) => v > 0 ? v : '', offsetY: -6, style: { fontSize: '10px', fontWeight: 700, colors: [isDark ? '#e2e8f0' : '#1e1b4b'], fontFamily: "'Sarabun', sans-serif" } },
+    grid: { borderColor: isDark ? '#334155' : '#e2e8f0', strokeDashArray: 4, padding: { top: 20, bottom: 0 } },
+    tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: (v) => v + ' รายการ' } },
+    xaxis: { type: 'category', categories: days.map(d => formatDate(d)), axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '9px', fontFamily: "'Sarabun', sans-serif" } } },
+    yaxis: { show: true, labels: { formatter: (v) => Number.isInteger(v) ? v : '', style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '9px', fontFamily: "'Sarabun', sans-serif" } } }
+  };
 
-  const x = d3.scaleBand().domain(days).range([0, chartW]).padding(0.25);
-  const y = d3.scaleLinear().domain([0, maxVal]).range([chartH, 0]);
-
-  // grid
-  g.selectAll('.grid').data(y.ticks(4)).enter().append('line')
-    .attr('x1', 0).attr('x2', chartW)
-    .attr('y1', d => y(d)).attr('y2', d => y(d))
-    .attr('stroke', 'rgba(11,37,69,0.08)').attr('stroke-width', 1);
-
-  // bars
-  g.selectAll('.bar').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
-    .append('rect')
-    .attr('x', d => x(d.day)).attr('width', x.bandwidth())
-    .attr('y', chartH).attr('height', 0).attr('rx', 2)
-    .attr('fill', d => d.val > 0 ? '#4f46e5' : '#E8E0D1')
-    .transition().duration(500).delay((d, i) => i * 30)
-    .attr('y', d => y(d.val)).attr('height', d => chartH - y(d.val));
-
-  // gold top accent
-  g.selectAll('.bar-top').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
-    .append('rect')
-    .attr('x', d => x(d.day)).attr('width', x.bandwidth()).attr('height', 2.5)
-    .attr('y', chartH).attr('fill', '#d97706').attr('opacity', 0)
-    .transition().duration(500).delay((d, i) => i * 30)
-    .attr('y', d => d.val > 0 ? y(d.val) : chartH).attr('opacity', d => d.val > 0 ? 1 : 0);
-
-  // value labels
-  g.selectAll('.val-label').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
-    .append('text')
-    .attr('x', d => x(d.day) + x.bandwidth() / 2).attr('y', d => y(d.val) - 5)
-    .attr('text-anchor', 'middle').attr('fill', '#1e1b4b')
-    .attr('font-size', '10px').attr('font-weight', 'bold')
-    .attr('font-family', "'Sarabun', sans-serif")
-    .attr('opacity', 0)
-    .transition().duration(500).delay((d, i) => i * 30)
-    .attr('opacity', d => d.val > 0 ? 1 : 0);
-
-  // x-axis labels
-  g.selectAll('.x-label').data(days).enter().append('text')
-    .attr('x', d => x(d) + x.bandwidth() / 2).attr('y', chartH + 16).attr('text-anchor', 'middle')
-    .attr('fill', '#3F4755').attr('font-size', '9px')
-    .attr('font-family', "'Sarabun', sans-serif")
-    .text(d => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit' }));
-
-  // y-axis max
-  g.append('text').attr('x', -6).attr('y', y(maxVal) + 3).attr('text-anchor', 'end')
-    .attr('fill', '#6B7280').attr('font-size', '9px')
-    .attr('font-family', "'Sarabun', sans-serif")
-    .text(maxVal);
-
-  // hover
-  g.selectAll('.bar-hover').data(days.map((d, i) => ({ day: d, val: values[i] }))).enter()
-    .append('rect')
-    .attr('x', d => x(d.day)).attr('width', x.bandwidth())
-    .attr('y', 0).attr('height', chartH).attr('fill', 'transparent').style('cursor', 'pointer')
-    .on('mouseenter', function (ev, d) {
-      const tip = d3.select(container).append('div').attr('class', 'chart-tooltip');
-      tip.html(
-        '<strong>' + new Date(d.day).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }) + '</strong><br>' +
-        d.val + ' รายการ'
-      ).style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 40) + 'px');
-    })
-    .on('mouseleave', function () {
-      d3.select(container).selectAll('.d3-tooltip').remove();
-    });
+  const chart = new ApexCharts(container, { ...options, series: [{ name: 'การจอง', data: values }] });
+  chart.render();
+  container._apexChart = chart;
 }
 
-// Redraw charts on window resize
+// Redraw charts on window resize (ApexCharts handles resize natively, just a safety trigger)
 window.addEventListener('resize', () => {
   const homeView = document.getElementById('view-home');
   if (homeView && homeView.style.display !== 'none') {
     clearTimeout(window._chartResizeTimer);
     window._chartResizeTimer = setTimeout(() => {
       const trendEl = document.getElementById('trendChart');
-      if (trendEl && typeof drawReservationTrendChart === 'function') drawReservationTrendChart();
+      if (trendEl && trendEl._apexChart) trendEl._apexChart.updateOptions({});
       const financeEl = document.getElementById('financeChart');
-      if (financeEl && typeof drawFinanceLineChart === 'function') {
-        drawFinanceLineChart(financeEl, computeFinanceTimeSeries(allRows));
-      }
+      if (financeEl && financeEl._apexChart) financeEl._apexChart.updateOptions({});
     }, 120);
   }
 });
@@ -4310,26 +4169,17 @@ function renderFinanceRibbon() {
 function drawStatusDonutChart() {
   const container = document.getElementById('statusDonutChart');
   if (!container) return;
-  d3.select(container).selectAll('*').remove();
+  if (container._apexChart) { container._apexChart.destroy(); }
+  container.innerHTML = '';
 
   const statusOrder = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
   const colors = {
-    'รอตรวจสอบวินัย': '#3b82f6',
-    'รอตรวจสอบผู้เข้าร่วม': '#f97316',
-    'รอชำระเงิน': '#eab308',
-    'ชำระแล้ว': '#22c55e',
-    'เสร็จสิ้น': '#6366f1',
-    'ไม่อนุมัติ': '#ef4444',
-    'ยกเลิก': '#64748b'
+    'รอตรวจสอบวินัย': '#3b82f6', 'รอตรวจสอบผู้เข้าร่วม': '#f97316', 'รอชำระเงิน': '#eab308',
+    'ชำระแล้ว': '#22c55e', 'เสร็จสิ้น': '#6366f1', 'ไม่อนุมัติ': '#ef4444', 'ยกเลิก': '#64748b'
   };
   const labels = {
-    'รอตรวจสอบวินัย': 'วินัย',
-    'รอตรวจสอบผู้เข้าร่วม': 'ผู้เข้าร่วม',
-    'รอชำระเงิน': 'ชำระเงิน',
-    'ชำระแล้ว': 'ชำระแล้ว',
-    'เสร็จสิ้น': 'เสร็จ',
-    'ไม่อนุมัติ': 'ปฏิเสธ',
-    'ยกเลิก': 'ยกเลิก'
+    'รอตรวจสอบวินัย': 'วินัย', 'รอตรวจสอบผู้เข้าร่วม': 'ผู้เข้าร่วม', 'รอชำระเงิน': 'ชำระเงิน',
+    'ชำระแล้ว': 'ชำระแล้ว', 'เสร็จสิ้น': 'เสร็จ', 'ไม่อนุมัติ': 'ปฏิเสธ', 'ยกเลิก': 'ยกเลิก'
   };
 
   const counts = {};
@@ -4341,48 +4191,34 @@ function drawStatusDonutChart() {
   });
 
   const total = allRows.filter(r => r.ref && String(r.ref).trim() !== '').length || 1;
-  const size = 180;
-  const outerR = 78, innerR = 50;
+  const hasData = Object.values(counts).some(v => v > 0);
+  if (!hasData) {
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มีข้อมูล</div>';
+    return;
+  }
 
-  const data = statusOrder.filter(s => counts[s] > 0).map(s => ({ status: s, count: counts[s] }));
-  const pie = d3.pie().value(d => d.count).sort(null).padAngle(0.02);
-  const arc = d3.arc().innerRadius(innerR).outerRadius(outerR);
-  const arcHover = d3.arc().innerRadius(innerR).outerRadius(outerR + 6);
+  const isDark = document.documentElement.classList.contains('dark');
+  const seriesData = statusOrder.filter(s => counts[s] > 0).map(s => counts[s]);
+  const seriesLabels = statusOrder.filter(s => counts[s] > 0).map(s => labels[s]);
+  const seriesColors = statusOrder.filter(s => counts[s] > 0).map(s => colors[s]);
 
-  const svg = d3.select(container).append('svg')
-    .attr('width', size).attr('height', size)
-    .append('g').attr('transform', 'translate(' + size / 2 + ',' + size / 2 + ')');
+  const options = {
+    chart: { type: 'donut', height: 280, fontFamily: "'Sarabun', sans-serif", redrawOnWindowResize: true, animations: { enabled: true, easing: 'easeinout', speed: 500 } },
+    colors: seriesColors,
+    labels: seriesLabels,
+    dataLabels: { enabled: false },
+    legend: { show: true, position: 'bottom', fontSize: '12px', fontFamily: "'Sarabun', sans-serif", labels: { colors: isDark ? '#cbd5e1' : '#475569' } },
+    plotOptions: { pie: { donut: { size: '58%', labels: { show: true, name: { show: false }, value: { show: true, fontSize: '22px', fontWeight: 700, color: isDark ? '#f1f5f9' : '#1e1b4b', fontFamily: "'Sarabun', sans-serif", offsetY: 4 }, total: { show: true, label: 'รายการทั้งหมด', fontSize: '11px', color: isDark ? '#94a3b8' : '#64748b', fontFamily: "'Sarabun', sans-serif", formatter: () => String(total) } } } } },
+    responsive: [{ breakpoint: 480, options: { chart: { height: 240 }, legend: { position: 'bottom' } } }],
+    tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: (v) => v + ' รายการ' } },
+    stroke: { show: true, width: 2, colors: [isDark ? '#1e293b' : '#fff'] }
+  };
 
-  const slices = svg.selectAll('.slice').data(pie(data)).enter().append('g').attr('class', 'slice');
+  const chart = new ApexCharts(container, { ...options, series: seriesData });
+  chart.render();
+  container._apexChart = chart;
 
-  slices.append('path')
-    .attr('d', arc)
-    .attr('class', 'donut-arc')
-    .attr('fill', d => colors[d.data.status])
-    .attr('stroke', '#fff').attr('stroke-width', 2)
-    .style('cursor', 'pointer')
-    .on('mouseenter', function (ev, d) {
-      d3.select(this).transition().duration(200).attr('d', arcHover);
-      const tip = d3.select(container).append('div').attr('class', 'chart-tooltip');
-      tip.html(
-        '<strong>' + labels[d.data.status] + '</strong><br>' +
-        d.data.count + ' รายการ (' + Math.round((d.data.count / total) * 100) + '%)'
-      ).style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 40) + 'px');
-    })
-    .on('mouseleave', function () {
-      d3.select(this).transition().duration(200).attr('d', arc);
-      d3.select(container).selectAll('.d3-tooltip').remove();
-    });
-
-  // Center text
-  svg.append('text').attr('text-anchor', 'middle').attr('dy', '-0.1em')
-    .attr('class', 'donut-center-text')
-    .text(total);
-  svg.append('text').attr('text-anchor', 'middle').attr('dy', '1.4em')
-    .attr('class', 'donut-center-label')
-    .text('รายการทั้งหมด');
-
-  // Legend
+  // Update legend manually (ApexCharts has its own legend, but keep donutLegend for backward compat)
   const legendEl = document.getElementById('donutLegend');
   if (legendEl) {
     legendEl.innerHTML = statusOrder
@@ -4397,11 +4233,12 @@ function drawStatusDonutChart() {
   }
 }
 
-// ===== WING REVENUE HORIZONTAL BAR CHART =====
+// ===== WING REVENUE HORIZONTAL BAR CHART (ApexCharts) =====
 function drawWingRevenueChart() {
   const container = document.getElementById('wingRevenueChart');
   if (!container) return;
-  d3.select(container).selectAll('*').remove();
+  if (container._apexChart) { container._apexChart.destroy(); }
+  container.innerHTML = '';
 
   const wingData = {};
   allRows.forEach(r => {
@@ -4413,66 +4250,28 @@ function drawWingRevenueChart() {
   });
 
   const sorted = Object.entries(wingData).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
   if (sorted.length === 0) {
-    d3.select(container).append('div')
-      .style('text-align', 'center').style('color', '#94a3b8')
-      .style('padding', '40px 0').style('font-size', '13px')
-      .style('font-family', "'Sarabun', sans-serif")
-      .text('ยังไม่มีข้อมูลรายได้');
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มีข้อมูลรายได้</div>';
     return;
   }
 
-  const maxVal = sorted[0][1] || 1;
-  const barH = 28, gap = 8, pad = { top: 8, left: 70, right: 60, bottom: 8 };
-  const ch = sorted.length * (barH + gap) - gap + pad.top + pad.bottom;
-  const cw = (container.offsetWidth || 400);
+  const isDark = document.documentElement.classList.contains('dark');
   const barColors = ['#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
 
-  const svg = d3.select(container).append('svg').attr('width', cw).attr('height', ch);
-  const g = svg.append('g').attr('transform', 'translate(' + pad.left + ',' + pad.top + ')');
+  const options = {
+    chart: { type: 'bar', height: sorted.length * 56 + 40, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false }, redrawOnWindowResize: true, animations: { enabled: true, easing: 'easeout', speed: 600, animateGradually: { enabled: true, delay: 80 } } },
+    colors: barColors,
+    plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: true, dataLabels: { position: 'top' } } },
+    dataLabels: { enabled: true, formatter: (v) => v.toLocaleString() + ' บ.', offsetX: 8, style: { fontSize: '11px', fontWeight: 700, colors: [isDark ? '#e2e8f0' : '#1e1b4b'], fontFamily: "'Sarabun', sans-serif" } },
+    grid: { borderColor: isDark ? '#334155' : '#e2e8f0', strokeDashArray: 4, xaxis: { lines: { show: true } }, yaxis: { lines: { show: false } } },
+    tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: (v) => v.toLocaleString() + ' บาท' } },
+    xaxis: { categories: sorted.map(d => 'แดน ' + d[0]), labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px', fontWeight: 500, fontFamily: "'Sarabun', sans-serif" } }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { style: { colors: isDark ? '#94a3b8' : '#475569', fontSize: '11px', fontWeight: 500, fontFamily: "'Sarabun', sans-serif" } } }
+  };
 
-  const y = d3.scaleBand().domain(sorted.map(d => d[0])).range([0, sorted.length * (barH + gap) - gap]).padding(0.2);
-  const x = d3.scaleLinear().domain([0, maxVal]).range([0, cw - pad.left - pad.right]);
-
-  // bars
-  g.selectAll('.bar').data(sorted).enter().append('rect')
-    .attr('class', 'bar-rect')
-    .attr('x', 0).attr('y', d => y(d[0]))
-    .attr('height', y.bandwidth()).attr('rx', 4)
-    .attr('fill', (d, i) => barColors[i] || barColors[4])
-    .attr('width', 0)
-    .transition().duration(600).delay((d, i) => i * 80)
-    .attr('width', d => x(d[1]));
-
-  // wing labels
-  g.selectAll('.wing-label').data(sorted).enter().append('text')
-    .attr('x', -8).attr('y', d => y(d[0]) + y.bandwidth() / 2).attr('dy', '0.35em')
-    .attr('text-anchor', 'end').attr('fill', '#3F4755')
-    .attr('font-size', '11px').attr('font-weight', '500')
-    .attr('font-family', "'Sarabun', sans-serif")
-    .text(d => 'แดน ' + d[0]);
-
-  // value labels
-  g.selectAll('.val-label').data(sorted).enter().append('text')
-    .attr('x', d => x(d[1]) + 6).attr('y', d => y(d[0]) + y.bandwidth() / 2).attr('dy', '0.35em')
-    .attr('fill', '#1e1b4b').attr('font-size', '11px').attr('font-weight', '700')
-    .attr('font-family', "'Sarabun', sans-serif")
-    .text(d => d[1].toLocaleString() + ' บ.');
-
-  // hover tooltip
-  g.selectAll('.bar-hover').data(sorted).enter().append('rect')
-    .attr('x', 0).attr('y', d => y(d[0]))
-    .attr('width', cw - pad.left - pad.right).attr('height', y.bandwidth())
-    .attr('fill', 'transparent').style('cursor', 'pointer')
-    .on('mouseenter', function (ev, d) {
-      const tip = d3.select(container).append('div').attr('class', 'chart-tooltip');
-      tip.html('<strong>แดน ' + d[0] + '</strong><br>รายได้: <strong>' + d[1].toLocaleString() + ' บาท</strong>')
-        .style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 40) + 'px');
-    })
-    .on('mouseleave', function () {
-      d3.select(container).selectAll('.d3-tooltip').remove();
-    });
+  const chart = new ApexCharts(container, { ...options, series: [{ name: 'รายได้', data: sorted.map(d => d[1]) }] });
+  chart.render();
+  container._apexChart = chart;
 }
 
 // ===== FLOOR PLAN RENDERER =====
@@ -4597,7 +4396,7 @@ function renderDashboardHomeV2() {
   if (!total) {
     if (isFullAccess) {
       const chartEl = document.getElementById('trendChart');
-      if (chartEl) d3.select(chartEl).selectAll('*').remove();
+      if (chartEl && chartEl._apexChart) { chartEl._apexChart.destroy(); chartEl._apexChart = null; }
     }
     updateDashboardActionCards();
     return;
@@ -5490,6 +5289,33 @@ document.addEventListener('click', (e) => {
     panel.style.display = 'none';
   }
 });
+
+// ===== THEME TOGGLE (Dark Mode + ApexCharts sync) =====
+function updateAllChartsTheme(dark) {
+  const theme = dark ? 'dark' : 'light';
+  ['trendChart', 'financeChart', 'statusDonutChart', 'wingRevenueChart'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el._apexChart) {
+      el._apexChart.updateOptions({ theme: { mode: theme } }, false, true);
+    }
+  });
+}
+
+function toggleDarkMode() {
+  const html = document.documentElement;
+  const isDark = html.classList.toggle('dark');
+  try { localStorage.setItem('cc_dark_mode', isDark ? '1' : '0'); } catch (e) {}
+  updateAllChartsTheme(isDark);
+}
+
+// Apply saved dark mode on load
+(function () {
+  try {
+    if (localStorage.getItem('cc_dark_mode') === '1') {
+      document.documentElement.classList.add('dark');
+    }
+  } catch (e) {}
+})();
 
 // ===== SETTINGS =====
 function renderSettingsView() {

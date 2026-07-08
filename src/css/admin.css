@@ -3511,7 +3511,7 @@ body.dark-mode .quick-action-btn { background: var(--md-surface); border-color: 
   border-color: var(--md-primary);
 }
 
-/* Chart tooltip (Tabler-style) */
+/* Chart tooltip (Tabler-style) — used by ApexCharts */
 .chart-tooltip {
   background: var(--md-surface) !important;
   border: none !important;
@@ -3525,49 +3525,11 @@ body.dark-mode .quick-action-btn { background: var(--md-surface); border-color: 
 }
 
 /* D3 Chart canvas area */
-#financeChart svg {
+#financeChart svg,
+#trendChart svg,
+#statusDonutChart svg,
+#wingRevenueChart svg {
   display: block;
-}
-#financeChart .area-fill {
-  opacity: 0.6;
-}
-#financeChart .line-path {
-  fill: none;
-  stroke: var(--md-primary);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-#financeChart .grid-line {
-  stroke: var(--md-outline);
-  stroke-opacity: 0.3;
-  stroke-dasharray: 4,4;
-}
-
-/* Donut chart refinement */
-#statusDonutChart .donut-arc {
-  stroke: var(--md-surface);
-  stroke-width: 2;
-}
-#statusDonutChart .donut-center-text {
-  font-size: 22px;
-  font-weight: 700;
-  fill: var(--md-on-surface);
-}
-#statusDonutChart .donut-center-label {
-  font-size: 11px;
-  fill: var(--text2);
-}
-
-/* Bar chart refinement */
-#wingRevenueChart .bar-rect {
-  rx: 4;
-  ry: 4;
-}
-#wingRevenueChart .bar-value-label {
-  font-size: 10px;
-  fill: var(--text2);
-  font-weight: 600;
 }
 
 /* Progress bar (Tabler-style) */
