@@ -219,6 +219,7 @@ function doPostHandler(e) {
     case 'updateBooking': return handleUpdateBooking(body, username);
     case 'saveSettings': return handleSaveSettings(body, username);
     case 'addNote': return handleAddNote(body, username);
+    case 'getNotes': return handleGetNotes(body);
     case 'importPrisoners': return handleImportPrisoners(body, username);
     case 'syncPrisonerWings': return handleSyncPrisonerWings(body, username, pass);
     case 'getUsers': return jsonResp({ status: 'ok', users: getAllUsers().map(u => ({ username: u.username, role: u.role, displayName: u.displayName || u.username, createdAt: u.createdAt })) });
@@ -232,27 +233,39 @@ function doPostHandler(e) {
 }
 
 const CACHE_TTL = 60;
-const PUBLIC_CACHE_TTL = 600;
+const PUBLIC_CACHE_TTL = 120;
 const LOGIN_RATE_LIMIT_TTL = 300;
 const MAX_LOGIN_ATTEMPTS = 5;
+const CACHE_VERSION = 'v2';
 
 function getAllReservations_() {
   const cache = CacheService.getScriptCache();
-  const cached = cache.get('allReservations');
-  if (cached) {
-    try {
-      return jsonResp({ status: 'ok', rows: JSON.parse(cached) });
-    } catch (e) {
-      cache.remove('allReservations');
-    }
-  }
+  const CACHE_KEY = CACHE_VERSION + ':allReservations';
 
-  const sheet = getCachedSheet(SHEET_NAME);
+  const sheet = getMainSheet();
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return jsonResp({ status: 'ok', rows: [] });
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const refIdx = headers.indexOf('ref');
+  if (refIdx === -1) {
+    return jsonResp({ status: 'error', message: 'Sheet is missing the required "ref" column header — please check sheet structure' });
+  }
+
+  // Check cache — store header hash with data so schema changes invalidate cache
+  const headersHash = headers.join('||');
+  const cached = cache.get(CACHE_KEY);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed.headersHash === headersHash && Array.isArray(parsed.rows)) {
+        return jsonResp({ status: 'ok', rows: parsed.rows });
+      }
+    } catch (e) {
+      cache.remove(CACHE_KEY);
+    }
+  }
+
   const colCount = headers.length;
   const data = sheet.getRange(2, 1, lastRow - 1, colCount).getValues();
 
@@ -268,7 +281,7 @@ function getAllReservations_() {
     });
 
   const reversed = rows.reverse();
-  try { cache.put('allReservations', JSON.stringify(reversed), PUBLIC_CACHE_TTL); } catch (e) {}
+  try { cache.put(CACHE_KEY, JSON.stringify({ headersHash: headersHash, rows: reversed }), PUBLIC_CACHE_TTL); } catch (e) {}
   return jsonResp({ status: 'ok', rows: reversed });
 }
 
@@ -321,20 +334,49 @@ function getMainSheet() {
 }
 
 function ensureHeaders(sheet) {
-  if (sheet.getLastRow() > 0) return;
-  const headers = ['ref','timestamp','visitorName','visitorId','visitorPhone','relation',
+  const STANDARD_HEADERS = ['ref','timestamp','visitorName','visitorId','visitorPhone','relation',
     'religion','allergy','extraVisitorReligions','extraVisitorAllergies',
     'extraVisitorNames','visitorApproved','extraVisitorApproved',
     'prisonerName','prisonerId','wing','visitDate','visitDateISO',
     'visitorCount','totalPersons','total','adultCount','child5to8Count','childUnder5Count','status','slipImage'];
-  sheet.appendRow(headers);
-  const range = sheet.getRange(1, 1, 1, headers.length);
-  range.setFontWeight('bold');
-  range.setBackground('#185FA5');
-  range.setFontColor('#ffffff');
-  sheet.setFrozenRows(1);
-  const slipCol = headers.indexOf('slipImage') + 1;
-  if (slipCol > 0) sheet.hideColumns(slipCol);
+
+  // If sheet is empty, write headers and set up formatting
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(STANDARD_HEADERS);
+    const range = sheet.getRange(1, 1, 1, STANDARD_HEADERS.length);
+    range.setFontWeight('bold');
+    range.setBackground('#185FA5');
+    range.setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+    const slipCol = STANDARD_HEADERS.indexOf('slipImage') + 1;
+    if (slipCol > 0) sheet.hideColumns(slipCol);
+    return;
+  }
+
+  // Sheet has data — check for missing standard columns and add them
+  const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const existingSet = {};
+  existingHeaders.forEach((h, i) => { existingSet[h] = i; });
+
+  let nextCol = sheet.getLastColumn() + 1;
+  let addedAny = false;
+  STANDARD_HEADERS.forEach(h => {
+    if (existingSet[h] === undefined) {
+      sheet.getRange(1, nextCol).setValue(h);
+      const range = sheet.getRange(1, nextCol);
+      range.setFontWeight('bold');
+      range.setBackground('#185FA5');
+      range.setFontColor('#ffffff');
+      if (h === 'slipImage') sheet.hideColumns(nextCol);
+      existingSet[h] = nextCol - 1;
+      nextCol++;
+      addedAny = true;
+    }
+  });
+
+  if (addedAny) {
+    sheet.setFrozenRows(1);
+  }
 }
 
 function handleSaveReservation(body) {
@@ -699,7 +741,13 @@ function invalidateUserCache(username) {
 }
 
 function invalidateReservationsCache() {
-  try { CacheService.getScriptCache().remove('allReservations'); } catch (e) {}
+  try {
+    const cache = CacheService.getScriptCache();
+    // Remove all possible cache variants so stale data never persists
+    cache.remove(CACHE_VERSION + ':allReservations');
+  } catch (e) {
+    Logger.log('invalidateReservationsCache failed: ' + e.toString());
+  }
 }
 
 function saveSlipToDrive(ref, base64Data, mimeTypeOverride, fileNameOverride) {
@@ -947,6 +995,31 @@ function handleAddNote(body, username) {
   sheet.appendRow([body.ref, body.note.text || '', body.note.user || username, body.note.timestamp || new Date().toLocaleString('th-TH'), new Date().toISOString()]);
   logEvent(username, 'add_note', body.ref, { text: body.note.text }, 'success');
   return jsonResp({ status: 'ok', message: 'เพิ่มหมายเหตุสำเร็จ' });
+}
+
+function handleGetNotes(body) {
+  const ref = body.ref;
+  if (!ref) return jsonResp({ status: 'error', message: 'Missing ref' });
+
+  const sheet = getCachedSheet(NOTES_SHEET);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return jsonResp({ status: 'ok', notes: [] });
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const refIdx = headers.indexOf('ref');
+  if (refIdx === -1) return jsonResp({ status: 'error', message: 'Notes sheet missing ref column' });
+
+  const notes = [];
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][refIdx]).trim() === String(ref).trim()) {
+      const note = {};
+      headers.forEach((h, j) => { note[h] = data[i][j]; });
+      notes.push(note);
+    }
+  }
+
+  return jsonResp({ status: 'ok', notes: notes });
 }
 
 function handleImportPrisoners(body, username) {

@@ -338,10 +338,15 @@ async function loadData() {
       return;
     }
   }
-  updateStats();
-  buildDateFilter();
-  buildWingFilter();
-  renderTable();
+  try {
+    updateStats();
+    buildDateFilter();
+    buildWingFilter();
+    renderTable();
+  } catch (renderErr) {
+    console.error('Render error after data load:', renderErr);
+    showToast('เกิดข้อผิดพลาดในการแสดงผล: ' + renderErr.message, 'error');
+  }
   logEvent('load_data', 'โหลดข้อมูลการจอง');
 }
 
@@ -636,8 +641,10 @@ function renderTable() {
     Admin: null, // sees all
     Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
     Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
-    Vinai: ['รอตรวจสอบวินัย', 'รอตรวจสอบ']
+    Vinai: ['รอตรวจสอบวินัย', 'รอตรวจสอบ'],
+    User: null // sees all (limited to print permission)
   };
+  const roleFilterActive = allowedStatuses[role] !== null && allowedStatuses[role] !== undefined;
 
   let rows = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
@@ -652,7 +659,8 @@ function renderTable() {
     return true;
   });
   const totalFiltered = rows.length;
-  document.getElementById('tableCount').textContent = totalFiltered + ' รายการ';
+  const roleLabel = roleFilterActive ? ` (ตามสิทธิ์: ${role})` : '';
+  document.getElementById('tableCount').textContent = totalFiltered + ' รายการ' + roleLabel;
 
   // Apply sorting
   rows = applySorting(rows);
@@ -1978,7 +1986,7 @@ function closeModal(e) {
 }
 
 // ===== DETAIL MODAL =====
-function viewDetail(idx) {
+async function viewDetail(idx) {
   const r = allRows[idx];
   const s = r.status || '';
   let badgeClass = 'badge-pending-review';
@@ -2093,6 +2101,21 @@ function viewDetail(idx) {
         <span class="dlbl">💰 ค่าบริการอาหาร</span>
         <span class="dval" style="color:var(--blue);font-size:15px;">${total.toLocaleString()} บาท</span>
       </div>
+      ${r.adultCount !== undefined && r.adultCount !== '' ? `
+      <div class="detail-row">
+        <span class="dlbl">👤 ผู้ใหญ่ (อายุ >8 ปี)</span>
+        <span class="dval">${r.adultCount} คน</span>
+      </div>` : ''}
+      ${r.child5to8Count !== undefined && r.child5to8Count !== '' && parseInt(r.child5to8Count) > 0 ? `
+      <div class="detail-row">
+        <span class="dlbl">🧒 เด็ก (5-8 ปี)</span>
+        <span class="dval">${r.child5to8Count} คน (คนละ 500 บาท)</span>
+      </div>` : ''}
+      ${r.childUnder5Count !== undefined && r.childUnder5Count !== '' && parseInt(r.childUnder5Count) > 0 ? `
+      <div class="detail-row">
+        <span class="dlbl">👶 เด็ก (<5 ปี)</span>
+        <span class="dval">${r.childUnder5Count} คน (ฟรี)</span>
+      </div>` : ''}
 <div class="detail-row">
          <span class="dlbl">🕐 จองเมื่อ</span>
          <span class="dval">${escHtml(r.timestamp) || '—'}</span>
@@ -2113,8 +2136,13 @@ ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้�
 
   // ===== Show cancel note if status is cancelled =====
   if (s === 'ยกเลิก') {
-    const notes = getNotes(r.ref);
-    const cancelNotes = notes.filter(n => n.text.startsWith('ยกเลิก:'));
+    let cancelNotes = [];
+    try {
+      const notes = await getNotes(r.ref);
+      cancelNotes = notes.filter(n => n.text.startsWith('ยกเลิก:'));
+    } catch (e) {
+      console.warn('Failed to load cancel notes:', e);
+    }
     if (cancelNotes.length > 0) {
       const note = cancelNotes[cancelNotes.length - 1];
       document.getElementById('detailModalBody').innerHTML += `
@@ -5417,7 +5445,24 @@ async function saveSettings() {
 }
 
 // ===== NOTES =====
-function getNotes(ref) {
+async function getNotes(ref) {
+  // Try fetching from backend first
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getNotes', username: currentUser?.username || '', password: currentUser?.password || '', ref: ref })
+    }, 1);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.status === 'ok' && Array.isArray(data.notes)) {
+        return data.notes.map(n => ({ text: n.text || '', user: n.user || '', timestamp: n.timestamp || '' }));
+      }
+    }
+  } catch (e) {
+    console.warn('getNotes backend failed, falling back to local:', e.message);
+  }
+  // Fallback to localStorage
   const allNotes = JSON.parse(localStorage.getItem('cc_notes') || '{}');
   return allNotes[ref] || [];
 }
