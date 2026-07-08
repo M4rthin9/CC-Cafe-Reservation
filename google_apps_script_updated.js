@@ -237,41 +237,40 @@ const LOGIN_RATE_LIMIT_TTL = 300;
 const MAX_LOGIN_ATTEMPTS = 5;
 
 function getAllReservations_() {
-   const cache = CacheService.getScriptCache();
-   const cached = cache.get('allReservations');
-   if (cached) {
-     try {
-       return jsonResp({ status: 'ok', rows: JSON.parse(cached) });
-     } catch (e) {
-       cache.remove('allReservations');
-     }
-   }
-
-   const sheet = getCachedSheet(SHEET_NAME);
-   const lastRow = sheet.getLastRow();
-   if (lastRow <= 1) return jsonResp({ status: 'ok', rows: [] });
-
-   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-   const dateIdx = headers.indexOf('visitDateISO');
-   const statusIdx = headers.indexOf('status');
-   const refIdx = headers.indexOf('ref');
-
-   const colCount = headers.length;
-   const data = sheet.getRange(2, 1, lastRow - 1, colCount).getValues();
-
-const rows = data
-      .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
-      .map(row => {
-        const obj = { ref: row[refIdx] };
-        if (dateIdx >= 0) obj.visitDateISO = row[dateIdx] instanceof Date ? formatDateISO(row[dateIdx]) : String(row[dateIdx] || '').trim();
-        if (statusIdx >= 0) obj.status = String(row[statusIdx] || '').trim();
-        return obj;
-      });
-
-    const reversed = rows.reverse();
-    try { cache.put('allReservations', JSON.stringify(reversed), PUBLIC_CACHE_TTL); } catch (e) {}
-    return jsonResp({ status: 'ok', rows: reversed });
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get('allReservations');
+  if (cached) {
+    try {
+      return jsonResp({ status: 'ok', rows: JSON.parse(cached) });
+    } catch (e) {
+      cache.remove('allReservations');
+    }
   }
+
+  const sheet = getCachedSheet(SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return jsonResp({ status: 'ok', rows: [] });
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const refIdx = headers.indexOf('ref');
+  const colCount = headers.length;
+  const data = sheet.getRange(2, 1, lastRow - 1, colCount).getValues();
+
+  const rows = data
+    .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => {
+        let val = row[i];
+        obj[h] = val instanceof Date ? (h === 'visitDateISO' ? formatDateISO(val) : Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')) : val;
+      });
+      return obj;
+    });
+
+  const reversed = rows.reverse();
+  try { cache.put('allReservations', JSON.stringify(reversed), PUBLIC_CACHE_TTL); } catch (e) {}
+  return jsonResp({ status: 'ok', rows: reversed });
+}
 
 function formatDateISO(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
