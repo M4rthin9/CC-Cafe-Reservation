@@ -97,6 +97,26 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->
+        <!-- FINANCE TREND + RESERVATION TREND (Top Row)    -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-h">💰 แนวโน้มการเงิน 14 วัน</div>
+            <div class="chart-period-filter" style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
+              <button class="period-btn" onclick="changeFinancePeriod(7,this)">7 วัน</button>
+              <button class="period-btn active" onclick="changeFinancePeriod(14,this)">14 วัน</button>
+              <button class="period-btn" onclick="changeFinancePeriod(30,this)">30 วัน</button>
+            </div>
+            <div id="financeChart" style="width:100%;height:240px;margin-top:4px;" aria-label="กราฟแนวโน้มการเงิน"></div>
+            <div id="financeLegend" style="display:flex;gap:16px;justify-content:center;margin-top:6px;flex-wrap:wrap;"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-h">📊 แนวโน้มการจอง 14 วัน</div>
+            <div id="trendChart" style="width:100%;height:240px;margin-top:4px;" aria-label="กราฟแนวโน้มการจอง"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
         <!-- ACTION REQUIRED: Quick access to pending tasks  -->
         <!-- ═══════════════════════════════════════════════ -->
         <div class="action-required-section">
@@ -184,6 +204,26 @@
           <div class="dash-card">
             <div class="dash-card-h">📊 สถานะการเงิน (Pipeline)</div>
             <div id="pipelineChart" style="width:100%;height:220px;margin-top:8px;" aria-label="กราฟสถานะการเงิน"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 4: HEATMAP + WING COUNT CHARTS              -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>🔥 สัปดาห์นี้ (Heatmap)</span>
+              <button class="btn btn-text btn-sm" onclick="exportChart('weeklyHeatmapChart','Heatmap')" title="ดาวน์โหลด PNG">📥</button>
+            </div>
+            <div id="weeklyHeatmapChart" style="width:100%;height:200px;margin-top:8px;" aria-label="กราฟ Heatmap รายสัปดาห์"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>🏢 จำนวนการจองแยกตามแดน</span>
+              <button class="btn btn-text btn-sm" onclick="exportChart('wingCountChart','จำนวนจองตามแดน')" title="ดาวน์โหลด PNG">📥</button>
+            </div>
+            <div id="wingCountChart" style="width:100%;height:200px;margin-top:8px;" aria-label="กราฟจำนวนจองตามแดน"></div>
           </div>
         </div>
 
@@ -363,6 +403,41 @@
           <div id="monthlyReportContent">
             <div id="monthlyReportOutput"></div>
             <button class="btn btn-filled btn-sm" onclick="printMonthlyReport()" style="background:#0B2545;margin-top:8px;">🖨️ พิมพ์รายงาน</button>
+          </div>
+        </div>
+
+        <!-- Reports Charts Section -->
+        <div class="dash-grid" style="margin-bottom:16px;">
+          <div class="dash-card">
+            <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>📊 สถานะการจองทั้งหมด</span>
+              <button class="btn btn-text btn-sm" onclick="exportChart('statusDonutChart','สถานะการจอง')" title="ดาวน์โหลด PNG">📥</button>
+            </div>
+            <div id="statusDonutChart" style="width:100%;height:280px;"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>💰 เปรียบเทียบรายได้รายเดือน</span>
+              <button class="btn btn-text btn-sm" onclick="exportChart('monthlyRevenueChart','รายได้รายเดือน')" title="ดาวน์โหลด PNG">📥</button>
+            </div>
+            <div id="monthlyRevenueChart" style="width:100%;height:280px;"></div>
+          </div>
+        </div>
+
+        <div class="dash-grid" style="margin-bottom:16px;">
+          <div class="dash-card">
+            <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>🔄 สถานะการจอง (Funnel)</span>
+              <button class="btn btn-text btn-sm" onclick="exportChart('statusFunnelChart','Funnel')" title="ดาวน์โหลด PNG">📥</button>
+            </div>
+            <div id="statusFunnelChart" style="width:100%;height:220px;"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>👥 ประเภทผู้เข้าร่วม</span>
+              <button class="btn btn-text btn-sm" onclick="exportChart('visitorTypeChart','ผู้เข้าร่วม')" title="ดาวน์โหลด PNG">📥</button>
+            </div>
+            <div id="visitorTypeChart" style="width:100%;height:260px;"></div>
           </div>
         </div>
 
