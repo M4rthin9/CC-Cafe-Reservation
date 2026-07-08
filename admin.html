@@ -130,84 +130,65 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->
-        <!-- ALERTS: Important notifications                 -->
+        <!-- ROW 1: KPI CARDS                              -->
         <!-- ═══════════════════════════════════════════════ -->
-        <div id="alertsSection" class="alerts-section"></div>
-
-        <!-- ═══════════════════════════════════════════════ -->
-        <!-- PAYMENT QUEUE: Pending payments quick-view      -->
-        <!-- ═══════════════════════════════════════════════ -->
-        <div id="paymentQueueSection" class="payment-queue-section" style="display:none;"></div>
-
-        <!-- ═══════════════════════════════════════════════ -->
-        <!-- PERFORMANCE METRICS                             -->
-        <!-- ═══════════════════════════════════════════════ -->
-        <div id="performanceMetrics" class="metrics-cards"></div>
-
-        <!-- ═══════════════════════════════════════════════ -->
-        <!-- METRICS STRIP: Unified finance + booking stats -->
-        <!-- ═══════════════════════════════════════════════ -->
-        <div class="metrics-strip">
-          <div class="ms-item">
-            <span class="ms-icon primary">💰</span>
-            <div>
-              <span class="ms-value" id="financeTotalBooked">฿0</span>
-              <span class="ms-label">ยอดจอง</span>
-            </div>
+        <div class="kpi-grid">
+          <div class="kpi-card" id="kpiVocationalFund">
+            <div class="kpi-label">กองทุนวิชาชีพ (เดือนนี้)</div>
+            <div class="kpi-value" id="kpiFundValue">฿0</div>
+            <div class="kpi-trend" id="kpiFundTrend">—</div>
           </div>
-          <div class="ms-item">
-            <span class="ms-icon primary">✅</span>
-            <div>
-              <span class="ms-value paid" id="financePaid">฿0</span>
-              <span class="ms-label">ชำระแล้ว</span>
+          <div class="kpi-card" id="kpiCashFlow">
+            <div class="kpi-label">ชำระแล้ว / รอชำระ</div>
+            <div class="kpi-value">
+              <span class="emerald" id="kpiPaid">฿0</span>
+              <span class="kpi-divider">/</span>
+              <span class="amber" id="kpiPending">฿0</span>
             </div>
+            <div class="kpi-trend" id="kpiCashFlowRate">—</div>
           </div>
-          <div class="ms-item">
-            <span class="ms-icon primary">⚠️</span>
-            <div>
-              <span class="ms-value unpaid" id="financeUnpaid">฿0</span>
-              <span class="ms-label">ค้างชำระ</span>
-            </div>
+          <div class="kpi-card" id="kpiAvgRevenue">
+            <div class="kpi-label">เฉลี่ยต่อโต๊ะ</div>
+            <div class="kpi-value" id="kpiAvgValue">฿0</div>
+            <div class="kpi-trend" id="kpiAvgSub">—</div>
           </div>
-          <div class="ms-item">
-            <span class="ms-icon primary">📈</span>
-            <div>
-              <span class="ms-value" id="financeRate">0%</span>
-              <span class="ms-label">อัตราชำระ</span>
-            </div>
-          </div>
-          <div class="ms-item">
-            <span class="ms-icon tertiary">📅</span>
-            <div>
-              <span class="ms-value" id="statToday">0</span>
-              <span class="ms-label">วันนี้</span>
-            </div>
-          </div>
-          <div class="ms-item">
-            <span class="ms-icon tertiary">📆</span>
-            <div>
-              <span class="ms-value" id="statThisWeek">0</span>
-              <span class="ms-label">สัปดาห์นี้</span>
-            </div>
-          </div>
-          <div class="ms-item">
-            <span class="ms-icon tertiary">📊</span>
-            <div>
-              <span class="ms-value" id="statThisMonth">0</span>
-              <span class="ms-label">เดือนนี้</span>
-            </div>
-          </div>
-          <div class="ms-item">
-            <span class="ms-icon tertiary">📋</span>
-            <div>
-              <span class="ms-value" id="statTotal">0</span>
-              <span class="ms-label">ทั้งหมด</span>
-            </div>
+          <div class="kpi-card" id="kpiUtilization">
+            <div class="kpi-label">การใช้โต๊ะวันนี้</div>
+            <div class="kpi-value" id="kpiUtilValue">0%</div>
+            <div class="kpi-trend" id="kpiUtilSub">—</div>
           </div>
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->
-        <!-- TODAY'S VISITS: Confirmed visits today          -->
+        <!-- ALERTS + PAYMENT QUEUE                         -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="alertsSection" class="alerts-section"></div>
+        <div id="paymentQueueSection" class="payment-queue-section" style="display:none;"></div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 2: DUAL OVERLAID TREND CHART (Full Width)  -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-card chart-full">
+          <div class="dash-card-h">📈 แนวโน้มรายได้และการจอง 14 วัน</div>
+          <div id="dualTrendChart" style="width:100%;height:280px;margin-top:8px;" aria-label="กราฟแนวโน้มรายได้และการจอง 14 วัน"></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ROW 3: TWO SIDE-BY-SIDE BREAKDOWN CHARTS        -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-h">💰 ยอดรายรับแยกตามแดน</div>
+            <div id="wingRevenueChart" style="width:100%;height:220px;margin-top:8px;" aria-label="กราฟรายได้ตามแดน"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-h">📊 สถานะการเงิน (Pipeline)</div>
+            <div id="pipelineChart" style="width:100%;height:220px;margin-top:8px;" aria-label="กราฟสถานะการเงิน"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- TODAY'S VISITS                                 -->
         <!-- ═══════════════════════════════════════════════ -->
         <div class="todays-visits">
           <div class="todays-visits-header">
@@ -215,44 +196,6 @@
             <span class="todays-visits-count" id="todaysVisitsCount">0 รายการ</span>
           </div>
           <div id="todaysVisitsList"></div>
-        </div>
-
-        <!-- ═══════════════════════════════════════════════ -->
-        <!-- ROW 4: VISUALIZATIONS (2-col grid)             -->
-        <!-- ═══════════════════════════════════════════════ -->
-        <div class="dash-grid">
-           <div class="dash-card">
-             <div class="dash-card-h">
-               <span>💰</span> แนวโน้มรายได้ 14 วัน
-             </div>
-             <div id="financeOverview" style="margin-top:12px">
-               <div id="financeSummary" class="finance-summary"></div>
-                <div id="financeChart" style="width:100%;max-width:100%;height:240px;display:block;margin-top:10px" aria-label="กราฟแนวโน้มยอดเงิน"></div>
-               <div id="financeLegend" class="finance-chart-legend"></div>
-             </div>
-           </div>
-           <div class="dash-card">
-             <div class="dash-card-h">
-               <span>💰</span> สัดส่วนสถานะการเงิน
-             </div>
-             <div id="statusPipeline" style="margin-top:8px"></div>
-             <div class="donut-wrapper">
-                <div id="statusDonutChart" style="width:180px;height:180px;" aria-label="กราฟวงกลมสถานะ"></div>
-               <div id="donutLegend" class="donut-legend"></div>
-             </div>
-           </div>
-           <div class="dash-card">
-             <div class="dash-card-h">
-               <span>🕒</span> แนวโน้มการจอง 14 วัน
-             </div>
-              <div id="trendChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟแนวโน้มการจอง"></div>
-           </div>
-           <div class="dash-card">
-             <div class="dash-card-h">
-               <span>💵</span> ยอดรายรับแยกตามแดน
-             </div>
-              <div id="wingRevenueChart" style="width:100%;height:200px;display:block;margin-top:8px" aria-label="กราฟรายได้ตามแดน"></div>
-           </div>
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->

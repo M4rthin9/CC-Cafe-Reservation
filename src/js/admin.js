@@ -1459,10 +1459,10 @@ window.addEventListener('resize', () => {
   if (homeView && homeView.style.display !== 'none') {
     clearTimeout(window._chartResizeTimer);
     window._chartResizeTimer = setTimeout(() => {
-      const trendEl = document.getElementById('trendChart');
-      if (trendEl && trendEl._apexChart) trendEl._apexChart.updateOptions({});
-      const financeEl = document.getElementById('financeChart');
-      if (financeEl && financeEl._apexChart) financeEl._apexChart.updateOptions({});
+      ['dualTrendChart', 'wingRevenueChart', 'pipelineChart'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el._apexChart) el._apexChart.updateOptions({});
+      });
     }, 120);
   }
 });
@@ -4305,14 +4305,14 @@ function drawWingRevenueChart() {
   }
 
   const isDark = document.documentElement.classList.contains('dark');
-  const barColors = ['#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
+  const colors = ['#1e3a8a', '#334155', '#475569', '#64748b', '#94a3b8'];
 
   const options = {
-    chart: { type: 'bar', height: sorted.length * 56 + 40, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false }, redrawOnWindowResize: true, animations: { enabled: true, easing: 'easeout', speed: 600, animateGradually: { enabled: true, delay: 80 } } },
-    colors: barColors,
+    chart: { type: 'bar', height: Math.max(180, sorted.length * 48 + 20), fontFamily: "'Sarabun', sans-serif", toolbar: { show: false }, redrawOnWindowResize: true, animations: { enabled: true, easing: 'easeout', speed: 500, animateGradually: { enabled: true, delay: 60 } } },
+    colors: colors,
     plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: true, dataLabels: { position: 'top' } } },
-    dataLabels: { enabled: true, formatter: (v) => v.toLocaleString() + ' บ.', offsetX: 8, style: { fontSize: '11px', fontWeight: 700, colors: [isDark ? '#e2e8f0' : '#1e1b4b'], fontFamily: "'Sarabun', sans-serif" } },
-    grid: { borderColor: isDark ? '#334155' : '#e2e8f0', strokeDashArray: 4, xaxis: { lines: { show: true } }, yaxis: { lines: { show: false } } },
+    dataLabels: { enabled: true, formatter: (v) => formatChartBahtShort(v), offsetX: 6, style: { fontSize: '10px', fontWeight: 700, colors: [isDark ? '#e2e8f0' : '#1e1b4b'], fontFamily: "'Sarabun', sans-serif" } },
+    grid: { show: false },
     tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: (v) => v.toLocaleString() + ' บาท' } },
     xaxis: { categories: sorted.map(d => 'แดน ' + d[0]), labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px', fontWeight: 500, fontFamily: "'Sarabun', sans-serif" } }, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis: { labels: { style: { colors: isDark ? '#94a3b8' : '#475569', fontSize: '11px', fontWeight: 500, fontFamily: "'Sarabun', sans-serif" } } }
@@ -4418,6 +4418,277 @@ function renderFloorPlan() {
   }).join('');
 }
 
+// ===== KPI CARDS =====
+function renderKpiCards() {
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  const todayISO = toLocalDateStr(now);
+
+  let mtdTotal = 0;
+  let mtdCount = 0;
+  let paidTotal = 0;
+  let pendingTotal = 0;
+  let grandTotal = 0;
+  let bookingCount = 0;
+  let todayCount = 0;
+
+  allRows.forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
+
+    const amt = parseInt(r.total, 10) || 0;
+    const visitKey = getRowVisitDateKey(r);
+
+    let isThisMonth = false;
+    if (visitKey) {
+      const d = new Date(visitKey + 'T12:00:00');
+      if (!isNaN(d)) {
+        isThisMonth = (d.getMonth() === thisMonth && d.getFullYear() === thisYear);
+        if (visitKey === todayISO) todayCount++;
+      }
+    }
+
+    if (isThisMonth) {
+      mtdTotal += amt;
+      mtdCount++;
+    }
+
+    grandTotal += amt;
+    bookingCount++;
+
+    if (s === 'ชำระแล้ว' || s === 'เสร็จสิ้น') paidTotal += amt;
+    else if (s === 'รอชำระเงิน') pendingTotal += amt;
+  });
+
+  const avgRevenue = bookingCount > 0 ? Math.round(grandTotal / bookingCount) : 0;
+  const utilRate = Math.min(Math.round((todayCount / 20) * 100), 100);
+  const paidPct = grandTotal > 0 ? Math.round((paidTotal / grandTotal) * 100) : 0;
+
+  const el = (id) => document.getElementById(id);
+  if (el('kpiFundValue')) el('kpiFundValue').textContent = formatBaht(mtdTotal);
+  if (el('kpiFundTrend')) el('kpiFundTrend').textContent = mtdCount + ' รายการในเดือนนี้';
+  if (el('kpiPaid')) el('kpiPaid').textContent = formatBaht(paidTotal);
+  if (el('kpiPending')) el('kpiPending').textContent = formatBaht(pendingTotal);
+  if (el('kpiCashFlowRate')) el('kpiCashFlowRate').textContent = paidPct + '% ชำระแล้ว';
+  if (el('kpiAvgValue')) el('kpiAvgValue').textContent = formatBaht(avgRevenue);
+  if (el('kpiAvgSub')) el('kpiAvgSub').textContent = 'จาก ' + bookingCount + ' รายการ';
+  if (el('kpiUtilValue')) {
+    const utilEl = el('kpiUtilValue');
+    utilEl.textContent = utilRate + '%';
+    utilEl.className = 'kpi-value ' + (utilRate >= 75 ? 'kpi-util-high' : utilRate >= 50 ? 'kpi-util-mid' : 'kpi-util-low');
+  }
+  if (el('kpiUtilSub')) el('kpiUtilSub').textContent = todayCount + ' / 20 โต๊ะ';
+}
+
+// ===== DUAL OVERLAID TREND CHART =====
+function drawDualTrendChart() {
+  const container = document.getElementById('dualTrendChart');
+  if (!container) return;
+  if (container._apexChart) { container._apexChart.destroy(); }
+
+  const today = new Date();
+  const days = [];
+  const byDay = {};
+
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push(key);
+    byDay[key] = { revenue: 0, count: 0 };
+  }
+
+  allRows.forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
+    const visitKey = getRowVisitDateKey(r);
+    if (!visitKey || !byDay[visitKey]) return;
+    byDay[visitKey].revenue += parseInt(r.total, 10) || 0;
+    byDay[visitKey].count++;
+  });
+
+  const revenueData = days.map(d => byDay[d].revenue);
+  const countData = days.map(d => byDay[d].count);
+
+  if (revenueData.every(v => v === 0) && countData.every(v => v === 0)) {
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มีข้อมูล</div>';
+    return;
+  }
+
+  const isDark = document.documentElement.classList.contains('dark');
+  const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+
+  const options = {
+    chart: {
+      type: 'line', height: 280, fontFamily: "'Sarabun', sans-serif",
+      toolbar: { show: false }, zoom: { enabled: false },
+      redrawOnWindowResize: true,
+      animations: { enabled: true, easing: 'easeinout', speed: 500 }
+    },
+    colors: ['#059669', '#1e3a8a'],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: [3, 3] },
+    markers: { size: 0, hover: { size: 5 } },
+    grid: { show: false },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      shared: true,
+      x: { formatter: (v) => fmtDate(days[v]) },
+      y: [
+        { formatter: (v) => v.toLocaleString() + ' บาท' },
+        { formatter: (v) => v + ' รายการ' }
+      ]
+    },
+    xaxis: {
+      type: 'category', categories: days.map(d => fmtDate(d)),
+      axisBorder: { show: false }, axisTicks: { show: false },
+      labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" } }
+    },
+    yaxis: [
+      {
+        seriesName: 'รายได้',
+        labels: {
+          formatter: (v) => formatChartBahtShort(v),
+          style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" }
+        },
+        axisTicks: { show: false },
+        axisBorder: { show: false }
+      },
+      {
+        seriesName: 'การจอง',
+        opposite: true,
+        labels: {
+          formatter: (v) => Number.isInteger(v) ? v : '',
+          style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" }
+        },
+        axisTicks: { show: false },
+        axisBorder: { show: false }
+      }
+    ],
+    legend: {
+      show: true, position: 'bottom', horizontalAlign: 'center',
+      fontSize: '12px', fontFamily: "'Sarabun', sans-serif",
+      labels: { colors: isDark ? '#cbd5e1' : '#475569' },
+      itemMargin: { horizontal: 16 }
+    }
+  };
+
+  const series = [
+    { name: 'รายได้', type: 'line', data: revenueData },
+    { name: 'การจอง', type: 'line', data: countData }
+  ];
+
+  const chart = new ApexCharts(container, { ...options, series });
+  chart.render();
+  container._apexChart = chart;
+}
+
+// ===== PIPELINE HORIZONTAL STACKED BAR =====
+function drawPipelineChart() {
+  const container = document.getElementById('pipelineChart');
+  if (!container) return;
+  if (container._apexChart) { container._apexChart.destroy(); }
+  container.innerHTML = '';
+
+  const statuses = [
+    { key: 'รอตรวจสอบวินัย', label: 'รอตรวจสอบวินัย', color: '#3b82f6' },
+    { key: 'รอตรวจสอบผู้เข้าร่วม', label: 'รอตรวจสอบผู้เข้าร่วม', color: '#8b5cf6' },
+    { key: 'รอชำระเงิน', label: 'รอชำระเงิน', color: '#f59e0b' },
+    { key: 'paid', label: 'ชำระแล้ว/เสร็จสิ้น', color: '#10b981' }
+  ];
+
+  const revenue = {};
+  const counts = {};
+  statuses.forEach(s => { revenue[s.key] = 0; counts[s.key] = 0; });
+
+  allRows.forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const st = normalizeStatus(r.status);
+    if (st === 'ยกเลิก' || st === 'ไม่อนุมัติ') return;
+    const amt = parseInt(r.total, 10) || 0;
+
+    if (st === 'ชำระแล้ว' || st === 'เสร็จสิ้น') {
+      revenue['paid'] += amt;
+      counts['paid']++;
+    } else if (revenue[st] !== undefined) {
+      revenue[st] += amt;
+      counts[st]++;
+    }
+  });
+
+  const totalRev = Object.values(revenue).reduce((a, b) => a + b, 0);
+  if (totalRev === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มีข้อมูล</div>';
+    return;
+  }
+
+  const isDark = document.documentElement.classList.contains('dark');
+  const seriesData = statuses.map(s => revenue[s.key]);
+
+  const options = {
+    chart: {
+      type: 'bar', height: 120, fontFamily: "'Sarabun', sans-serif",
+      toolbar: { show: false }, stacked: true, stackType: 'normal',
+      redrawOnWindowResize: true,
+      animations: { enabled: true, easing: 'easeout', speed: 500 }
+    },
+    colors: statuses.map(s => s.color),
+    plotOptions: {
+      bar: { horizontal: true, borderRadius: 4, borderRadiusApplication: 'end', dataLabels: { total: { enabled: true, formatter: () => '' } } }
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (v) => v > 0 ? formatChartBahtShort(v) : '',
+      offsetX: 0,
+      style: { fontSize: '10px', fontWeight: 700, colors: ['#fff'], fontFamily: "'Sarabun', sans-serif" }
+    },
+    grid: { show: false },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      y: { formatter: (v) => v.toLocaleString() + ' บาท' }
+    },
+    xaxis: {
+      categories: [''],
+      labels: { show: false },
+      axisBorder: { show: false },
+      axisTicks: { show: false }
+    },
+    yaxis: {
+      show: false
+    },
+    legend: { show: false }
+  };
+
+  const chart = new ApexCharts(container, {
+    ...options,
+    series: statuses.map(s => ({ name: s.label, data: [revenue[s.key]] }))
+  });
+  chart.render();
+  container._apexChart = chart;
+
+  const oldLegend = container.parentNode.querySelector('.pipeline-legend');
+  if (oldLegend) oldLegend.remove();
+
+  const legendHtml = statuses
+    .filter(s => revenue[s.key] > 0)
+    .map(s => `
+      <div class="legend-item">
+        <span class="legend-dot" style="background:${s.color}"></span>
+        <span>${s.label}</span>
+        <strong>${formatChartBahtShort(revenue[s.key])}</strong>
+        <span style="color:var(--text-muted);font-size:10px;">(${counts[s.key]} รายการ)</span>
+      </div>
+    `).join('');
+  const legendWrap = document.createElement('div');
+  legendWrap.className = 'pipeline-legend status-legend';
+  legendWrap.style.marginTop = '12px';
+  legendWrap.innerHTML = legendHtml;
+  container.parentNode.appendChild(legendWrap);
+}
+
 // ===== OVERRIDE renderDashboardHome to include new components =====
 function renderDashboardHomeV2() {
   const role = currentUser && currentUser.role;
@@ -4427,7 +4698,8 @@ function renderDashboardHomeV2() {
   if (homeView && homeView.style.display === 'none') return;
 
   const showFull = (el) => { if (el) el.style.display = isFullAccess ? '' : 'none'; };
-  showFull(document.querySelector('.metrics-strip'));
+  showFull(document.querySelector('.kpi-grid'));
+  showFull(document.querySelector('.chart-full'));
   showFull(document.querySelector('.dash-grid'));
   showFull(document.querySelector('.floor-plan-card'));
 
@@ -4435,8 +4707,10 @@ function renderDashboardHomeV2() {
   const now = Date.now();
   
   if (isFullAccess && (_dashboardCache.data !== cacheKey || now - _dashboardCache.timestamp > 5000)) {
-    renderFinanceOverview();
-    renderFinanceRibbon();
+    renderKpiCards();
+    drawDualTrendChart();
+    drawWingRevenueChart();
+    drawPipelineChart();
     _dashboardCache = { timestamp: now, data: cacheKey };
   }
 
@@ -4444,7 +4718,7 @@ function renderDashboardHomeV2() {
 
   if (!total) {
     if (isFullAccess) {
-      const chartEl = document.getElementById('trendChart');
+      const chartEl = document.getElementById('dualTrendChart');
       if (chartEl && chartEl._apexChart) { chartEl._apexChart.destroy(); chartEl._apexChart = null; }
     }
     updateDashboardActionCards();
@@ -4456,15 +4730,9 @@ function renderDashboardHomeV2() {
     lastUpdatedEl.textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   }
 
-  if (isFullAccess) {
-    drawReservationTrendChart();
-    drawStatusDonutChart();
-    drawWingRevenueChart();
-    buildFloorPlanDateFilter();
-    renderFloorPlan();
-  }
-
   updateDashboardActionCards();
+  buildFloorPlanDateFilter();
+  renderFloorPlan();
 }
 
 // Override the original function with V2
@@ -5383,7 +5651,7 @@ document.addEventListener('click', (e) => {
 // ===== THEME TOGGLE (Dark Mode + ApexCharts sync) =====
 function updateAllChartsTheme(dark) {
   const theme = dark ? 'dark' : 'light';
-  ['trendChart', 'financeChart', 'statusDonutChart', 'wingRevenueChart'].forEach(id => {
+  ['dualTrendChart', 'wingRevenueChart', 'pipelineChart'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el._apexChart) {
       el._apexChart.updateOptions({ theme: { mode: theme } }, false, true);
