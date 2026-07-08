@@ -4349,7 +4349,19 @@ function drawRevenueSummary() {
     dataLabels: { enabled: true, formatter: (v) => formatChartBahtShort(v), style: { colors: ['#fff'], fontWeight: 600 } },
     tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: (v) => formatBaht(v) } },
     legend: { position: 'bottom', labels: { colors: isDark ? '#cbd5e1' : '#475569' } },
-    plotOptions: { pie: { donut: { labels: { total: { show: true, formatter: () => formatBaht(totalBooked), style: { fontSize: '16px', fontWeight: 700 } } } } }
+    plotOptions: {
+      pie: {
+        donut: {
+          labels: {
+            total: {
+              show: true,
+              formatter: () => formatBaht(totalBooked),
+              style: { fontSize: '16px', fontWeight: 700 }
+            }
+          }
+        }
+      }
+    }
   };
 
   const chart = new ApexCharts(container, { ...options, series: [totalBooked, paid, unpaid] });
