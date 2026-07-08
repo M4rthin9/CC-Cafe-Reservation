@@ -19,10 +19,10 @@
     <h1>หน้าเจ้าหน้าที่</h1>
     <p>ทัณฑสถานบำบัดพิเศษกลาง</p>
     <label for="userInput" class="sr-only">ชื่อผู้ใช้</label>
-    <input type="text" class="login-input" id="userInput" placeholder="ชื่อผู้ใช้" autocomplete="username" aria-label="ชื่อผู้ใช้" onkeydown="if(event.key==='Enter') doLogin()">
+    <input type="text" class="login-input" id="userInput" placeholder="ชื่อผู้ใช้" autocomplete="username" aria-label="ชื่อผู้ใช้">
     <label for="passInput" class="sr-only">รหัสผ่าน</label>
-    <input type="password" class="login-input" id="passInput" placeholder="รหัสผ่าน" autocomplete="current-password" aria-label="รหัสผ่าน" onkeydown="if(event.key==='Enter') doLogin()">
-    <button class="login-btn" onclick="doLogin()" aria-label="เข้าสู่ระบบ">เข้าสู่ระบบ</button>
+    <input type="password" class="login-input" id="passInput" placeholder="รหัสผ่าน" autocomplete="current-password" aria-label="รหัสผ่าน">
+    <button class="login-btn" id="loginBtn" aria-label="เข้าสู่ระบบ">เข้าสู่ระบบ</button>
     <div class="login-err" id="loginErr" role="alert">รหัสผ่านไม่ถูกต้อง</div>
   </div>
 </div>

@@ -5785,6 +5785,8 @@ const passInputEl = document.getElementById('passInput');
 if (passInputEl) passInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 const userInputEl = document.getElementById('userInput');
 if (userInputEl) userInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+const loginBtn = document.getElementById('loginBtn');
+if (loginBtn) loginBtn.addEventListener('click', doLogin);
 
 // === UX/UI UPGRADE FUNCTIONS ===
 
