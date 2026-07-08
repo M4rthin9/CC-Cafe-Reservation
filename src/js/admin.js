@@ -5912,6 +5912,21 @@ function toggleDarkMode() {
   } catch (e) {}
 })();
 
+// ===== CHART EXPORT =====
+function exportChart(chartId, name) {
+  const container = document.getElementById(chartId);
+  if (!container || !container._apexChart) {
+    showToast('ไม่พบข้อมูลกราฟ', 'error');
+    return;
+  }
+  container._apexChart.exportChart({
+    type: 'png',
+    filename: name + ' - ' + new Date().toISOString().slice(0, 10)
+  }).catch(() => {
+    showToast('ไม่สามารถดาวน์โหลดกราฟได้', 'error');
+  });
+}
+
 // ===== SETTINGS =====
 function renderSettingsView() {
   document.getElementById('view-settings').style.display = '';
