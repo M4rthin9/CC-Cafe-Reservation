@@ -964,43 +964,6 @@ function getRowVisitDateKey(r) {
   return key ? String(key).trim() : '';
 }
 
-function computeFinanceTimeSeries(rows) {
-  const today = new Date();
-  const days = [];
-  const byDay = {};
-
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    days.push(key);
-    byDay[key] = { booked: 0, paid: 0, unpaid: 0 };
-  }
-
-  (rows || []).forEach(r => {
-    if (!r.ref || String(r.ref).trim() === '') return;
-    const s = normalizeStatus(r.status);
-    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
-
-    const key = getRowVisitDateKey(r);
-    if (!key || !byDay[key]) return;
-
-    const amt = parseInt(r.total, 10) || 0;
-    byDay[key].booked += amt;
-    if (s === 'ชำระแล้ว' || s === 'เสร็จสิ้น') byDay[key].paid += amt;
-    else if (s === 'รอชำระเงิน') byDay[key].unpaid += amt;
-  });
-
-  return {
-    days,
-    series: [
-      { id: 'booked', label: 'ยอดจอง', color: '#4f46e5', fillTop: 'rgba(79,70,229,0.22)', fillBottom: 'rgba(79,70,229,0.02)', values: days.map(d => byDay[d].booked) },
-      { id: 'paid', label: 'ชำระแล้ว', color: '#059669', fillTop: 'rgba(5,150,105,0.2)', fillBottom: 'rgba(5,150,105,0.02)', values: days.map(d => byDay[d].paid) },
-      { id: 'unpaid', label: 'ยังไม่ชำระ', color: '#d97706', fillTop: 'rgba(217,119,6,0.25)', fillBottom: 'rgba(217,119,6,0.02)', values: days.map(d => byDay[d].unpaid) }
-    ]
-  };
-}
-
 function formatBaht(n) {
   return (n || 0).toLocaleString('th-TH') + ' บาท';
 }
@@ -1009,79 +972,6 @@ function formatChartBahtShort(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
   if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
   return String(n);
-}
-
-function renderFinanceOverview() {
-  const summaryEl = document.getElementById('financeSummary');
-  const chartEl = document.getElementById('financeChart');
-  if (!summaryEl || !chartEl) return;
-
-  const stats = computeFinanceStats(allRows);
-  const { totalBooked, paid, unpaid, pendingReview, bookingCount } = stats;
-
-  summaryEl.innerHTML = `
-    <div class="finance-kpi">
-      <div class="finance-kpi-item total">
-        <div class="finance-kpi-label">ยอดจองทั้งหมด</div>
-        <div class="finance-kpi-val">${formatBaht(totalBooked)}</div>
-        <div class="finance-kpi-sub">${bookingCount} รายการ</div>
-      </div>
-      <div class="finance-kpi-item paid">
-        <div class="finance-kpi-label">ชำระแล้ว</div>
-        <div class="finance-kpi-val">${formatBaht(paid)}</div>
-        <div class="finance-kpi-sub">${totalBooked ? Math.round((paid / totalBooked) * 100) : 0}% ของยอดจอง</div>
-      </div>
-      <div class="finance-kpi-item unpaid">
-        <div class="finance-kpi-label">ยังไม่ชำระ</div>
-        <div class="finance-kpi-val">${formatBaht(unpaid)}</div>
-        <div class="finance-kpi-sub">${totalBooked ? Math.round((unpaid / totalBooked) * 100) : 0}% ของยอดจอง</div>
-      </div>
-    </div>
-    ${pendingReview > 0 ? `<div class="finance-pending-note">⏳ รอตรวจสอบ (ยังไม่ถึงขั้นชำระ): <strong>${formatBaht(pendingReview)}</strong></div>` : ''}
-  `;
-
-  const timeSeries = computeFinanceTimeSeries(allRows);
-  drawFinanceLineChart(chartEl, timeSeries);
-
-  const legendEl = document.getElementById('financeLegend');
-  if (legendEl) {
-    legendEl.innerHTML = timeSeries.series.map(s => `
-      <span class="finance-legend-item">
-        <span class="finance-legend-line" style="background:${s.color}"></span>
-        ${s.label}
-      </span>
-    `).join('');
-  }
-}
-
-function drawFinanceLineChart(container, timeSeries) {
-  if (!container || !timeSeries) return;
-  container.innerHTML = '';
-  const { days, series } = timeSeries;
-  const hasData = series.some(s => s.values.some(v => v > 0));
-  if (!hasData) {
-    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มียอดจองในช่วง 14 วันนี้</div>';
-    return;
-  }
-  const isDark = document.documentElement.classList.contains('dark');
-  const formatDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
-  const options = {
-    chart: { type: 'area', height: 240, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false }, zoom: { enabled: false }, redrawOnWindowResize: true },
-    colors: series.map(s => s.color),
-    dataLabels: { enabled: false },
-    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05, stops: [0, 100] } },
-    grid: { borderColor: isDark ? '#334155' : '#e2e8f0', strokeDashArray: 4, padding: { left: 0, right: 0 } },
-    legend: { show: true, position: 'bottom', fontSize: '12px', fontFamily: "'Sarabun', sans-serif", labels: { colors: isDark ? '#cbd5e1' : '#475569' } },
-    markers: { size: 4, strokeWidth: 2, hover: { size: 6 } },
-    stroke: { curve: 'smooth', width: 2.5 },
-    tooltip: { theme: isDark ? 'dark' : 'light', x: { formatter: (v) => formatDate(days[v]) } },
-    xaxis: { type: 'category', categories: days.map(d => formatDate(d)), axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" } } },
-    yaxis: { labels: { formatter: (v) => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(v), style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" } } }
-  };
-  const apexSeries = series.map(s => ({ name: s.label, data: s.values }));
-  const chart = new ApexCharts(container, { ...options, series: apexSeries });
-  chart.render();
-  container._apexChart = chart;
 }
 
 // ===== TABLE SORTING =====
@@ -1150,8 +1040,6 @@ let renderDashboardHome = function () {
 
   const recentEl = document.getElementById('recentBookings');
   if (!recentEl) return;
-
-  renderFinanceOverview();
 
   const total = allRows.length;
 
@@ -1459,7 +1347,7 @@ window.addEventListener('resize', () => {
   if (homeView && homeView.style.display !== 'none') {
     clearTimeout(window._chartResizeTimer);
     window._chartResizeTimer = setTimeout(() => {
-      ['dualTrendChart', 'wingRevenueChart', 'pipelineChart'].forEach(id => {
+      ['revenueSummary', 'pipelineChart'].forEach(id => {
         const el = document.getElementById(id);
         if (el && el._apexChart) el._apexChart.updateOptions({});
       });
@@ -4282,46 +4170,7 @@ function drawStatusDonutChart() {
   }
 }
 
-// ===== WING REVENUE HORIZONTAL BAR CHART (ApexCharts) =====
-function drawWingRevenueChart() {
-  const container = document.getElementById('wingRevenueChart');
-  if (!container) return;
-  if (container._apexChart) { container._apexChart.destroy(); }
-  container.innerHTML = '';
 
-  const wingData = {};
-  allRows.forEach(r => {
-    if (!r.ref || String(r.ref).trim() === '') return;
-    const s = normalizeStatus(r.status);
-    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
-    const wing = r.wing || 'ไม่ระบุ';
-    wingData[wing] = (wingData[wing] || 0) + (parseInt(r.total) || 0);
-  });
-
-  const sorted = Object.entries(wingData).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  if (sorted.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มีข้อมูลรายได้</div>';
-    return;
-  }
-
-  const isDark = document.documentElement.classList.contains('dark');
-  const colors = ['#1e3a8a', '#334155', '#475569', '#64748b', '#94a3b8'];
-
-  const options = {
-    chart: { type: 'bar', height: Math.max(180, sorted.length * 48 + 20), fontFamily: "'Sarabun', sans-serif", toolbar: { show: false }, redrawOnWindowResize: true, animations: { enabled: true, easing: 'easeout', speed: 500, animateGradually: { enabled: true, delay: 60 } } },
-    colors: colors,
-    plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: true, dataLabels: { position: 'top' } } },
-    dataLabels: { enabled: true, formatter: (v) => formatChartBahtShort(v), offsetX: 6, style: { fontSize: '10px', fontWeight: 700, colors: [isDark ? '#e2e8f0' : '#1e1b4b'], fontFamily: "'Sarabun', sans-serif" } },
-    grid: { show: false },
-    tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: (v) => v.toLocaleString() + ' บาท' } },
-    xaxis: { categories: sorted.map(d => 'แดน ' + d[0]), labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px', fontWeight: 500, fontFamily: "'Sarabun', sans-serif" } }, axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis: { labels: { style: { colors: isDark ? '#94a3b8' : '#475569', fontSize: '11px', fontWeight: 500, fontFamily: "'Sarabun', sans-serif" } } }
-  };
-
-  const chart = new ApexCharts(container, { ...options, series: [{ name: 'รายได้', data: sorted.map(d => d[1]) }] });
-  chart.render();
-  container._apexChart = chart;
-}
 
 // ===== FLOOR PLAN RENDERER =====
 function buildFloorPlanDateFilter() {
@@ -4482,106 +4331,28 @@ function renderKpiCards() {
   if (el('kpiUtilSub')) el('kpiUtilSub').textContent = todayCount + ' / 20 โต๊ะ';
 }
 
-// ===== DUAL OVERLAID TREND CHART =====
-function drawDualTrendChart() {
-  const container = document.getElementById('dualTrendChart');
+// ===== REVENUE SUMMARY CHART =====
+function drawRevenueSummary() {
+  const container = document.getElementById('revenueSummary');
   if (!container) return;
   if (container._apexChart) { container._apexChart.destroy(); }
+  container.innerHTML = '';
 
-  const today = new Date();
-  const days = [];
-  const byDay = {};
-
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    days.push(key);
-    byDay[key] = { revenue: 0, count: 0 };
-  }
-
-  allRows.forEach(r => {
-    if (!r.ref || String(r.ref).trim() === '') return;
-    const s = normalizeStatus(r.status);
-    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
-    const visitKey = getRowVisitDateKey(r);
-    if (!visitKey || !byDay[visitKey]) return;
-    byDay[visitKey].revenue += parseInt(r.total, 10) || 0;
-    byDay[visitKey].count++;
-  });
-
-  const revenueData = days.map(d => byDay[d].revenue);
-  const countData = days.map(d => byDay[d].count);
-
-  if (revenueData.every(v => v === 0) && countData.every(v => v === 0)) {
-    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;font-family:\'Sarabun\',sans-serif">ยังไม่มีข้อมูล</div>';
-    return;
-  }
+  const stats = computeFinanceStats(allRows);
+  const { totalBooked, paid, unpaid } = stats;
 
   const isDark = document.documentElement.classList.contains('dark');
-  const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
-
   const options = {
-    chart: {
-      type: 'line', height: 280, fontFamily: "'Sarabun', sans-serif",
-      toolbar: { show: false }, zoom: { enabled: false },
-      redrawOnWindowResize: true,
-      animations: { enabled: true, easing: 'easeinout', speed: 500 }
-    },
-    colors: ['#059669', '#1e3a8a'],
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: [3, 3] },
-    markers: { size: 0, hover: { size: 5 } },
-    grid: { show: false },
-    tooltip: {
-      theme: isDark ? 'dark' : 'light',
-      shared: true,
-      x: { formatter: (v) => fmtDate(days[v]) },
-      y: [
-        { formatter: (v) => v.toLocaleString() + ' บาท' },
-        { formatter: (v) => v + ' รายการ' }
-      ]
-    },
-    xaxis: {
-      type: 'category', categories: days.map(d => fmtDate(d)),
-      axisBorder: { show: false }, axisTicks: { show: false },
-      labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" } }
-    },
-    yaxis: [
-      {
-        seriesName: 'รายได้',
-        labels: {
-          formatter: (v) => formatChartBahtShort(v),
-          style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" }
-        },
-        axisTicks: { show: false },
-        axisBorder: { show: false }
-      },
-      {
-        seriesName: 'การจอง',
-        opposite: true,
-        labels: {
-          formatter: (v) => Number.isInteger(v) ? v : '',
-          style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontFamily: "'Sarabun', sans-serif" }
-        },
-        axisTicks: { show: false },
-        axisBorder: { show: false }
-      }
-    ],
-    legend: {
-      show: true, position: 'bottom', horizontalAlign: 'center',
-      fontSize: '12px', fontFamily: "'Sarabun', sans-serif",
-      labels: { colors: isDark ? '#cbd5e1' : '#475569' },
-      itemMargin: { horizontal: 16 }
-    }
+    chart: { type: 'donut', height: 240, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false } },
+    labels: ['รายได้รวม', 'ชำระแล้ว', 'ค้างชำระ'],
+    colors: ['#059669', '#22c55e', '#f59e0b'],
+    dataLabels: { enabled: true, formatter: (v) => formatChartBahtShort(v), style: { colors: ['#fff'], fontWeight: 600 } },
+    tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: (v) => formatBaht(v) } },
+    legend: { position: 'bottom', labels: { colors: isDark ? '#cbd5e1' : '#475569' } },
+    plotOptions: { pie: { donut: { labels: { total: { show: true, formatter: () => formatBaht(totalBooked), style: { fontSize: '16px', fontWeight: 700 } } } } }
   };
 
-  const series = [
-    { name: 'รายได้', type: 'line', data: revenueData },
-    { name: 'การจอง', type: 'line', data: countData }
-  ];
-
-  const chart = new ApexCharts(container, { ...options, series });
+  const chart = new ApexCharts(container, { ...options, series: [totalBooked, paid, unpaid] });
   chart.render();
   container._apexChart = chart;
 }
@@ -4935,10 +4706,8 @@ function renderDashboardHomeV2() {
   
   if (isFullAccess && (_dashboardCache.data !== cacheKey || now - _dashboardCache.timestamp > 5000)) {
     renderKpiCards();
-    drawDualTrendChart();
-    drawWingRevenueChart();
+    drawRevenueSummary();
     drawPipelineChart();
-    renderFinanceOverview();
     drawReservationTrendChart();
     drawWeeklyHeatmapChart();
     drawWingCountChart();
@@ -4949,7 +4718,7 @@ function renderDashboardHomeV2() {
 
   if (!total) {
     if (isFullAccess) {
-      const chartEl = document.getElementById('dualTrendChart');
+      const chartEl = document.getElementById('revenueSummary');
       if (chartEl && chartEl._apexChart) { chartEl._apexChart.destroy(); chartEl._apexChart = null; }
     }
     updateDashboardActionCards();
@@ -5883,12 +5652,12 @@ document.addEventListener('click', (e) => {
 function updateAllChartsTheme(dark) {
   const theme = dark ? 'dark' : 'light';
   const isDark = dark;
-  const allIds = ['dualTrendChart', 'wingRevenueChart', 'pipelineChart', 'financeChart', 'trendChart', 'statusDonutChart', 'monthlyRevenueChart', 'statusFunnelChart', 'visitorTypeChart', 'weeklyHeatmapChart', 'wingCountChart'];
+  const allIds = ['revenueSummary', 'pipelineChart', 'trendChart', 'statusDonutChart', 'monthlyRevenueChart', 'statusFunnelChart', 'visitorTypeChart', 'weeklyHeatmapChart', 'wingCountChart'];
   allIds.forEach(id => {
     const el = document.getElementById(id);
     if (el && el._apexChart) {
       const opts = { theme: { mode: theme } };
-      if (id === 'financeChart' || id === 'trendChart' || id === 'monthlyRevenueChart' || id === 'statusFunnelChart' || id === 'visitorTypeChart' || id === 'weeklyHeatmapChart' || id === 'wingCountChart') {
+      if (id === 'revenueSummary' || id === 'trendChart' || id === 'monthlyRevenueChart' || id === 'statusFunnelChart' || id === 'visitorTypeChart' || id === 'weeklyHeatmapChart' || id === 'wingCountChart') {
         opts.chart = { foreColor: isDark ? '#94a3b8' : '#64748b' };
       }
       el._apexChart.updateOptions(opts, false, true);
