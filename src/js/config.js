@@ -1,4 +1,4 @@
-let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRLiIiunJ5HxJE9MPd4nPInPtoqU2VjdEP76aJpkRjPQWDbbouaGHVtdrMo95O_wGOHA/exec';
+let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLOaA_xmfPbA_YcUf1-eLM56BkexX-HbS866qcJ8JOarGQGIGDaQKhXEqlfFmo1oc-Fw/exec';
 const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
 const RESOLVED_URL_KEY = 'cc_resolved_url';
