@@ -76,7 +76,6 @@ function doGetHandler(e) {
   }
 
   if (action === 'getAll') {
-    // Public endpoint for calendar booking counts (no auth required)
     return getAllReservations_();
   }
 
@@ -99,6 +98,10 @@ function doGetHandler(e) {
     const idIdx = headers.indexOf('prisonerId');
     const wingIdx = headers.indexOf('wing');
 
+    if (nameIdx === -1 || idIdx === -1 || wingIdx === -1) {
+      return jsonResp({ status: 'error', message: 'Invalid prisoner sheet headers' });
+    }
+
     const prisoners = [];
     const seen = new Set();
     for (let i = 1; i < data.length; i++) {
@@ -113,7 +116,7 @@ function doGetHandler(e) {
       }
     }
     prisoners.sort((a, b) => a.prisonerName.localeCompare(b.prisonerName, 'th'));
-    try { cache.put('prisoners', JSON.stringify(prisoners), 600); } catch (e) {}
+    try { cache.put('prisoners', JSON.stringify(prisoners), PUBLIC_CACHE_TTL); } catch (e) {}
     return jsonResp({ status: 'ok', prisoners: prisoners });
   }
 
@@ -170,12 +173,15 @@ function doPostHandler(e) {
   try { body = JSON.parse(e.postData.contents); }
   catch (err) { return jsonResp({ status: 'error', message: 'Invalid JSON' }); }
 
+  if (!body || typeof body !== 'object') {
+    return jsonResp({ status: 'error', message: 'Invalid request body' });
+  }
+
   const action = body.action || 'saveReservation';
   const username = body.username || body.user || 'public';
   const pass = body.pass || body.password || '';
   const publicActions = ['uploadSlip', 'updateSlipAndStatus', 'publicCancelBooking'];
 
-  // Lightweight connectivity check (no auth, no sheet access)
   if (action === 'ping') {
     return jsonResp({ status: 'ok', pong: true, timestamp: new Date().toISOString() });
   }
@@ -225,6 +231,11 @@ function doPostHandler(e) {
   }
 }
 
+const CACHE_TTL = 60;
+const PUBLIC_CACHE_TTL = 600;
+const LOGIN_RATE_LIMIT_TTL = 300;
+const MAX_LOGIN_ATTEMPTS = 5;
+
 function getAllReservations_() {
    const cache = CacheService.getScriptCache();
    const cached = cache.get('allReservations');
@@ -236,40 +247,57 @@ function getAllReservations_() {
      }
    }
 
-   const sheet = getMainSheet();
-   const data = sheet.getDataRange().getValues();
-   if (data.length <= 1) return jsonResp({ status: 'ok', rows: [] });
+   const sheet = getCachedSheet(SHEET_NAME);
+   const lastRow = sheet.getLastRow();
+   if (lastRow <= 1) return jsonResp({ status: 'ok', rows: [] });
 
-   const headers = data[0];
+   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+   const dateIdx = headers.indexOf('visitDateISO');
+   const statusIdx = headers.indexOf('status');
    const refIdx = headers.indexOf('ref');
-   const rows = data.slice(1)
-     .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
-     .map(row => {
-       const obj = {};
-       headers.forEach((h, i) => {
-         let val = row[i];
-         if (val instanceof Date) {
-           val = h === 'visitDateISO' ? formatDateISO(val) : Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
-         }
-         obj[h] = val;
-       });
-       return obj;
-     });
 
-   const reversed = rows.reverse();
-   try { cache.put('allReservations', JSON.stringify(reversed), 30); } catch (e) {}
-   return jsonResp({ status: 'ok', rows: reversed });
- }
+   const colCount = headers.length;
+   const data = sheet.getRange(2, 1, lastRow - 1, colCount).getValues();
+
+const rows = data
+      .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
+      .map(row => {
+        const obj = { ref: row[refIdx] };
+        if (dateIdx >= 0) obj.visitDateISO = row[dateIdx] instanceof Date ? formatDateISO(row[dateIdx]) : String(row[dateIdx] || '').trim();
+        if (statusIdx >= 0) obj.status = String(row[statusIdx] || '').trim();
+        return obj;
+      });
+
+    const reversed = rows.reverse();
+    try { cache.put('allReservations', JSON.stringify(reversed), PUBLIC_CACHE_TTL); } catch (e) {}
+    return jsonResp({ status: 'ok', rows: reversed });
+  }
 
 function formatDateISO(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
 }
 
+function checkRateLimit(key, maxAttempts, ttlSeconds) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const attempts = parseInt(cache.get(key) || '0', 10);
+    if (attempts >= maxAttempts) return false;
+    cache.put(key, String(attempts + 1), ttlSeconds);
+    return true;
+  } catch (e) { return true; }
+}
+
 function handleLogin(body) {
+  const username = (body.username || '').toString().trim().toLowerCase();
+  if (!checkRateLimit('login_' + username, MAX_LOGIN_ATTEMPTS, LOGIN_RATE_LIMIT_TTL)) {
+    return jsonResp({ status: 'error', message: 'การพยายามเข้าสู่ระบบหลายครั้งเกินไป กรุณารอ 5 นาที' });
+  }
   const user = getUserByUsername(body.username);
   if (!user || String(user.password) !== String(body.password)) {
     return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
   }
+  const cache = CacheService.getScriptCache();
+  try { cache.remove('login_' + username); } catch (e) {}
   return jsonResp({ status: 'ok', user: { username: user.username, role: user.role, displayName: user.displayName || user.username } });
 }
 
@@ -314,11 +342,12 @@ function handleSaveReservation(body) {
    const sheet = getMainSheet();
    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
    const newRow = headers.map(h => body[h] !== undefined ? body[h] : '');
-   sheet.appendRow(newRow);
+   const rowNum = sheet.getLastRow() + 1;
+   sheet.getRange(rowNum, 1, 1, headers.length).setValues([newRow]);
 
    const phoneIdx = headers.indexOf('visitorPhone');
    if (phoneIdx >= 0) {
-     sheet.getRange(sheet.getLastRow(), phoneIdx + 1).setNumberFormat('@');
+     sheet.getRange(rowNum, phoneIdx + 1).setNumberFormat('@');
    }
 
    invalidateReservationsCache();
@@ -1033,7 +1062,11 @@ function handleSyncPrisonerWings(body, username, pass) {
     }
   }
 
-  updates.forEach(u => sheet.getRange(u.row, wingBookingIdx + 1).setValue(u.wing));
+  if (updates.length > 0) {
+    const batchValues = updates.map(u => [u.wing]);
+    const batchRanges = updates.map(u => sheet.getRange(u.row, wingBookingIdx + 1));
+    batchRanges.forEach((r, i) => r.setValue(batchValues[i][0]));
+  }
 
   try { CacheService.getScriptCache().remove('prisoners'); } catch (e) {}
   logEvent(username, 'sync_prisoner_wings', '', { updated: updates.length }, 'success');
