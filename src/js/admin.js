@@ -2416,6 +2416,11 @@ async function approveAllVisitorsInDetail(idx) {
 }
 
 // ===== EXPORT FILTERED DATA AS CSV =====
+function csvVal(v) {
+  const s = v != null ? String(v) : '';
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
 function exportFilteredCSV() {
   // Removed permission check - everyone can export
   const q = document.getElementById('searchBox').value.toLowerCase();
@@ -2436,17 +2441,10 @@ function exportFilteredCSV() {
   }
 
   const headers = ['ref', 'timestamp', 'visitorName', 'visitorPhone', 'visitorId', 'relation', 'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitorCount', 'total', 'status', 'extraVisitorNames', 'visitorApproved', 'extraVisitorApproved'];
-  let csvContent = headers.join(',') + '\r\n';
+  let csvContent = headers.map(csvVal).join(',') + '\r\n';
 
   filtered.forEach(r => {
-    const row = headers.map(h => {
-      let val = r[h] != null ? String(r[h]) : '';
-      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-        val = '"' + val.replace(/"/g, '""') + '"';
-      }
-      return val;
-    });
-    csvContent += row.join(',') + '\r\n';
+    csvContent += headers.map(h => csvVal(r[h])).join(',') + '\r\n';
   });
 
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel Thai
@@ -2481,17 +2479,10 @@ function exportFilteredCSVWithPhones() {
   }
 
   const headers = ['ref', 'timestamp', 'visitorName', 'visitorPhone', 'visitorId', 'relation', 'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitorCount', 'total', 'status', 'extraVisitorNames', 'extraVisitorPhones', 'visitorApproved', 'extraVisitorApproved'];
-  let csvContent = headers.join(',') + '\r\n';
+  let csvContent = headers.map(csvVal).join(',') + '\r\n';
 
   filtered.forEach(r => {
-    const row = headers.map(h => {
-      let val = r[h] != null ? String(r[h]) : '';
-      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-        val = '"' + val.replace(/"/g, '""') + '"';
-      }
-      return val;
-    });
-    csvContent += row.join(',') + '\r\n';
+    csvContent += headers.map(h => csvVal(r[h])).join(',') + '\r\n';
   });
 
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -2560,17 +2551,10 @@ function exportFilteredCSVWithRange() {
   }
 
   const headers = ['ref', 'timestamp', 'visitorName', 'visitorPhone', 'visitorId', 'relation', 'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitorCount', 'total', 'status', 'extraVisitorNames', 'extraVisitorPhones', 'visitorApproved', 'extraVisitorApproved'];
-  let csvContent = headers.join(',') + '\r\n';
+  let csvContent = headers.map(csvVal).join(',') + '\r\n';
 
   filtered.forEach(r => {
-    const row = headers.map(h => {
-      let val = r[h] != null ? String(r[h]) : '';
-      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-        val = '"' + val.replace(/"/g, '""') + '"';
-      }
-      return val;
-    });
-    csvContent += row.join(',') + '\r\n';
+    csvContent += headers.map(h => csvVal(r[h])).join(',') + '\r\n';
   });
 
   const rangeLabel = (sd || 'start') + '_to_' + (ed || 'end');
@@ -5322,14 +5306,10 @@ function bulkExport() {
   if (!indices.length) { showToast('กรุณาเลือกรายการ', 'warning'); return; }
 
   const headers = ['ref', 'timestamp', 'visitorName', 'visitorPhone', 'visitorId', 'relation', 'prisonerName', 'prisonerId', 'wing', 'visitDate', 'visitorCount', 'total', 'status'];
-  let csvContent = headers.join(',') + '\r\n';
+  let csvContent = headers.map(csvVal).join(',') + '\r\n';
   indices.forEach(idx => {
     const r = allRows[idx];
-    csvContent += headers.map(h => {
-      let val = r[h] != null ? String(r[h]) : '';
-      if (val.includes(',') || val.includes('"')) val = '"' + val.replace(/"/g, '""') + '"';
-      return val;
-    }).join(',') + '\r\n';
+    csvContent += headers.map(h => csvVal(r[h])).join(',') + '\r\n';
   });
 
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
