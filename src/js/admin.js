@@ -86,7 +86,6 @@ async function pollData() {
       else if (viewId === 'reports') renderReportsView();
     }
   } catch (e) { /* silent */ }
-  performAutoCancel();
 }
 
 // ===== SHARED PRINT STYLES =====
@@ -120,7 +119,7 @@ let pageSize = 10;
 let currentUser = null;
 let prisonerMaster = [];
 let _dashboardCache = { timestamp: 0, data: null };
-let lastAutoCancelDate = '';
+
 let pendingCancelIdx = null;
 let pendingCancelMode = 'single'; // 'single' | 'bulk'
 
@@ -2102,8 +2101,23 @@ ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้�
              <button class="btn btn-danger btn-sm" onclick="rejectParticipantInDetail(${idx})">✗ ปฏิเสธ</button>
            </div>
          </div>` : ''}
-      </div>
-   `;
+       </div>
+    `;
+
+  // ===== Show cancel note if status is cancelled =====
+  if (s === 'ยกเลิก') {
+    const notes = getNotes(r.ref);
+    const cancelNotes = notes.filter(n => n.text.startsWith('ยกเลิก:'));
+    if (cancelNotes.length > 0) {
+      const note = cancelNotes[cancelNotes.length - 1];
+      document.getElementById('detailModalBody').innerHTML += `
+        <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-sm);padding:10px 14px;margin-top:8px;font-size:13px;">
+          <span style="font-weight:600;color:#92400e;">🚫 เหตุผลที่ยกเลิก:</span>
+          <span style="color:#78350f;">${escHtml(note.text.replace('ยกเลิก: ', ''))}</span>
+          <div style="font-size:11px;color:#92400e;margin-top:4px;">${escHtml(note.user)} · ${escHtml(note.timestamp)}</div>
+        </div>`;
+    }
+  }
 
   // ===== Status Action Bar in Detail Modal =====
   const isAdminOrSuperDetail = role === 'Superadmin' || role === 'Admin';
@@ -5389,37 +5403,6 @@ const passInputEl = document.getElementById('passInput');
 if (passInputEl) passInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 const userInputEl = document.getElementById('userInput');
 if (userInputEl) userInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-
-// ===== AUTO-CANCEL UNPAID TODAY CHECK (polling) =====
-async function performAutoCancel() {
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const hour = now.getHours();
-  const min = now.getMinutes();
-
-  if (lastAutoCancelDate === today) return;
-  if (hour < 8 || (hour === 8 && min < 30)) return;
-
-  lastAutoCancelDate = today;
-  try {
-    const resp = await appsScriptFetch('', {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'autoCancelUnpaidToday' })
-    }, 1);
-    if (!resp.ok) return;
-    const data = await resp.json();
-    if (data.status === 'ok' && data.cancelled > 0) {
-      showToast(`ยกเลิก ${data.cancelled} รายการที่ยังไม่ชำระเงินโดยอัตโนมัติ`, 'warning');
-      if (typeof loadData === 'function') await loadData();
-      if (currentView === 'reservations' && typeof renderTable === 'function') renderTable();
-      if (currentView === 'home' && typeof renderDashboardHome === 'function') renderDashboardHome();
-    }
-  } catch (e) {
-    console.warn('[AutoCancel] check failed:', e.message);
-  }
-}
 
 // === UX/UI UPGRADE FUNCTIONS ===
 
