@@ -3271,3 +3271,519 @@ body.dark-mode .quick-action-btn { background: var(--md-surface); border-color: 
   font-size: 13px;
   opacity: 0.8;
 }
+
+/* =========================================================
+   VUEXY-INSPIRED COMPONENTS
+   Clean, modern cards with proper hierarchy
+   ========================================================= */
+
+/* Stat Card (Vuexy-style metrics) */
+.stat-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  background: var(--md-surface);
+  border-radius: 14px;
+  box-shadow: var(--md-elevation-level1);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.stat-card:hover {
+  box-shadow: var(--md-elevation-level2);
+  transform: translateY(-1px);
+}
+.stat-card .stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.stat-card .stat-icon.navy { background: var(--md-primary-container); color: var(--md-primary); }
+.stat-card .stat-icon.gold { background: var(--md-gold-container); color: var(--md-gold); }
+.stat-card .stat-icon.green { background: var(--md-tertiary-container); color: var(--md-tertiary); }
+.stat-card .stat-icon.red { background: var(--md-error-container); color: var(--md-error); }
+.stat-card .stat-body { flex: 1; min-width: 0; }
+.stat-card .stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--md-on-surface);
+  line-height: 1.2;
+}
+.stat-card .stat-label {
+  font-size: 13px;
+  color: var(--text2);
+  display: block;
+  margin-top: 2px;
+}
+.stat-card .stat-trend {
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.stat-card .stat-trend.up { background: var(--md-tertiary-container); color: var(--md-tertiary); }
+.stat-card .stat-trend.down { background: var(--md-error-container); color: var(--md-error); }
+
+/* Page Header (Vuexy-style) */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.page-header .page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--md-on-surface);
+}
+.page-header .page-subtitle {
+  font-size: 13px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+.page-header .page-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* KPI Card (compact stat card for dashboards) */
+.kpi-card {
+  background: var(--md-surface);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: var(--md-elevation-level1);
+  transition: box-shadow 0.2s;
+}
+.kpi-card:hover { box-shadow: var(--md-elevation-level2); }
+.kpi-card .kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.kpi-card .kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--md-on-surface);
+  line-height: 1.2;
+}
+.kpi-card .kpi-footer {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Section Card (Unfold-inspired page content card) */
+.section-card {
+  background: var(--md-surface);
+  border-radius: 14px;
+  box-shadow: var(--md-elevation-level1);
+  overflow: hidden;
+}
+.section-card .section-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.section-card .section-card-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--md-on-surface);
+}
+.section-card .section-card-body {
+  padding: 20px;
+}
+
+/* Badge Pill (Vuexy-inspired badge) */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  gap: 4px;
+}
+.badge-pill.navy { background: var(--md-primary); color: #fff; }
+.badge-pill.gold { background: var(--md-gold); color: #fff; }
+.badge-pill.green { background: var(--md-tertiary); color: #fff; }
+.badge-pill.red { background: var(--md-error); color: #fff; }
+.badge-pill.soft-navy { background: var(--md-primary-container); color: var(--md-primary); }
+.badge-pill.soft-gold { background: var(--md-gold-container); color: var(--md-gold); }
+.badge-pill.soft-green { background: var(--md-tertiary-container); color: var(--md-tertiary); }
+.badge-pill.soft-red { background: var(--md-error-container); color: var(--md-error); }
+
+/* Refined Card Header for .dash-card */
+.dash-card .card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dash-card .card-header-row h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--md-on-surface);
+}
+.dash-card .card-header-row .card-badge {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--md-primary-container);
+  color: var(--md-primary);
+  font-weight: 600;
+}
+.dash-card .card-header-row .card-action {
+  font-size: 12px;
+  color: var(--md-primary);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.dash-card .card-header-row .card-action:hover { text-decoration: underline; }
+
+/* =========================================================
+   TABLER-INSPIRED CHART STYLES
+   Clean charts with gradient fills and proper spacing
+   ========================================================= */
+
+/* Chart Container */
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+.chart-container .chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chart-container .chart-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--md-on-surface);
+}
+.chart-container .chart-header .chart-period {
+  display: flex;
+  gap: 4px;
+}
+.chart-container .chart-header .chart-period button {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--md-surface);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chart-container .chart-header .chart-period button:hover {
+  border-color: var(--md-primary);
+  color: var(--md-primary);
+}
+.chart-container .chart-header .chart-period button.active {
+  background: var(--md-primary);
+  color: #fff;
+  border-color: var(--md-primary);
+}
+
+/* Chart tooltip (Tabler-style) */
+.chart-tooltip {
+  background: var(--md-surface) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+  font-family: 'Sarabun', sans-serif;
+  font-size: 13px;
+  color: var(--md-on-surface);
+  pointer-events: none;
+}
+
+/* D3 Chart canvas area */
+#financeChart svg {
+  display: block;
+}
+#financeChart .area-fill {
+  opacity: 0.6;
+}
+#financeChart .line-path {
+  fill: none;
+  stroke: var(--md-primary);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#financeChart .grid-line {
+  stroke: var(--md-outline);
+  stroke-opacity: 0.3;
+  stroke-dasharray: 4,4;
+}
+
+/* Donut chart refinement */
+#statusDonutChart .donut-arc {
+  stroke: var(--md-surface);
+  stroke-width: 2;
+}
+#statusDonutChart .donut-center-text {
+  font-size: 22px;
+  font-weight: 700;
+  fill: var(--md-on-surface);
+}
+#statusDonutChart .donut-center-label {
+  font-size: 11px;
+  fill: var(--text2);
+}
+
+/* Bar chart refinement */
+#wingRevenueChart .bar-rect {
+  rx: 4;
+  ry: 4;
+}
+#wingRevenueChart .bar-value-label {
+  font-size: 10px;
+  fill: var(--text2);
+  font-weight: 600;
+}
+
+/* Progress bar (Tabler-style) */
+.progress-bar-wrap {
+  width: 100%;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar-wrap .progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--md-primary);
+  transition: width 0.4s ease;
+}
+.progress-bar-wrap .progress-bar-fill.gold { background: var(--md-gold); }
+.progress-bar-wrap .progress-bar-fill.green { background: var(--md-tertiary); }
+.progress-bar-wrap .progress-bar-fill.red { background: var(--md-error); }
+
+/* =========================================================
+   UNFOLD-INSPIRED PAGE LAYOUTS
+   Card-based pages with clean forms and consistent spacing
+   ========================================================= */
+
+/* Settings page */
+.settings-section {
+  margin-bottom: 24px;
+}
+.settings-section:last-child { margin-bottom: 0; }
+.settings-section h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--md-on-surface);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  gap: 12px;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border);
+}
+.settings-row .settings-label {
+  font-size: 14px;
+  color: var(--md-on-surface);
+  font-weight: 500;
+}
+.settings-row .settings-desc {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+/* Toggle switch (Vuexy/Unfold-style) */
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-switch .toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--md-outline);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-switch .toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-switch input:checked + .toggle-track {
+  background: var(--md-primary);
+}
+.toggle-switch input:checked + .toggle-track::after {
+  transform: translateX(20px);
+}
+
+/* User list / Prisoner list (Unfold-style) */
+.user-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.user-list-item + .user-list-item {
+  border-top: 1px solid var(--border);
+}
+.user-list-item .user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--md-primary-container);
+  color: var(--md-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.user-list-item .user-info {
+  flex: 1;
+  min-width: 0;
+}
+.user-list-item .user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--md-on-surface);
+}
+.user-list-item .user-meta {
+  font-size: 12px;
+  color: var(--text2);
+}
+.user-list-item .user-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Form refinements (Unfold-inspired) */
+.form-group {
+  margin-bottom: 16px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-on-surface);
+  margin-bottom: 6px;
+}
+.form-group .form-helper {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 4px;
+}
+
+/* Action bar (filter controls area) */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.action-bar .action-bar-spacer {
+  flex: 1;
+}
+
+/* =========================================================
+   REFINEMENTS TO EXISTING COMPONENTS
+   ========================================================= */
+
+/* Refine dash-card hover */
+.dash-card { transition: box-shadow 0.25s, transform 0.25s; }
+.dash-card:hover { transform: translateY(-2px); }
+
+/* Refine table row hover */
+.table-wrap tbody tr { transition: background 0.15s; }
+
+/* Refine filter controls to look more modern */
+.controls {
+  gap: 10px;
+  align-items: center;
+}
+
+/* Refine button text variant */
+.btn-text {
+  color: var(--md-primary);
+  font-weight: 600;
+}
+
+/* Summary bar refinements */
+.summary-bar {
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Quick action buttons */
+.quick-action-btn {
+  white-space: nowrap;
+}
+
+/* =========================================================
+   DARK MODE ADDITIONS
+   ========================================================= */
+html.dark .stat-card { background: var(--md-surface-dark); }
+html.dark .kpi-card { background: var(--md-surface-dark); }
+html.dark .section-card { background: var(--md-surface-dark); }
+html.dark .section-card .section-card-header { border-bottom-color: var(--border); }
+html.dark .chart-tooltip { background: var(--md-surface-dark) !important; color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important; }
+html.dark .stat-card .stat-value { color: var(--text); }
+html.dark .toggle-switch .toggle-track { background: var(--md-outline-variant); }
+html.dark .user-list-item .user-avatar { background: var(--md-primary-container-dark, rgba(30,58,138,0.3)); }
+html.dark .settings-row { border-top-color: var(--border); }
+html.dark .settings-section h3 { border-bottom-color: var(--border); }
+html.dark .progress-bar-wrap { background: var(--bg); }
+html.dark #cancelModalBody textarea { background: var(--md-surface-dark); color: var(--text); border-color: var(--border); }

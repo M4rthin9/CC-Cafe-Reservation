@@ -769,6 +769,17 @@
   </div>
 </div>
 
+<!-- Cancel Modal -->
+<div class="modal-bg" id="cancelModalBg" onclick="closeCancelModal(event)">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head">
+      <h3>⚠️ ยืนยันการยกเลิก</h3>
+      <button class="modal-close" onclick="closeCancelModal()">×</button>
+    </div>
+    <div class="modal-body" id="cancelModalBody"></div>
+  </div>
+</div>
+
   <script src="src/js/config.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="src/js/utils.js" defer></script>

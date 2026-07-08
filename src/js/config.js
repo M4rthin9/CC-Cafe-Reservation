@@ -1,7 +1,9 @@
-let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVVzUw6CuAN971W3cVjLeZLBB_RAvXwC_04WccDMPqrok4nHOvxatqvyl6ijMizfyA/exec';
+let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgrjjBcbJmERh4atEUdPTWjWJHQ3G_N0Vck9_hsdp29TYzk7s7fhF1T-9Qy0jSHZk1lg/exec';
 const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
 const RESOLVED_URL_KEY = 'cc_resolved_url';
+
+const API_FETCH_TIMEOUT = 25000;
 
 let _connectionStatus = 'unknown';
 let _urlReady = false;
@@ -18,6 +20,46 @@ function waitForUrlReady() {
   return new Promise(resolve => _urlReadyWaiters.push(resolve));
 }
 
+async function fetchWithTimeout(url, opts, timeoutMs) {
+  const ms = timeoutMs || API_FETCH_TIMEOUT;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const resp = await fetch(url, { ...opts, signal: controller.signal });
+    return resp;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function appsScriptFetch(path, params, retries) {
+  const maxRetries = retries || 2;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const url = path ? APPS_SCRIPT_URL + path : APPS_SCRIPT_URL;
+      const resp = await fetchWithTimeout(url, params, API_FETCH_TIMEOUT);
+      // Treat HTTP errors (4xx, 5xx) as retryable — throw so the catch below retries
+      if (!resp.ok) {
+        // 404 suggests a stale URL — clear cache so next load re-discovers
+        if (resp.status === 404) {
+          try {
+            localStorage.removeItem(BACKEND_DISCOVERED_KEY);
+            localStorage.removeItem(RESOLVED_URL_KEY);
+          } catch (e) { }
+          console.warn('[Backend] 404 — cache cleared, will re-discover on next load');
+        }
+        throw new Error('HTTP ' + resp.status);
+      }
+      return resp;
+    } catch (e) {
+      if (attempt === maxRetries) throw e;
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+}
+window.appsScriptFetch = appsScriptFetch;
+window.API_FETCH_TIMEOUT = API_FETCH_TIMEOUT;
+
 async function initBackendUrl() {
   try {
     const cached = localStorage.getItem(BACKEND_DISCOVERED_KEY);
@@ -26,7 +68,7 @@ async function initBackendUrl() {
       _onUrlReady();
       return cached;
     }
-    const resp = await fetch(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' });
+    const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data && data.url && data.url.includes('macros/s/')) {
@@ -53,7 +95,7 @@ async function resolveBackendUrl() {
     return stored;
   }
   try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?action=testConnection', {
+    const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=testConnection', {
       redirect: 'follow', cache: 'no-store', credentials: 'omit'
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -106,7 +148,7 @@ function setBackendUrl(url) {
   try {
     localStorage.setItem(BACKEND_DISCOVERED_KEY, url);
     localStorage.removeItem(RESOLVED_URL_KEY);
-  } catch (e) {}
+  } catch (e) { }
   _connectionStatus = 'unknown';
   return true;
 }
@@ -115,50 +157,42 @@ function clearBackendCache() {
   try {
     localStorage.removeItem(BACKEND_DISCOVERED_KEY);
     localStorage.removeItem(RESOLVED_URL_KEY);
-  } catch (e) {}
+  } catch (e) { }
   _connectionStatus = 'unknown';
   console.log('[Backend] Cache cleared. Reload the page.');
 }
 window.clearBackendCache = clearBackendCache;
 
-async function fetchWithTimeout(url, opts, timeoutMs) {
-  const ms = timeoutMs || 20000;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    const resp = await fetch(url, { ...opts, signal: controller.signal });
-    return resp;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function appsScriptFetch(path, params, retries) {
-  const maxRetries = retries || 2;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const url = path ? APPS_SCRIPT_URL + path : APPS_SCRIPT_URL;
-      const resp = await fetchWithTimeout(url, params, 20000);
-      return resp;
-    } catch (e) {
-      if (attempt === maxRetries) throw e;
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-    }
-  }
-}
-
+// ── Bootstrap: load cached URL on script start ──
 (function bootstrap() {
-  const cached = (() => { try { return localStorage.getItem(BACKEND_DISCOVERED_KEY); } catch (e) {} })();
+  const cached = (() => { try { return localStorage.getItem(BACKEND_DISCOVERED_KEY); } catch (e) { } })();
+  const resolved = (() => { try { return localStorage.getItem(RESOLVED_URL_KEY); } catch (e) { } })();
+
+  if (resolved) {
+    APPS_SCRIPT_URL = resolved;
+    console.log('[Backend] Using resolved URL:', resolved);
+    _connectionStatus = 'connected';
+    return; // URL already validated, no need to ping server
+  }
   if (cached) {
     APPS_SCRIPT_URL = cached;
     console.log('[Backend] Using cached URL:', cached);
+    // Fire a lightweight check in background (non-blocking, with timeout)
+    fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' }, 10000)
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.url && data.url.includes('macros/s/') && data.url !== APPS_SCRIPT_URL) {
+          console.log('[Backend] Bootstrap discovered updated URL:', data.url);
+          APPS_SCRIPT_URL = data.url;
+          try { localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url); } catch (e) { }
+        }
+      })
+      .catch(() => { /* silent — cached URL is fine */ });
+    return;
   }
-  const resolved = (() => { try { return localStorage.getItem(RESOLVED_URL_KEY); } catch (e) {} })();
-  if (resolved && resolved !== APPS_SCRIPT_URL) {
-    APPS_SCRIPT_URL = resolved;
-    console.log('[Backend] Using resolved URL:', resolved);
-  }
-  fetch(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' })
+  // No cached URL — do a full discovery with timeout
+  console.log('[Backend] No cached URL, discovering...');
+  fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' }, 15000)
     .then(r => r.json())
     .then(data => {
       if (data && data.url && data.url.includes('macros/s/')) {
@@ -166,16 +200,18 @@ async function appsScriptFetch(path, params, retries) {
           console.log('[Backend] Bootstrap discovered new URL:', data.url);
           APPS_SCRIPT_URL = data.url;
         }
-        try { localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url); } catch (e) {}
+        try { localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url); } catch (e) { }
+        _connectionStatus = 'connected';
       }
     })
     .catch(() => {
-      fetch(APPS_SCRIPT_URL + '?action=testConnection', { redirect: 'follow', cache: 'no-store', credentials: 'omit' })
+      // Fallback: try to capture redirect via testConnection
+      fetchWithTimeout(APPS_SCRIPT_URL + '?action=testConnection', { redirect: 'follow', cache: 'no-store', credentials: 'omit' }, 15000)
         .then(r => {
           if (r.ok && r.url && r.url.includes('macros/s/') && r.url !== APPS_SCRIPT_URL) {
             console.log('[Backend] Bootstrap captured resolved URL:', r.url);
             APPS_SCRIPT_URL = r.url;
-            try { localStorage.setItem(RESOLVED_URL_KEY, r.url); } catch (e) {}
+            try { localStorage.setItem(RESOLVED_URL_KEY, r.url); } catch (e) { }
             _connectionStatus = 'connected';
           }
         })

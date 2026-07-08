@@ -86,6 +86,7 @@ async function pollData() {
       else if (viewId === 'reports') renderReportsView();
     }
   } catch (e) { /* silent */ }
+  performAutoCancel();
 }
 
 // ===== SHARED PRINT STYLES =====
@@ -119,6 +120,9 @@ let pageSize = 10;
 let currentUser = null;
 let prisonerMaster = [];
 let _dashboardCache = { timestamp: 0, data: null };
+let lastAutoCancelDate = '';
+let pendingCancelIdx = null;
+let pendingCancelMode = 'single'; // 'single' | 'bulk'
 
 // ===== TOAST NOTIFICATIONS =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -174,12 +178,12 @@ async function doLogin() {
   }
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'login', username: username, password: pass })
-    });
+    }, 1);
 
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
@@ -307,12 +311,12 @@ async function loadData() {
   const tableBody = document.getElementById('tableBody');
   if (tableBody) tableBody.innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'getAll', username: currentUser.username, password: currentUser.password })
-    });
+    }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const data = JSON.parse(text);
@@ -544,11 +548,11 @@ async function batchApproveDayDiscipline(dateStr) {
     const oldStatus = row.status;
     row.status = 'รอตรวจสอบผู้เข้าร่วม';
     try {
-      const resp = await fetch(APPS_SCRIPT_URL, {
+      const resp = await appsScriptFetch('', {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอตรวจสอบผู้เข้าร่วม' })
-      });
+      }, 1);
       const data = await resp.json();
       if (data.status === 'ok') success++;
       else row.status = oldStatus;
@@ -576,11 +580,11 @@ async function batchApproveDayParticipant(dateStr) {
     const oldStatus = row.status;
     row.status = 'รอชำระเงิน';
     try {
-      const resp = await fetch(APPS_SCRIPT_URL, {
+      const resp = await appsScriptFetch('', {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอชำระเงิน' })
-      });
+      }, 1);
       const data = await resp.json();
       if (data.status === 'ok') success++;
       else row.status = oldStatus;
@@ -1081,7 +1085,7 @@ function drawFinanceLineChart(container, timeSeries) {
   g.selectAll('.grid').data(y.ticks(4)).enter().append('line')
     .attr('x1', 0).attr('x2', cw)
     .attr('y1', d => y(d)).attr('y2', d => y(d))
-    .attr('stroke', 'rgba(11,37,69,0.07)').attr('stroke-width', 1);
+    .attr('class', 'grid-line');
 
   // y-axis labels
   g.selectAll('.y-label').data(y.ticks(4)).enter().append('text')
@@ -1114,6 +1118,7 @@ function drawFinanceLineChart(container, timeSeries) {
 
     // area
     g.append('path').datum(pts)
+      .attr('class', 'area-fill')
       .attr('fill', 'url(#grad-' + s.id + ')').attr('opacity', 0)
       .attr('d', areaGen)
       .transition().duration(600)
@@ -1121,6 +1126,7 @@ function drawFinanceLineChart(container, timeSeries) {
 
     // line
     g.append('path').datum(pts)
+      .attr('class', 'line-path')
       .attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 2.5)
       .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
       .attr('opacity', 0)
@@ -1141,7 +1147,7 @@ function drawFinanceLineChart(container, timeSeries) {
 
     dots.on('mouseenter', function (ev, d) {
       d3.select(this).transition().duration(150).attr('r', 6);
-      const tip = d3.select(container).append('div').attr('class', 'd3-tooltip');
+      const tip = d3.select(container).append('div').attr('class', 'chart-tooltip');
       tip.html(
         '<strong>' + new Date(d.day + 'T12:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }) + '</strong><br>' +
         s.label + ': <strong>' + d.val.toLocaleString('th-TH') + ' บาท</strong>'
@@ -1561,7 +1567,7 @@ function drawReservationTrendChart() {
     .attr('x', d => x(d.day)).attr('width', x.bandwidth())
     .attr('y', 0).attr('height', chartH).attr('fill', 'transparent').style('cursor', 'pointer')
     .on('mouseenter', function (ev, d) {
-      const tip = d3.select(container).append('div').attr('class', 'd3-tooltip');
+      const tip = d3.select(container).append('div').attr('class', 'chart-tooltip');
       tip.html(
         '<strong>' + new Date(d.day).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }) + '</strong><br>' +
         d.val + ' รายการ'
@@ -1731,12 +1737,12 @@ async function updateStatus(idx, newStatus) {
   row.status = newStatus;
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: newStatus })
-    });
+    }, 1);
 
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
@@ -1745,6 +1751,12 @@ async function updateStatus(idx, newStatus) {
     // Success
     showToast('เปลี่ยนสถานะการจองสำเร็จ', 'success');
     logEvent('update_status', `เปลี่ยนสถานะ ${row.ref} เป็น ${newStatus}`);
+
+    // Auto-comment "วินัย" when discipline officer rejects
+    if (newStatus === 'ไม่อนุมัติ' && currentUser && currentUser.role === 'Vinai') {
+      addNote(row.ref, 'วินัย');
+    }
+
     updateStats();
     renderTable();
     renderDashboardHome();
@@ -1779,12 +1791,12 @@ async function confirmPayment(idx) {
   row.status = targetStatus;
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: targetStatus })
-    });
+    }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
@@ -1820,12 +1832,12 @@ async function rejectPayment(idx) {
   row.status = 'รอชำระเงิน';
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอชำระเงิน' })
-    });
+    }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
@@ -1842,29 +1854,76 @@ async function rejectPayment(idx) {
   }
 }
 
-// ===== CANCEL BOOKING =====
-async function cancelBooking(idx) {
+// ===== CANCEL BOOKING (with comment modal) =====
+function cancelBooking(idx) {
   const row = allRows[idx];
   const role = currentUser ? currentUser.role : null;
 
-  // Permission check
   if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('cancel')) {
     showToast('คุณไม่มีสิทธิ์ทำรายการนี้', 'error');
     return;
   }
 
-  if (!confirm(`⚠️ ยืนยันการยกเลิกการจอง\n\nRef: ${row.ref}\nผู้เยี่ยม: ${row.visitorName}\nสถานะปัจจุบัน: ${row.status}\n\nการยกเลิกไม่สามารถกู้คืนได้`)) return;
+  pendingCancelIdx = idx;
+  pendingCancelMode = 'single';
+
+  const body = document.getElementById('cancelModalBody');
+  body.innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px;">Ref: ${escapeHtml(row.ref)}</div>
+        <div style="font-size:13px;color:var(--text2);">ผู้เยี่ยม: ${escapeHtml(row.visitorName)}</div>
+        <div style="font-size:13px;color:var(--text2);">สถานะ: ${escapeHtml(row.status)}</div>
+      </div>
+      <label style="font-weight:600;font-size:14px;display:block;margin-bottom:6px;">
+        เหตุผลที่ยกเลิก <span style="color:var(--md-error)">*</span>
+      </label>
+      <textarea id="cancelReasonInput" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;box-sizing:border-box;" placeholder="ระบุเหตุผล..." required></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
+      <button class="btn btn-outlined" onclick="closeCancelModal()">กลับ</button>
+      <button class="btn btn-filled" style="background:var(--md-error);" onclick="submitCancelWithReason()">ยืนยันยกเลิก</button>
+    </div>
+  `;
+  document.getElementById('cancelModalBg').classList.add('show');
+  setTimeout(() => document.getElementById('cancelReasonInput')?.focus(), 100);
+}
+
+function closeCancelModal(e) {
+  if (!e || e.target === document.getElementById('cancelModalBg')) {
+    document.getElementById('cancelModalBg').classList.remove('show');
+    pendingCancelIdx = null;
+  }
+}
+
+async function submitCancelWithReason() {
+  const reason = document.getElementById('cancelReasonInput')?.value?.trim();
+  if (!reason) {
+    showToast('กรุณาระบุเหตุผลในการยกเลิก', 'error');
+    document.getElementById('cancelReasonInput')?.focus();
+    return;
+  }
+
+  if (pendingCancelMode === 'bulk') {
+    await executeBulkCancel(reason);
+    return;
+  }
+
+  const idx = pendingCancelIdx;
+  const row = allRows[idx];
+  if (!row) { closeCancelModal(); return; }
+
+  closeCancelModal();
 
   const oldStatus = row.status;
   row.status = 'ยกเลิก';
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
+    const resp = await appsScriptFetch('', {
+      method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'cancelBooking', username: currentUser.username, password: currentUser.password, ref: row.ref })
-    });
+    }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
@@ -1875,8 +1934,11 @@ async function cancelBooking(idx) {
     return;
   }
 
+  // Save cancel reason as note
+  addNote(row.ref, `ยกเลิก: ${reason}`);
+
   showToast('ยกเลิกการจองเรียบร้อยแล้ว', 'warning');
-  logEvent('cancel_booking', `ยกเลิกการจอง ${row.ref}`);
+  logEvent('cancel_booking', `ยกเลิกการจอง ${row.ref} เหตุผล: ${reason}`);
   updateStats();
   renderTable();
   renderDashboardHome();
@@ -1927,7 +1989,7 @@ async function updateVisitorApproval(idx, pidx, val) {
   row.total = total;
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateVisitorApproval', username: currentUser.username, password: currentUser.password, ref: row.ref, visitorApproved: row.visitorApproved || '', extraVisitorApproved: row.extraVisitorApproved || '', visitorCount: row.visitorCount, total: row.total }) });
+    const resp = await appsScriptFetch('', { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateVisitorApproval', username: currentUser.username, password: currentUser.password, ref: row.ref, visitorApproved: row.visitorApproved || '', extraVisitorApproved: row.extraVisitorApproved || '', visitorCount: row.visitorCount, total: row.total }) }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
@@ -2252,12 +2314,12 @@ async function approveParticipantInDetail(idx) {
   row.status = 'รอชำระเงิน';
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอชำระเงิน' })
-    });
+    }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
@@ -2295,12 +2357,12 @@ async function rejectParticipantInDetail(idx) {
   row.status = 'ไม่อนุมัติ';
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'ไม่อนุมัติ' })
-    });
+    }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
@@ -2364,7 +2426,7 @@ async function approveAllVisitorsInDetail(idx) {
   const newStatus = 'รอชำระเงิน';
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2384,7 +2446,7 @@ async function approveAllVisitorsInDetail(idx) {
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
 
     // Then update status
-    await fetch(APPS_SCRIPT_URL, {
+    await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2395,7 +2457,7 @@ async function approveAllVisitorsInDetail(idx) {
         ref: row.ref,
         status: newStatus
       })
-    });
+    }, 1);
 
     showToast('อนุมัติผู้เข้าร่วมทั้งหมดเรียบร้อยแล้ว', 'success');
     logEvent('approve_all_visitors', `อนุมัติผู้เข้าร่วมทั้งหมด ${row.ref}`);
@@ -2503,12 +2565,12 @@ async function syncPrisonerWings() {
   const btn = document.getElementById('btnSyncWings');
   if (btn) btn.disabled = true;
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'syncPrisonerWings', username: currentUser.username, password: currentUser.password })
-    });
+    }, 1);
     const data = JSON.parse(await resp.text());
     if (data.status === 'ok') {
       showToast('Sync Wings สำเร็จ: ' + (data.updated || 0) + ' รายการ', 'success');
@@ -3190,12 +3252,12 @@ function printReport() {
 function fetchRolesList() {
   const select = document.getElementById('addUserRole');
   select.innerHTML = '<option value="">กำลังโหลดบทบาท...</option>';
-  fetch(APPS_SCRIPT_URL, {
+  appsScriptFetch('', {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action: 'getRoles', username: currentUser.username, password: currentUser.password })
-  })
+  }, 1)
     .then(resp => resp.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -3242,12 +3304,12 @@ function createAddUser() {
   }
 
   // Call createUser action
-  fetch(APPS_SCRIPT_URL, {
+  appsScriptFetch('', {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action: 'createUser', username: username, password: password, role: role, displayName: displayName, adminUser: currentUser.username, pass: currentUser.password })
-  })
+  }, 1)
     .then(resp => resp.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -3275,12 +3337,12 @@ function loadAddUserTable() {
   if (tbody) {
     tbody.innerHTML = '<tr><td colspan="4" class="loading-state">กำลังโหลดข้อมูล...</td></tr>';
   }
-  fetch(APPS_SCRIPT_URL, {
+  appsScriptFetch('', {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action: 'getUsers', username: currentUser.username, password: currentUser.password })
-  })
+  }, 1)
     .then(resp => resp.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -3478,7 +3540,7 @@ async function importPrisonerCSV() {
   document.getElementById('csvStatus').style.color = 'var(--text2)';
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -3488,7 +3550,7 @@ async function importPrisonerCSV() {
         password: currentUser.password,
         prisoners: prisoners
       })
-    });
+    }, 1);
     const data = await resp.json();
     if (data.status === 'ok') {
       showToast(data.message, 'success');
@@ -3514,11 +3576,11 @@ async function importPrisonerCSV() {
 
 async function editUser(username) {
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'getUsers', username: currentUser.username, password: currentUser.password })
-    });
+    }, 1);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message);
 
@@ -3528,11 +3590,11 @@ async function editUser(username) {
     // Fetch roles dynamically from backend
     let roles = ['Superadmin', 'Admin', 'Finance', 'Vinai', 'Tadtel', 'User'];
     try {
-      const rolesResp = await fetch(APPS_SCRIPT_URL, {
+      const rolesResp = await appsScriptFetch('', {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'getRoles', username: currentUser.username, password: currentUser.password })
-      });
+      }, 1);
       const rolesData = await rolesResp.json();
       if (rolesData.status === 'ok' && rolesData.roles && rolesData.roles.length > 0) {
         roles = rolesData.roles.map(r => r.roleName || r.name || r);
@@ -3580,11 +3642,11 @@ async function saveEditUser(username) {
   if (password) body.newPassword = password;
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
-    });
+    }, 1);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message);
 
@@ -3602,11 +3664,11 @@ async function deleteUser(username) {
   if (!confirm(`⚠️ ยืนยันการลบผู้ใช้ "${username}"?\nการดำเนินการนี้ไม่สามารถกู้คืนได้`)) return;
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'deleteUser', username: currentUser.username, password: currentUser.password, targetUser: username })
-    });
+    }, 1);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message);
 
@@ -4295,12 +4357,13 @@ function drawStatusDonutChart() {
 
   slices.append('path')
     .attr('d', arc)
+    .attr('class', 'donut-arc')
     .attr('fill', d => colors[d.data.status])
     .attr('stroke', '#fff').attr('stroke-width', 2)
     .style('cursor', 'pointer')
     .on('mouseenter', function (ev, d) {
       d3.select(this).transition().duration(200).attr('d', arcHover);
-      const tip = d3.select(container).append('div').attr('class', 'd3-tooltip');
+      const tip = d3.select(container).append('div').attr('class', 'chart-tooltip');
       tip.html(
         '<strong>' + labels[d.data.status] + '</strong><br>' +
         d.data.count + ' รายการ (' + Math.round((d.data.count / total) * 100) + '%)'
@@ -4313,12 +4376,10 @@ function drawStatusDonutChart() {
 
   // Center text
   svg.append('text').attr('text-anchor', 'middle').attr('dy', '-0.1em')
-    .attr('fill', '#0f172a').attr('font-size', '28px').attr('font-weight', 'bold')
-    .attr('font-family', "'Sarabun', sans-serif")
+    .attr('class', 'donut-center-text')
     .text(total);
   svg.append('text').attr('text-anchor', 'middle').attr('dy', '1.4em')
-    .attr('fill', '#64748b').attr('font-size', '11px')
-    .attr('font-family', "'Sarabun', sans-serif")
+    .attr('class', 'donut-center-label')
     .text('รายการทั้งหมด');
 
   // Legend
@@ -4376,6 +4437,7 @@ function drawWingRevenueChart() {
 
   // bars
   g.selectAll('.bar').data(sorted).enter().append('rect')
+    .attr('class', 'bar-rect')
     .attr('x', 0).attr('y', d => y(d[0]))
     .attr('height', y.bandwidth()).attr('rx', 4)
     .attr('fill', (d, i) => barColors[i] || barColors[4])
@@ -4404,7 +4466,7 @@ function drawWingRevenueChart() {
     .attr('width', cw - pad.left - pad.right).attr('height', y.bandwidth())
     .attr('fill', 'transparent').style('cursor', 'pointer')
     .on('mouseenter', function (ev, d) {
-      const tip = d3.select(container).append('div').attr('class', 'd3-tooltip');
+      const tip = d3.select(container).append('div').attr('class', 'chart-tooltip');
       tip.html('<strong>แดน ' + d[0] + '</strong><br>รายได้: <strong>' + d[1].toLocaleString() + ' บาท</strong>')
         .style('left', (ev.offsetX + 10) + 'px').style('top', (ev.offsetY - 40) + 'px');
     })
@@ -4582,7 +4644,7 @@ async function loadPrisonerMaster() {
   if (statusEl) statusEl.textContent = '⏳ กำลังโหลดรายชื่อผู้ต้องขัง...';
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?action=getPrisoners');
+    const resp = await appsScriptFetch('?action=getPrisoners', {}, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 
@@ -4846,11 +4908,11 @@ async function submitNewBooking() {
   };
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(data)
-    });
+    }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const result = JSON.parse(await resp.text());
     if (result.status !== 'ok') throw new Error(result.message || 'ไม่สำเร็จ');
@@ -5131,11 +5193,11 @@ async function saveBookingEdit(idx) {
   Object.assign(r, updates);
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await appsScriptFetch('', {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateBooking', username: currentUser.username, password: currentUser.password, ref: r.ref, ...updates })
-    });
+    }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
@@ -5211,11 +5273,11 @@ async function bulkApprove() {
 
     if (nextStatus) {
       try {
-        const resp = await fetch(APPS_SCRIPT_URL, {
+        const resp = await appsScriptFetch('', {
           method: 'POST', redirect: 'follow',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: r.ref, status: nextStatus })
-        });
+        }, 1);
         const data = await resp.json();
         if (data.status === 'ok') { r.status = nextStatus; success++; } else { fail++; }
       } catch { fail++; }
@@ -5236,11 +5298,11 @@ async function bulkReject() {
   for (const idx of indices) {
     const r = allRows[idx];
     try {
-      const resp = await fetch(APPS_SCRIPT_URL, {
+      const resp = await appsScriptFetch('', {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: r.ref, status: 'ไม่อนุมัติ' })
-      });
+      }, 1);
       const data = await resp.json();
       if (data.status === 'ok') { r.status = 'ไม่อนุมัติ'; success++; }
     } catch { }
@@ -5262,11 +5324,11 @@ async function bulkComplete() {
   for (const idx of paid) {
     const r = allRows[idx];
     try {
-      const resp = await fetch(APPS_SCRIPT_URL, {
+      const resp = await appsScriptFetch('', {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: r.ref, status: 'เสร็จสิ้น' })
-      });
+      }, 1);
       const data = await resp.json();
       if (data.status === 'ok') { r.status = 'เสร็จสิ้น'; success++; }
     } catch { }
@@ -5280,24 +5342,54 @@ async function bulkComplete() {
 async function bulkCancel() {
   const indices = getSelectedRows();
   if (!indices.length) { showToast('กรุณาเลือกรายการ', 'warning'); return; }
-  if (!confirm(`⚠️ ยืนยันยกเลิก ${indices.length} รายการ?\nไม่สามารถกู้คืนได้`)) return;
 
+  pendingCancelMode = 'bulk';
+  pendingCancelIdx = null;
+
+  const body = document.getElementById('cancelModalBody');
+  body.innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px;">ยกเลิก ${indices.length} รายการ</div>
+        <div style="font-size:13px;color:var(--text2);">รายการที่เลือกจะถูกยกเลิกทั้งหมด ไม่สามารถกู้คืนได้</div>
+      </div>
+      <label style="font-weight:600;font-size:14px;display:block;margin-bottom:6px;">
+        เหตุผลที่ยกเลิก <span style="color:var(--md-error)">*</span>
+      </label>
+      <textarea id="cancelReasonInput" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;box-sizing:border-box;" placeholder="ระบุเหตุผล..." required></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
+      <button class="btn btn-outlined" onclick="closeCancelModal()">กลับ</button>
+      <button class="btn btn-filled" style="background:var(--md-error);" onclick="submitCancelWithReason()">ยืนยันยกเลิก ${indices.length} รายการ</button>
+    </div>
+  `;
+  document.getElementById('cancelModalBg').classList.add('show');
+  setTimeout(() => document.getElementById('cancelReasonInput')?.focus(), 100);
+}
+
+async function executeBulkCancel(reason) {
+  closeCancelModal();
+  const indices = getSelectedRows();
   let success = 0;
   for (const idx of indices) {
     const r = allRows[idx];
     try {
-      const resp = await fetch(APPS_SCRIPT_URL, {
+      const resp = await appsScriptFetch('', {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'cancelBooking', username: currentUser.username, password: currentUser.password, ref: r.ref })
-      });
+      }, 1);
       const data = await resp.json();
-      if (data.status === 'ok') { r.status = 'ยกเลิก'; success++; }
+      if (data.status === 'ok') {
+        r.status = 'ยกเลิก';
+        addNote(r.ref, `(ยกเลิกรวม) ${reason}`);
+        success++;
+      }
     } catch { }
   }
   document.getElementById('selectAll').checked = false;
   showToast(`ยกเลิก ${success} รายการ`, 'warning');
-  logEvent('bulk_cancel', `ยกเลิก ${success} รายการ`);
+  logEvent('bulk_cancel', `ยกเลิก ${success} รายการ: ${reason}`);
   updateStats(); renderTable(); updateBulkBar();
 }
 
@@ -5424,11 +5516,11 @@ async function saveSettings() {
   localStorage.setItem('cc_settings', JSON.stringify(settings));
 
   try {
-    await fetch(APPS_SCRIPT_URL, {
+    await appsScriptFetch('', {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'saveSettings', username: currentUser.username, password: currentUser.password, settings: settings })
-    });
+    }, 1);
   } catch { }
 
   pageSize = parseInt(settings.pageSize) || 10;
@@ -5442,7 +5534,7 @@ function getNotes(ref) {
   return allNotes[ref] || [];
 }
 
-function addNote(ref, text) {
+function addNote(ref, text, silent) {
   if (!text.trim()) return;
   const allNotes = JSON.parse(localStorage.getItem('cc_notes') || '{}');
   if (!allNotes[ref]) allNotes[ref] = [];
@@ -5454,23 +5546,54 @@ function addNote(ref, text) {
   allNotes[ref].push(note);
   localStorage.setItem('cc_notes', JSON.stringify(allNotes));
 
-  fetch(APPS_SCRIPT_URL, {
+  appsScriptFetch('', {
     method: 'POST', redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action: 'addNote', username: currentUser.username, password: currentUser.password, ref: ref, note: note })
-  }).catch(() => { });
+  }, 1).catch(() => { });
 
   logEvent('add_note', `เพิ่มหมายเหตุ ${ref}`);
-  showToast('เพิ่มหมายเหตุสำเร็จ', 'success');
+  if (!silent) showToast('เพิ่มหมายเหตุสำเร็จ', 'success');
 }
 
 
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeEditModal(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDetailModal(); closeEditModal(); closeCancelModal(); } });
 const passInputEl = document.getElementById('passInput');
 if (passInputEl) passInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 const userInputEl = document.getElementById('userInput');
 if (userInputEl) userInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ===== AUTO-CANCEL UNPAID TODAY CHECK (polling) =====
+async function performAutoCancel() {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const hour = now.getHours();
+  const min = now.getMinutes();
+
+  if (lastAutoCancelDate === today) return;
+  if (hour < 8 || (hour === 8 && min < 30)) return;
+
+  lastAutoCancelDate = today;
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'autoCancelUnpaidToday' })
+    }, 1);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.status === 'ok' && data.cancelled > 0) {
+      showToast(`ยกเลิก ${data.cancelled} รายการที่ยังไม่ชำระเงินโดยอัตโนมัติ`, 'warning');
+      if (typeof loadData === 'function') await loadData();
+      if (currentView === 'reservations' && typeof renderTable === 'function') renderTable();
+      if (currentView === 'home' && typeof renderDashboardHome === 'function') renderDashboardHome();
+    }
+  } catch (e) {
+    console.warn('[AutoCancel] check failed:', e.message);
+  }
+}
 
 // === UX/UI UPGRADE FUNCTIONS ===
 

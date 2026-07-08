@@ -483,6 +483,12 @@ logEvent(username, 'create_role', roleName, { permissions: permissionsInput });
       return jsonResp({ status: 'error', message: 'Ref not found' });
     }
 
+    // ── AUTO-CANCEL UNPAID TODAY (triggered or called from admin) ──
+    if (action === 'autoCancelUnpaidToday') {
+      const result = autoCancelUnpaidToday();
+      return jsonResp(result);
+    }
+
     // ── PUBLIC SELF-SERVICE CANCEL (no auth required) ──
     if (action === 'publicCancelBooking') {
       const sheet = getMainSheet();
@@ -1291,6 +1297,67 @@ function listAllSheets() {
   const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
   return sheets.map(s => ({ name: s.getName(), rows: s.getLastRow(), cols: s.getLastColumn() }));
 }
+
+// ===== AUTO-CANCEL UNPAID TODAY =====
+function autoCancelUnpaidToday() {
+  const sheet = getMainSheet();
+  const data  = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const refIdx      = headers.indexOf('ref');
+  const statusIdx   = headers.indexOf('status');
+  const visitDateIdx = headers.indexOf('visitDateISO');
+  const visitDateRawIdx = headers.indexOf('visitDate');
+  const prisonerIdx = headers.indexOf('prisonerName');
+  const visitorIdx  = headers.indexOf('visitorName');
+
+  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  let cancelled = 0;
+  let errors = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const rowStatus = String(data[i][statusIdx] || '').trim();
+    if (rowStatus === 'ชำระแล้ว' || rowStatus === 'เสร็จสิ้น' || rowStatus === 'ยกเลิก' || rowStatus === 'ไม่อนุมัติ') continue;
+
+    let rowDate = '';
+    if (data[i][visitDateIdx]) {
+      if (data[i][visitDateIdx] instanceof Date) {
+        rowDate = Utilities.formatDate(data[i][visitDateIdx], Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      } else {
+        rowDate = String(data[i][visitDateIdx]).trim().slice(0, 10);
+      }
+    }
+    if (!rowDate && data[i][visitDateRawIdx]) {
+      const d = String(data[i][visitDateRawIdx]).trim();
+      const parts = d.split('/');
+      if (parts.length === 3) rowDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+    }
+
+    if (rowDate === today) {
+      try {
+        const ref = String(data[i][refIdx] || '').trim();
+        sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
+        logEvent('system', 'auto_cancel', ref, {
+          previousStatus: rowStatus,
+          prisoner: String(data[i][prisonerIdx] || ''),
+          visitor: String(data[i][visitorIdx] || ''),
+          date: today
+        }, 'success');
+        cancelled++;
+      } catch (e) {
+        errors++;
+      }
+    }
+  }
+
+  return { status: 'ok', cancelled: cancelled, errors: errors };
+}
+
+// ===== SETUP TIME TRIGGER =====
+// Run this ONCE in the Apps Script editor to enable daily auto-cancel at 8:30 AM:
+//   ScriptApp.newTrigger('autoCancelUnpaidToday')
+//     .timeBased().atHour(8).nearMinute(30).everyDays(1).create();
+// To remove all triggers:
+//   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
 
 function jsonResp(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
