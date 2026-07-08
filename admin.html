@@ -32,15 +32,15 @@
   <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sb-brand">
-      <div style="font-size:24px;line-height:1">🏛️</div>
+      <div class="sb-brand-icon">🏛️</div>
       <div>
-        <div style="font-weight:700;font-size:14px">ระบบเจ้าหน้าที่</div>
-        <div style="font-size:10px;opacity:.6">ทัณฑสถานบำบัดพิเศษกลาง</div>
+        <div class="sb-brand-title">ระบบเจ้าหน้าที่</div>
+        <div class="sb-brand-sub">ทัณฑสถานบำบัดพิเศษกลาง</div>
       </div>
     </div>
-    <div id="userInfo" style="padding:8px 10px;margin-bottom:12px;background:rgba(255,255,255,0.1);border-radius:6px;font-size:11px;display:none;">
-      <div id="userRole" style="font-weight:600;margin-bottom:2px;"></div>
-      <div id="userName" style="opacity:0.8;"></div>
+    <div id="userInfo" class="user-info-card">
+      <div id="userRole" class="user-info-role"></div>
+      <div id="userName" class="user-info-name"></div>
     </div>
 <nav class="sb-nav">
        <a class="sb-link active" data-view="home" onclick="switchView('home');return false">🏠 <span class="sb-text">ภาพรวม</span></a>
@@ -55,7 +55,7 @@
        <a class="sb-link" data-view="settings" id="sbSettings" style="display:none" onclick="switchView('settings');return false">⚙️ <span class="sb-text">ตั้งค่า</span></a>
      </nav>
     <div class="sb-bottom">
-      <button onclick="doLogout()" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">ออกจากระบบ</button>
+      <button class="btn btn-outlined btn-sm sb-logout-btn" onclick="doLogout()">ออกจากระบบ</button>
     </div>
 </div>
    
@@ -64,17 +64,17 @@
       <div class="topbar">
        <div>
          <h1 id="topTitle">🏛️ ระบบตรวจสอบการจองเยี่ยม</h1>
-         <div style="font-size:12px;opacity:0.8">ทัณฑสถานบำบัดพิเศษกลาง</div>
+         <div class="topbar-sub">ทัณฑสถานบำบัดพิเศษกลาง</div>
        </div>
         <div class="topbar-right">
-<span id="connIndicator" style="display:none;font-size:11px;padding:4px 8px;border-radius:12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);margin-right:6px;cursor:help" onclick="checkConnection()" title="คลิกเพื่อทดสอบการเชื่อมต่อ">🔗 <span id="connDot">⚪</span></span>
-<div class="notif-bell" id="notifBell" style="display:none;cursor:pointer;padding:6px 10px;border-radius:8px;transition:background 0.15s;position:relative;" onclick="toggleNotifPanel()" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background=''">
-            🔔<span class="notif-badge" id="notifBadge" style="display:none;"></span>
+<span id="connIndicator" class="conn-indicator" onclick="checkConnection()" title="คลิกเพื่อทดสอบการเชื่อมต่อ">🔗 <span id="connDot">⚪</span></span>
+<div class="notif-bell" id="notifBell" onclick="toggleNotifPanel()">
+            🔔<span class="notif-badge" id="notifBadge"></span>
           </div>
-           <div class="notif-panel" id="notifPanel" style="display:none;position:absolute;top:40px;right:0;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;width:300px;max-height:400px;overflow-y:auto;z-index:999;"></div>
-           <a href="src/guide.html" target="_blank" style="color:#fff;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);padding:6px 14px;border-radius:20px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">📖 คู่มือ</a>
-           <button onclick="toggleDarkMode()" style="color:#fff;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);padding:6px 10px;border-radius:20px;font-size:13px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🌙</button>
-           <span id="topDate" style="font-size:13px;opacity:0.85"></span>
+           <div class="notif-panel" id="notifPanel"></div>
+           <a href="src/guide.html" target="_blank" class="guide-link">📖 คู่มือ</a>
+           <button class="topbar-theme-btn" onclick="toggleDarkMode()">🌙</button>
+           <span id="topDate" class="topbar-date"></span>
        </div>
      </div>
 
@@ -106,25 +106,25 @@
               <div class="action-icon">🔍 <span class="action-icon-name">วินัย</span></div>
               <div class="action-count" id="actionPending">0</div>
               <div class="action-label">รอตรวจสอบวินัย</div>
-              <button class="action-btn" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอตรวจสอบวินัย')">ดำเนินการ →</button>
+              <button class="btn btn-tonal btn-sm" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอตรวจสอบวินัย')">ดำเนินการ →</button>
             </div>
             <div class="action-card" onclick="switchView('reservations');filterByStatus('รอตรวจสอบผู้เข้าร่วม')">
               <div class="action-icon">👥 <span class="action-icon-name">ผู้เข้าร่วม</span></div>
               <div class="action-count" id="actionParticipant">0</div>
               <div class="action-label">รอตรวจสอบผู้เข้าร่วม</div>
-              <button class="action-btn" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอตรวจสอบผู้เข้าร่วม')">ดำเนินการ →</button>
+              <button class="btn btn-tonal btn-sm" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอตรวจสอบผู้เข้าร่วม')">ดำเนินการ →</button>
             </div>
             <div class="action-card" onclick="switchView('reservations');filterByStatus('รอชำระเงิน')">
               <div class="action-icon">💳 <span class="action-icon-name">ชำระเงิน</span></div>
               <div class="action-count" id="actionPayment">0</div>
               <div class="action-label">รอชำระเงิน</div>
-              <button class="action-btn" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอชำระเงิน')">ดำเนินการ →</button>
+              <button class="btn btn-tonal btn-sm" onclick="event.stopPropagation();switchView('reservations');filterByStatus('รอชำระเงิน')">ดำเนินการ →</button>
             </div>
             <div class="action-card" onclick="switchView('reservations');filterByStatus('ชำระแล้ว')">
               <div class="action-icon">✅ <span class="action-icon-name">ชำระแล้ว</span></div>
               <div class="action-count" id="actionPaid">0</div>
               <div class="action-label">ชำระแล้ว</div>
-              <button class="action-btn" onclick="event.stopPropagation();switchView('reservations');filterByStatus('ชำระแล้ว')">ดูรายการ →</button>
+              <button class="btn btn-tonal btn-sm" onclick="event.stopPropagation();switchView('reservations');filterByStatus('ชำระแล้ว')">ดูรายการ →</button>
             </div>
           </div>
         </div>
@@ -145,53 +145,64 @@
         <div id="performanceMetrics" class="metrics-cards"></div>
 
         <!-- ═══════════════════════════════════════════════ -->
-        <!-- FINANCE SUMMARY: Clean horizontal layout        -->
+        <!-- METRICS STRIP: Unified finance + booking stats -->
         <!-- ═══════════════════════════════════════════════ -->
-        <div class="finance-summary-clean">
-          <div class="fs-item">
-            <span class="fs-icon">💰</span>
-            <span class="fs-label">ยอดจอง</span>
-            <span class="fs-value" id="financeTotalBooked">฿0</span>
+        <div class="metrics-strip">
+          <div class="ms-item">
+            <span class="ms-icon primary">💰</span>
+            <div>
+              <span class="ms-value" id="financeTotalBooked">฿0</span>
+              <span class="ms-label">ยอดจอง</span>
+            </div>
           </div>
-          <div class="fs-divider"></div>
-          <div class="fs-item">
-            <span class="fs-icon paid">✅</span>
-            <span class="fs-label">ชำระแล้ว</span>
-            <span class="fs-value paid" id="financePaid">฿0</span>
+          <div class="ms-item">
+            <span class="ms-icon primary">✅</span>
+            <div>
+              <span class="ms-value paid" id="financePaid">฿0</span>
+              <span class="ms-label">ชำระแล้ว</span>
+            </div>
           </div>
-          <div class="fs-divider"></div>
-          <div class="fs-item">
-            <span class="fs-icon unpaid">⚠️</span>
-            <span class="fs-label">ค้างชำระ</span>
-            <span class="fs-value unpaid" id="financeUnpaid">฿0</span>
+          <div class="ms-item">
+            <span class="ms-icon primary">⚠️</span>
+            <div>
+              <span class="ms-value unpaid" id="financeUnpaid">฿0</span>
+              <span class="ms-label">ค้างชำระ</span>
+            </div>
           </div>
-          <div class="fs-divider"></div>
-          <div class="fs-item">
-            <span class="fs-icon">📈</span>
-            <span class="fs-label">อัตราชำระ</span>
-            <span class="fs-value" id="financeRate">0%</span>
+          <div class="ms-item">
+            <span class="ms-icon primary">📈</span>
+            <div>
+              <span class="ms-value" id="financeRate">0%</span>
+              <span class="ms-label">อัตราชำระ</span>
+            </div>
           </div>
-        </div>
-
-        <!-- ═══════════════════════════════════════════════ -->
-        <!-- QUICK STATS ROW: Simplified metrics            -->
-        <!-- ═══════════════════════════════════════════════ -->
-        <div class="quick-stats-row">
-          <div class="quick-stat">
-            <div class="qs-label">📅 วันนี้</div>
-            <div class="qs-value" id="statToday">0</div>
+          <div class="ms-item">
+            <span class="ms-icon tertiary">📅</span>
+            <div>
+              <span class="ms-value" id="statToday">0</span>
+              <span class="ms-label">วันนี้</span>
+            </div>
           </div>
-          <div class="quick-stat">
-            <div class="qs-label">📆 สัปดาห์นี้</div>
-            <div class="qs-value" id="statThisWeek">0</div>
+          <div class="ms-item">
+            <span class="ms-icon tertiary">📆</span>
+            <div>
+              <span class="ms-value" id="statThisWeek">0</span>
+              <span class="ms-label">สัปดาห์นี้</span>
+            </div>
           </div>
-          <div class="quick-stat">
-            <div class="qs-label">📊 เดือนนี้</div>
-            <div class="qs-value" id="statThisMonth">0</div>
+          <div class="ms-item">
+            <span class="ms-icon tertiary">📊</span>
+            <div>
+              <span class="ms-value" id="statThisMonth">0</span>
+              <span class="ms-label">เดือนนี้</span>
+            </div>
           </div>
-          <div class="quick-stat">
-            <div class="qs-label">📋 ทั้งหมด</div>
-            <div class="qs-value" id="statTotal">0</div>
+          <div class="ms-item">
+            <span class="ms-icon tertiary">📋</span>
+            <div>
+              <span class="ms-value" id="statTotal">0</span>
+              <span class="ms-label">ทั้งหมด</span>
+            </div>
           </div>
         </div>
 
@@ -245,73 +256,28 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════ -->
-        <!-- ROW 5: FLOOR PLAN (Full Width)                 -->
-        <!-- ═══════════════════════════════════════════════ -->
-        <div class="dash-card floor-plan-card" style="margin-top:12px;">
-          <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span>🪑</span> แผนผังโต๊ะ — จัดผู้ต้องขังตามโต๊ะ
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <select id="floorPlanDate" class="filter-select" onchange="renderFloorPlan()" style="font-size:12px;padding:5px 8px;"></select>
-              <div class="floor-legend">
-                <span class="fl-dot occupied"></span> มีผู้ต้องขัง
-                <span class="fl-dot reserved"></span> จองล่วงหน้า
-                <span class="fl-dot available"></span> ว่าง
-              </div>
-            </div>
-          </div>
-          <div id="floorPlanGrid" class="floor-plan-grid"></div>
-        </div>
-
-        <!-- ═══════════════════════════════════════════════ -->
-        <!-- ROW 6: FULL RESERVATION TABLE (Embedded)       -->
-        <!-- ═══════════════════════════════════════════════ -->
-        <div class="dash-card" style="margin-top:12px;">
-          <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span>📋</span> รายการจองทั้งหมด <span id="overviewTableCount" style="font-size:12px;color:var(--text2);font-weight:400"></span>
-            </div>
-            <button class="refresh-btn" onclick="loadData()" aria-label="โหลดข้อมูลใหม่" style="font-size:12px;padding:4px 10px;">🔄 รีเฟรช</button>
-          </div>
-          <div class="overview-filters">
-            <input class="search-box" id="overviewSearch" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="renderOverviewTable()" style="flex:1;min-width:150px;">
-            <select class="filter-select" id="overviewFilterStatus" aria-label="กรองตามสถานะ" onchange="renderOverviewTable()" style="min-width:120px;">
-              <option value="">📌 ทุกสถานะ</option>
-              <option value="รอตรวจสอบวินัย">🔍 รอวินัย</option>
-              <option value="รอตรวจสอบผู้เข้าร่วม">👥 รอผู้เข้าร่วม</option>
-              <option value="รอชำระเงิน">💳 รอชำระ</option>
-              <option value="ชำระแล้ว">✅ ชำระแล้ว</option>
-              <option value="เสร็จสิ้น">✔️ เสร็จสิ้น</option>
-              <option value="ไม่อนุมัติ">❌ ไม่อนุมัติ</option>
-              <option value="ยกเลิก">🚫 ยกเลิก</option>
-            </select>
-            <select class="filter-select" id="overviewFilterDate" aria-label="กรองตามวันที่" onchange="renderOverviewTable()" style="min-width:120px;">
-              <option value="">📅 ทุกวัน</option>
-            </select>
-          </div>
-          <div style="overflow-x:auto;">
-            <table class="overview-table">
-              <thead>
-                <tr>
-                  <th style="width:100px;">เลขอ้างอิง</th>
-                  <th>ผู้ต้องขัง / คู่เยี่ยม</th>
-                  <th style="width:60px;">แดน</th>
-                  <th style="width:80px;">ยอด</th>
-                  <th style="width:90px;">สถานะ</th>
-                  <th style="width:90px;">วันที่</th>
-                  <th style="width:110px;">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody id="overviewTableBody"></tbody>
-            </table>
-          </div>
-          <div id="overviewPagination" style="margin-top:8px;"></div>
-        </div>
+<!-- ROW 5: FLOOR PLAN (Full Width)                 -->
+         <!-- ═══════════════════════════════════════════════ -->
+         <div class="dash-card floor-plan-card">
+           <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+             <div style="display:flex;align-items:center;gap:8px;">
+               <span>🪑</span> แผนผังโต๊ะ — จัดผู้ต้องขังตามโต๊ะ
+             </div>
+             <div style="display:flex;align-items:center;gap:8px;">
+               <select id="floorPlanDate" class="filter-select" onchange="renderFloorPlan()" style="font-size:12px;padding:5px 8px;"></select>
+               <div class="floor-legend">
+                 <span class="fl-dot occupied"></span> มีผู้ต้องขัง
+                 <span class="fl-dot reserved"></span> จองล่วงหน้า
+                 <span class="fl-dot available"></span> ว่าง
+               </div>
+             </div>
+           </div>
+           <div id="floorPlanGrid" class="floor-plan-grid"></div>
+         </div>
 
       </div>
 
-      <!-- RESERVATIONS VIEW -->
+       <!-- RESERVATIONS VIEW -->
       <div id="view-reservations" class="view" style="display:none" role="main">
         <!-- Summary Bar -->
         <div id="reservationSummary" class="summary-bar"></div>
@@ -320,10 +286,10 @@
         <div class="date-quicknav" id="dateQuickNav">
           <div class="date-quicknav-label">📅 เลือกวันที่:</div>
           <div class="date-quicknav-btns">
-            <button class="date-qnav-btn" onclick="jumpToDate(-1)" title="เมื่อวาน">◀ เมื่อวาน</button>
-            <button class="date-qnav-btn today" onclick="jumpToDate(0)" title="วันนี้">🟢 วันนี้</button>
-            <button class="date-qnav-btn" onclick="jumpToDate(1)" title="พรุ่งนี้">พรุ่งนี้ ▶</button>
-            <button class="date-qnav-btn clear" onclick="clearDateFilter()" title="ล้างวันที่">✕ ล้าง</button>
+            <button class="btn btn-outlined btn-sm" onclick="jumpToDate(-1)" title="เมื่อวาน">◀ เมื่อวาน</button>
+            <button class="btn btn-outlined btn-sm today" onclick="jumpToDate(0)" title="วันนี้">🟢 วันนี้</button>
+            <button class="btn btn-outlined btn-sm" onclick="jumpToDate(1)" title="พรุ่งนี้">พรุ่งนี้ ▶</button>
+            <button class="btn btn-outlined btn-sm clear" onclick="clearDateFilter()" title="ล้างวันที่">✕ ล้าง</button>
           </div>
           <div class="date-quicknav-current" id="dateQuickNavCurrent"></div>
         </div>
@@ -331,46 +297,44 @@
         <!-- Day Summary Panel (shown when date is selected) -->
         <div class="day-summary-panel" id="daySummaryPanel" style="display:none;"></div>
 
-        <!-- Search Bar -->
-        <div class="controls">
-          <input class="search-box" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
-          <button class="refresh-btn" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่">🔄</button>
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- RESERVATIONS TOOLBAR: Unified controls          -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="reservations-toolbar">
+          <div class="rt-main">
+            <input class="search-box rt-search" id="searchBox" type="text" placeholder="🔍 ค้นหา ชื่อ / เลขอ้างอิง / ผู้ต้องขัง" aria-label="ค้นหารายการจอง" oninput="resetToFirstPage();renderTable()">
+            <select class="filter-select" id="filterStatus" aria-label="กรองตามสถานะ" onchange="resetToFirstPage();renderTable()">
+              <option value="">📌 ทุกสถานะ</option>
+              <option value="รอตรวจสอบวินัย">🔍 รอวินัย</option>
+              <option value="รอตรวจสอบผู้เข้าร่วม">👥 รอผู้เข้าร่วม</option>
+              <option value="รอชำระเงิน">💳 รอชำระ</option>
+              <option value="ชำระแล้ว">✅ ชำระแล้ว</option>
+              <option value="เสร็จสิ้น">✔️ เสร็จสิ้น</option>
+              <option value="ไม่อนุมัติ">❌ ไมอนุมัติ</option>
+            </select>
+            <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
+              <option value="">📅 ทุกวัน</option>
+            </select>
+            <select class="filter-select" id="filterWing" aria-label="กรองตามแดน" onchange="resetToFirstPage();renderTable()">
+              <option value="">🏢 ทุกแดน</option>
+            </select>
+            <div class="rt-actions">
+              <button class="btn btn-filled btn-sm" onclick="openNewBookingModal()" id="btnNewBooking" style="display:none;">➕ จองใหม่</button>
+              <button class="btn btn-tonal btn-sm" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤</button>
+              <button class="btn btn-filled btn-sm" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️</button>
+              <button class="btn btn-tonal btn-sm" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤มีเบอร์</button>
+              <button class="btn btn-outlined btn-sm" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่" title="โหลดข้อมูลใหม่">🔄</button>
+              <button class="btn btn-filled btn-sm" onclick="syncPrisonerWings()" id="btnSyncWings" style="display:none;">🔄 Sync</button>
+            </div>
+          </div>
+          <div class="rt-date-row">
+            <span class="rt-date-label">ตั้งแต่:</span>
+            <input type="date" id="exportStartDate" class="rt-date-input">
+            <span class="rt-date-label">ถึง:</span>
+            <input type="date" id="exportEndDate" class="rt-date-input">
+            <button class="btn btn-tonal btn-sm" onclick="exportFilteredCSVWithRange()">📤 Export CSV</button>
+          </div>
         </div>
-
-        <!-- Filters Row (Always visible) -->
-        <div class="controls" style="margin-top:8px;">
-          <select class="filter-select" id="filterStatus" aria-label="กรองตามสถานะ" onchange="resetToFirstPage();renderTable()">
-            <option value="">📌 ทุกสถานะ</option>
-            <option value="รอตรวจสอบวินัย">🔍 รอวินัย</option>
-            <option value="รอตรวจสอบผู้เข้าร่วม">👥 รอผู้เข้าร่วม</option>
-            <option value="รอชำระเงิน">💳 รอชำระ</option>
-            <option value="ชำระแล้ว">✅ ชำระแล้ว</option>
-            <option value="เสร็จสิ้น">✔️ เสร็จสิ้น</option>
-            <option value="ไม่อนุมัติ">❌ ไม่อนุมัติ</option>
-          </select>
-          <select class="filter-select" id="filterDate" aria-label="กรองตามวันที่" onchange="resetToFirstPage();renderTable()">
-            <option value="">📅 ทุกวัน</option>
-          </select>
-          <select class="filter-select" id="filterWing" aria-label="กรองตามแดน" onchange="resetToFirstPage();renderTable()">
-            <option value="">🏢 ทุกแดน</option>
-          </select>
-        </div>
-
-        <!-- Action Buttons Row -->
-        <div class="controls" style="margin-top:8px;">
-          <button class="btn-approve" onclick="openNewBookingModal()" id="btnNewBooking" style="display:none;">➕ จองใหม่</button>
-          <button class="btn-export" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤 Export</button>
-          <button class="btn-print" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️ พิมพ์</button>
-          <button class="btn-export" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤 มีเบอร์</button>
-          <button class="refresh-btn" onclick="syncPrisonerWings()" id="btnSyncWings" style="display:none;background:#7c3aed;">🔄 Sync</button>
-        </div>
-         <div class="controls" style="margin-top:8px;flex-wrap:wrap;">
-            <label style="font-size:12px;color:var(--text2);white-space:nowrap;">ตั้งแต่:</label>
-            <input type="date" id="exportStartDate" class="search-box" style="width:auto;padding:6px 8px;font-size:12px;">
-            <label style="font-size:12px;color:var(--text2);white-space:nowrap;">ถึง:</label>
-            <input type="date" id="exportEndDate" class="search-box" style="width:auto;padding:6px 8px;font-size:12px;">
-            <button class="btn-export" onclick="exportFilteredCSVWithRange()">📤 Export CSV (ช่วงวันที่)</button>
-         </div>
 
 <div class="table-wrap">
           <div class="table-header">
@@ -397,23 +361,23 @@
            <div id="pagination" class="pagination"></div>
            <div class="last-updated" id="lastUpdated">อัพเดทล่าสุด: —</div>
          </div>
-          <div class="bulk-bar" id="bulkActionsBar" style="display:none;">
-            <span style="font-weight:600;">⚡ เลือก <span id="bulkSelectedCount">0</span> รายการ</span>
-            <span id="bulkStatusSummary" style="font-size:11px;color:var(--text2);margin-left:4px;"></span>
-            <button onclick="bulkApprove()">✅ อนุมัติ</button>
-            <button onclick="bulkReject()">❌ ปฏิเสธ</button>
-            <button onclick="bulkComplete()" id="bulkBtnComplete" style="display:none">✅ เสร็จสิ้น</button>
-            <button class="danger" onclick="bulkCancel()">🚫 ยกเลิก</button>
-            <button onclick="bulkExport()">📤 ส่งออก</button>
-            <button onclick="updateBulkBar()" style="margin-left:auto;background:rgba(255,255,255,0.05);">✕ ปิด</button>
+           <div class="bulk-bar" id="bulkActionsBar">
+            <span class="bulk-bar-text">⚡ เลือก <span id="bulkSelectedCount">0</span> รายการ</span>
+            <span id="bulkStatusSummary" class="bulk-bar-summary"></span>
+            <button class="btn btn-tonal btn-sm" onclick="bulkApprove()">✅ อนุมัติ</button>
+            <button class="btn btn-danger btn-sm" onclick="bulkReject()">❌ ปฏิเสธ</button>
+            <button class="btn btn-tonal btn-sm" onclick="bulkComplete()" id="bulkBtnComplete">✅ เสร็จสิ้น</button>
+            <button class="btn btn-danger btn-sm" onclick="bulkCancel()">🚫 ยกเลิก</button>
+            <button class="btn btn-tonal btn-sm" onclick="bulkExport()">📤 ส่งออก</button>
+            <button class="btn btn-text btn-sm bulk-bar-close" onclick="updateBulkBar()">✕ ปิด</button>
           </div>
       </div>
 
       <!-- REPORTS VIEW -->
       <div id="view-reports" class="view" style="display:none">
-        <div style="margin-bottom:12px">
-          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">📊 รายงาน</h1>
-          <div style="font-size:13px;color:var(--text2)">รายงานประจำวัน — กรองข้อมูลด้านล่างเพื่อดึงข้อมูล</div>
+        <div class="view-header-group">
+          <h1 class="view-header-title">📊 รายงาน</h1>
+          <div class="view-header-desc">รายงานประจำวัน — กรองข้อมูลด้านล่างเพื่อดึงข้อมูล</div>
         </div>
 
         <!-- Report Summary Cards -->
@@ -436,26 +400,26 @@
           <select class="filter-select" id="reportsFilterWing" onchange="renderReportsView()">
             <option value="">ทุกแดน</option>
           </select>
-          <button class="refresh-btn" onclick="renderReportsView()">🔄 ดึงข้อมูลรายงาน</button>
+          <button class="btn btn-outlined btn-sm" onclick="renderReportsView()">🔄 ดึงข้อมูลรายงาน</button>
         </div>
 
         <!-- Monthly Report Section -->
-        <div id="monthlyReportSection" style="margin-bottom:24px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg2);">
-          <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:var(--blue);">📈 รายงานรายเดือน</div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <label for="monthlyStartDate" style="font-size:13px;color:var(--text2);">จากวันที่:</label>
+        <div id="monthlyReportSection" class="monthly-report-section">
+          <div class="monthly-report-title">📈 รายงานรายเดือน</div>
+          <div class="monthly-report-row">
+            <div class="monthly-report-field">
+              <label for="monthlyStartDate" class="view-header-desc">จากวันที่:</label>
               <input type="date" id="monthlyStartDate" class="search-box" style="width:auto;padding:8px 10px;font-size:13px;">
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <label for="monthlyEndDate" style="font-size:13px;color:var(--text2);">ถึงวันที่:</label>
+            <div class="monthly-report-field">
+              <label for="monthlyEndDate" class="view-header-desc">ถึงวันที่:</label>
               <input type="date" id="monthlyEndDate" class="search-box" style="width:auto;padding:8px 10px;font-size:13px;">
             </div>
-            <button class="refresh-btn" onclick="generateMonthlyReport()" style="background:#2E5238;">📊 สร้างรายงานรายเดือน</button>
+            <button class="btn btn-filled btn-sm" onclick="generateMonthlyReport()" style="background:#2E5238;">📊 สร้างรายงานรายเดือน</button>
           </div>
-          <div id="monthlyReportContent" style="display:none;">
-            <div id="monthlyReportOutput" style="margin-bottom:16px;"></div>
-            <button class="refresh-btn" onclick="printMonthlyReport()" style="background:#0B2545;margin-top:8px;">🖨️ พิมพ์รายงาน</button>
+          <div id="monthlyReportContent">
+            <div id="monthlyReportOutput"></div>
+            <button class="btn btn-filled btn-sm" onclick="printMonthlyReport()" style="background:#0B2545;margin-top:8px;">🖨️ พิมพ์รายงาน</button>
           </div>
         </div>
 
@@ -469,9 +433,9 @@
 
 <!-- EVENTLOG VIEW -->
       <div id="view-eventlog" class="view" style="display:none">
-        <div style="margin-bottom:12px">
-          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">📝 บันทึกการทำงาน</h1>
-          <div style="font-size:13px;color:var(--text2)">บันทึกการกระทำของผู้ใช้ทั้งหมดในระบบ</div>
+        <div class="view-header-group">
+          <h1 class="view-header-title">📝 บันทึกการทำงาน</h1>
+          <div class="view-header-desc">บันทึกการกระทำของผู้ใช้ทั้งหมดในระบบ</div>
         </div>
         <div class="table-wrap">
           <div class="table-header">
@@ -499,35 +463,35 @@
 
       <!-- USER MANAGEMENT VIEW -->
       <div id="view-users" class="view" style="display:none">
-        <div style="margin-bottom:12px">
-          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">👥 จัดการผู้ใช้</h1>
-          <div style="font-size:13px;color:var(--text2)">สร้าง / แก้ไข / ลบ ผู้ใช้ในระบบ</div>
+        <div class="view-header-group">
+          <h1 class="view-header-title">👥 จัดการผู้ใช้</h1>
+          <div class="view-header-desc">สร้าง / แก้ไข / ลบ ผู้ใช้ในระบบ</div>
         </div>
-        <div class="dash-card" style="padding:16px;margin-bottom:16px;">
-          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">➕ เพิ่มผู้ใช้ใหม่</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end;">
+        <div class="dash-card user-add-card">
+          <div class="user-add-title">➕ เพิ่มผู้ใช้ใหม่</div>
+          <div class="user-add-grid">
             <div>
-              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">ชื่อผู้ใช้</label>
-              <input type="text" id="addUserUsername" class="search-box" placeholder="username" style="width:100%;">
+              <label class="user-add-label">ชื่อผู้ใช้</label>
+              <input type="text" id="addUserUsername" class="search-box user-add-input" placeholder="username">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">รหัสผ่าน</label>
-              <input type="password" id="addUserPassword" class="search-box" placeholder="รหัสผ่าน" style="width:100%;">
+              <label class="user-add-label">รหัสผ่าน</label>
+              <input type="password" id="addUserPassword" class="search-box user-add-input" placeholder="รหัสผ่าน">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">ยืนยันรหัสผ่าน</label>
-              <input type="password" id="addUserConfirmPassword" class="search-box" placeholder="ยืนยันรหัสผ่าน" style="width:100%;">
+              <label class="user-add-label">ยืนยันรหัสผ่าน</label>
+              <input type="password" id="addUserConfirmPassword" class="search-box user-add-input" placeholder="ยืนยันรหัสผ่าน">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">บทบาท</label>
-              <select id="addUserRole" class="filter-select" style="width:100%;"></select>
+              <label class="user-add-label">บทบาท</label>
+              <select id="addUserRole" class="filter-select user-add-input"></select>
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px;">ชื่อที่แสดง</label>
-              <input type="text" id="addUserDisplayName" class="search-box" placeholder="ชื่อที่แสดง" style="width:100%;">
+              <label class="user-add-label">ชื่อที่แสดง</label>
+              <input type="text" id="addUserDisplayName" class="search-box user-add-input" placeholder="ชื่อที่แสดง">
             </div>
             <div>
-              <button class="btn-approve" onclick="createAddUser()" style="width:100%;">💾 สร้างผู้ใช้</button>
+              <button class="btn btn-filled btn-sm btn-block" onclick="createAddUser()">💾 สร้างผู้ใช้</button>
             </div>
           </div>
         </div>
@@ -553,22 +517,22 @@
 
       <!-- PRISONERS VIEW -->
       <div id="view-prisoners" class="view" style="display:none">
-        <div style="margin-bottom:12px">
-          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">🔒 จัดการข้อมูลผู้ต้องขัง</h1>
-          <div style="font-size:13px;color:var(--text2)">นำเข้าข้อมูลผู้ต้องขังจากไฟล์ CSV</div>
+        <div class="view-header-group">
+          <h1 class="view-header-title">🔒 จัดการข้อมูลผู้ต้องขัง</h1>
+          <div class="view-header-desc">นำเข้าข้อมูลผู้ต้องขังจากไฟล์ CSV</div>
         </div>
-        <div class="dash-card" style="padding:16px;margin-bottom:16px;">
-          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">📤 นำเข้าข้อมูลผู้ต้องขัง (CSV)</div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">
+        <div class="dash-card prisoner-card">
+          <div class="prisoner-title">📤 นำเข้าข้อมูลผู้ต้องขัง (CSV)</div>
+          <div class="prisoner-desc">
             รูปแบบ CSV: <code>prisonerId, prisonerName, wing</code>
             &nbsp;·&nbsp; อัปเดตอัตโนมัติถ้า <code>prisonerId</code> ซ้ำ
           </div>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="prisoner-actions">
             <input type="file" id="csvFileInput" accept=".csv" style="font-size:13px;">
-            <button class="btn-approve" onclick="previewPrisonerCSV()" id="btnPreviewCSV">👁️ แสดงตัวอย่าง</button>
-            <button class="btn-approve" onclick="importPrisonerCSV()" id="btnImportCSV" style="display:none;background:var(--green);">💾 ยืนยันนำเข้า</button>
-            <button class="refresh-btn" onclick="syncPrisonerWings()" style="background:#7c3aed;">🔄 Sync Wings (อัปเดตแดนในรายการจอง)</button>
-            <span id="csvStatus" style="font-size:12px;color:var(--text2);"></span>
+            <button class="btn btn-filled btn-sm" onclick="previewPrisonerCSV()" id="btnPreviewCSV">👁️ แสดงตัวอย่าง</button>
+            <button class="btn btn-filled btn-sm" onclick="importPrisonerCSV()" id="btnImportCSV">💾 ยืนยันนำเข้า</button>
+            <button class="btn btn-filled btn-sm" onclick="syncPrisonerWings()">🔄 Sync Wings (อัปเดตแดนในรายการจอง)</button>
+            <span id="csvStatus" class="view-header-desc"></span>
           </div>
         </div>
         <div id="prisonerPreviewContainer" style="display:none;">
@@ -593,41 +557,41 @@
 
       <!-- SETTINGS VIEW -->
       <div id="view-connection" class="view" style="display:none">
-        <div style="margin-bottom:12px">
-          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">🔗 การเชื่อมต่อระบบ</h1>
-          <div style="font-size:13px;color:var(--text2)">ทดสอบ · จัดการ URL การเชื่อมต่อกับ Google Apps Script</div>
+        <div class="view-header-group">
+          <h1 class="view-header-title">🔗 การเชื่อมต่อระบบ</h1>
+          <div class="view-header-desc">ทดสอบ · จัดการ URL การเชื่อมต่อกับ Google Apps Script</div>
         </div>
-        <div class="dash-card" style="padding:20px;max-width:600px;" id="connCard">
-          <div id="connTestResult" style="margin-bottom:16px;"></div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">🔌 ทดสอบการเชื่อมต่อ</div>
-          <button class="btn-approve" onclick="testConnectionHandler()" id="connTestBtn" style="min-width:140px">
+        <div class="dash-card conn-card-body" id="connCard">
+          <div id="connTestResult"></div>
+          <div class="user-add-title">🔌 ทดสอบการเชื่อมต่อ</div>
+          <button class="btn btn-filled btn-sm" onclick="testConnectionHandler()" id="connTestBtn" style="min-width:140px">
             🔄 ทดสอบการเชื่อมต่อ
           </button>
-          <div style="font-size:14px;font-weight:600;margin:18px 0 8px;border-top:1px solid var(--border);padding-top:16px;">📋 URL ปัจจุบัน</div>
-          <div style="background:var(--gray-100);padding:8px 12px;border-radius:6px;font-size:11px;word-break:break-all;color:var(--text2);margin-bottom:12px;" id="connCurrentUrl">—</div>
-          <div style="font-size:14px;font-weight:600;margin:12px 0 8px;">✏️ อัปเดต URL</div>
+          <div class="section-title section-divider" style="margin-top:18px;">📋 URL ปัจจุบัน</div>
+          <div class="conn-current-url" id="connCurrentUrl">—</div>
+          <div class="section-title" style="margin-top:12px;">✏️ อัปเดต URL</div>
           <div style="display:flex;gap:8px;">
             <input type="text" id="connUrlInput" class="search-box" style="flex:1;font-size:12px;" placeholder="https://script.google.com/macros/s/.../exec">
-            <button class="btn-primary" onclick="saveConnectionUrl()" style="white-space:nowrap;">💾 บันทึก</button>
+            <button class="btn btn-filled" onclick="saveConnectionUrl()">💾 บันทึก</button>
           </div>
-          <div style="font-size:12px;color:var(--text2);margin-top:6px;">เมื่อบันทึกแล้วระบบจะใช้ URL ใหม่ทันที และล้างแคชเก่า</div>
-          <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;display:flex;gap:8px;">
-            <button class="btn-cancel" onclick="clearConnectionCache()">🗑️ ล้างแคช</button>
-            <button class="btn-secondary" onclick="copyConnectionUrl()">📋 คัดลอก URL</button>
+          <div class="view-header-desc" style="margin-top:6px;">เมื่อบันทึกแล้วระบบจะใช้ URL ใหม่ทันที และล้างแคชเก่า</div>
+          <div class="section-divider" style="display:flex;gap:8px;">
+            <button class="btn btn-outlined btn-sm" onclick="clearConnectionCache()">🗑️ ล้างแคช</button>
+            <button class="btn btn-tonal btn-sm" onclick="copyConnectionUrl()">📋 คัดลอก URL</button>
           </div>
-          <div id="connDiagnostic" style="margin-top:16px;font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:12px;"></div>
+          <div id="connDiagnostic" class="view-header-desc section-divider"></div>
         </div>
       </div>
 
       <div id="view-settings" class="view" style="display:none">
-        <div style="margin-bottom:12px">
-          <h1 style="font-size:20px;font-weight:700;margin-bottom:4px">⚙️ ตั้งค่าระบบ</h1>
-          <div style="font-size:13px;color:var(--text2)">ตั้งค่า · บันทึกไปยัง Apps Script</div>
+        <div class="view-header-group">
+          <h1 class="view-header-title">⚙️ ตั้งค่าระบบ</h1>
+          <div class="view-header-desc">ตั้งค่า · บันทึกไปยัง Apps Script</div>
         </div>
-        <div class="dash-card" style="padding:20px;max-width:600px;">
-          <div style="font-size:14px;font-weight:600;margin-bottom:16px;">📊 การแสดงผล</div>
-          <div style="margin-bottom:14px;">
-            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">จำนวนรายการต่อหน้า</label>
+        <div class="dash-card settings-card-body">
+          <div class="section-title">📊 การแสดงผล</div>
+          <div class="settings-field">
+            <label class="settings-label">จำนวนรายการต่อหน้า</label>
             <select id="settingsPageSize" class="filter-select" style="width:120px;">
               <option value="5">5</option>
               <option value="10" selected>10</option>
@@ -635,29 +599,29 @@
               <option value="50">50</option>
 </select>
            </div>
-           <div style="font-size:14px;font-weight:600;margin:16px 0 12px;border-top:1px solid var(--border);padding-top:16px;">🔔 การแจ้งเตือน</div>
-           <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-             <input type="checkbox" id="settingsNotifEnabled" checked style="cursor:pointer;">
-             <label for="settingsNotifEnabled" style="font-size:13px;cursor:pointer;">แสดงการแจ้งเตือนในแถบด้านบน</label>
+           <div class="section-title section-divider">🔔 การแจ้งเตือน</div>
+           <div class="settings-row">
+             <input type="checkbox" id="settingsNotifEnabled" checked>
+             <label for="settingsNotifEnabled" class="settings-check-label">แสดงการแจ้งเตือนในแถบด้านบน</label>
            </div>
-           <div style="font-size:14px;font-weight:600;margin:16px 0 12px;border-top:1px solid var(--border);padding-top:16px;">🔔 การแจ้งเตือนเพิ่มเติม</div>
-           <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-             <input type="checkbox" id="settingsEmailNotif" style="cursor:pointer;">
-             <label for="settingsEmailNotif" style="font-size:13px;cursor:pointer;">แจ้งเตือนทางอีเมล (เมื่อมีการจองใหม่)</label>
+           <div class="section-title section-divider">🔔 การแจ้งเตือนเพิ่มเติม</div>
+           <div class="settings-row">
+             <input type="checkbox" id="settingsEmailNotif">
+             <label for="settingsEmailNotif" class="settings-check-label">แจ้งเตือนทางอีเมล (เมื่อมีการจองใหม่)</label>
            </div>
-           <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-             <input type="checkbox" id="settingsSoundNotif" style="cursor:pointer;">
-             <label for="settingsSoundNotif" style="font-size:13px;cursor:pointer;">เสียงแจ้งเตือน</label>
+           <div class="settings-row">
+             <input type="checkbox" id="settingsSoundNotif">
+             <label for="settingsSoundNotif" class="settings-check-label">เสียงแจ้งเตือน</label>
            </div>
 
-           <div style="font-size:14px;font-weight:600;margin:16px 0 12px;border-top:1px solid var(--border);padding-top:16px;">🎨 การแสดงผล</div>
-           <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-             <input type="checkbox" id="settingsDarkMode" style="cursor:pointer;">
-             <label for="settingsDarkMode" style="font-size:13px;cursor:pointer;">โหมดมืด</label>
+           <div class="section-title section-divider">🎨 การแสดงผล</div>
+           <div class="settings-row">
+             <input type="checkbox" id="settingsDarkMode">
+             <label for="settingsDarkMode" class="settings-check-label">โหมดมืด</label>
            </div>
-           <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;display:flex;gap:8px;">
-             <button class="btn-approve" onclick="saveSettings()">💾 บันทึกตั้งค่า</button>
-             <button class="btn-cancel" onclick="renderSettingsView()">↺ รีเซ็ต</button>
+           <div class="section-divider settings-actions">
+             <button class="btn btn-filled" onclick="saveSettings()">💾 บันทึกตั้งค่า</button>
+             <button class="btn btn-outlined" onclick="renderSettingsView()">↺ รีเซ็ต</button>
            </div>
          </div>
        </div>
@@ -673,7 +637,7 @@
       <h3>➕ จองใหม่</h3>
       <button class="modal-close" onclick="closeNewBookingModal()">×</button>
     </div>
-    <div class="modal-body" id="newBookingModalBody" style="max-height:75vh;overflow-y:auto;">
+    <div class="modal-body" id="newBookingModalBody">
       <div style="margin-bottom:16px;">
         <div style="font-weight:700;font-size:15px;margin-bottom:12px;">📋 ข้อมูลผู้เข้าร่วมกิจกรรม</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -765,8 +729,8 @@
       </div>
 
       <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
-        <button class="btn-cancel" onclick="closeNewBookingModal()">ยกเลิก</button>
-        <button class="btn-approve" onclick="submitNewBooking()">💾 บันทึกการจอง</button>
+        <button class="btn btn-outlined" onclick="closeNewBookingModal()">ยกเลิก</button>
+        <button class="btn btn-filled" onclick="submitNewBooking()">💾 บันทึกการจอง</button>
       </div>
     </div>
   </div>
@@ -796,12 +760,12 @@
 
 <!-- Edit Modal -->
 <div class="modal-bg" id="editModalBg" onclick="closeEditModal(event)">
-  <div class="modal" style="max-width:650px;">
+  <div class="modal">
     <div class="modal-head">
       <h3>✏️ แก้ไขข้อมูล</h3>
       <button class="modal-close" onclick="closeEditModal()">×</button>
     </div>
-    <div class="modal-body" id="editModalBody" style="max-height:70vh;overflow-y:auto;"></div>
+    <div class="modal-body" id="editModalBody"></div>
   </div>
 </div>
 

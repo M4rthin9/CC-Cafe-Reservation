@@ -116,8 +116,6 @@ const PRINT_SHARED_CSS = `
 let allRows = [];
 let currentPage = 1;
 let pageSize = 10;
-let overviewPage = 1;
-const overviewPageSize = 10;
 let currentUser = null;
 let prisonerMaster = [];
 let _dashboardCache = { timestamp: 0, data: null };
@@ -746,15 +744,15 @@ function renderTable() {
 
     // Build compact action icons (always visible)
     const actions = [];
-    actions.push(`<button class="action-icon-btn" title="ดูสลิป" onclick="viewSlip(${rowIdx})">🧾</button>`);
-    actions.push(`<button class="action-icon-btn" title="รายละเอียด" onclick="viewDetail(${rowIdx})">📋</button>`);
-    if (isAdminOrSuper) actions.push(`<button class="action-icon-btn" title="แก้ไข" onclick="editBooking(${rowIdx})">✏️</button>`);
-    if (canConfirmPayment && s === 'รอชำระเงิน') actions.push(`<button class="action-icon-btn btn-approve-icon" title="ยืนยันชำระเงิน" onclick="confirmPayment(${rowIdx})">💳</button>`);
-    if (canConfirmPayment && s === 'ชำระแล้ว') actions.push(`<button class="action-icon-btn btn-approve-icon" title="เสร็จสิ้น" onclick="confirmPayment(${rowIdx})">✅</button>`);
-    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="action-icon-btn btn-approve-icon" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓</button>`);
-    if (canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="action-icon-btn btn-reject-icon" title="ปฏิเสธวินัย" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
-    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="action-icon-btn btn-approve-icon" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
-    if (canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="action-icon-btn btn-cancel-icon" title="ยกเลิก" onclick="cancelBooking(${rowIdx})">🚫</button>`);
+    actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ดูสลิป" onclick="viewSlip(${rowIdx})">🧾</button>`);
+    actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="รายละเอียด" onclick="viewDetail(${rowIdx})">📋</button>`);
+    if (isAdminOrSuper) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="แก้ไข" onclick="editBooking(${rowIdx})">✏️</button>`);
+    if (canConfirmPayment && s === 'รอชำระเงิน') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="ยืนยันชำระเงิน" onclick="confirmPayment(${rowIdx})">💳</button>`);
+    if (canConfirmPayment && s === 'ชำระแล้ว') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="เสร็จสิ้น" onclick="confirmPayment(${rowIdx})">✅</button>`);
+    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓</button>`);
+    if (canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-danger" title="ปฏิเสธวินัย" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
+    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
+    if (canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ยกเลิก" onclick="cancelBooking(${rowIdx})">🚫</button>`);
 
     const actionsHtml = actions.join('');
 
@@ -2176,11 +2174,11 @@ ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้�
          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
            <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:8px;">
              <span style="font-size:12px;color:var(--text2);">อนุมัติทั้งหมด:</span>
-             <button class="btn-approve" onclick="approveAllVisitorsInDetail(${idx})" style="font-size:12px;padding:6px 12px;">✓ อนุมัติทั้งหมดทันที</button>
+             <button class="btn btn-filled btn-sm" onclick="approveAllVisitorsInDetail(${idx})">✓ อนุมัติทั้งหมดทันที</button>
            </div>
            <div style="display:flex;gap:8px;justify-content:flex-end">
-             <button class="btn-approve" onclick="approveParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✓ อนุมัติผู้เข้าร่วม (หลังตรวจสอบแต่ละคน)</button>
-             <button class="btn-reject" onclick="rejectParticipantInDetail(${idx})" style="font-size:13px;padding:8px 16px;">✗ ปฏิเสธ</button>
+             <button class="btn btn-filled btn-sm" onclick="approveParticipantInDetail(${idx})">✓ อนุมัติผู้เข้าร่วม (หลังตรวจสอบแต่ละคน)</button>
+             <button class="btn btn-danger btn-sm" onclick="rejectParticipantInDetail(${idx})">✗ ปฏิเสธ</button>
            </div>
          </div>` : ''}
       </div>
@@ -2198,26 +2196,26 @@ ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้�
 
   let actionBtns = [];
   if (canApproveDisciplineDetail && normalizedDetail === 'รอตรวจสอบวินัย') {
-    actionBtns.push({ label: '✓ อนุมัติวินัย', cls: 'btn-approve', onclick: `updateStatus(${idx},'รอตรวจสอบผู้เข้าร่วม')` });
-    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn-reject', onclick: `updateStatus(${idx},'ไม่อนุมัติ')` });
+    actionBtns.push({ label: '✓ อนุมัติวินัย', cls: 'btn btn-filled btn-sm', onclick: `updateStatus(${idx},'รอตรวจสอบผู้เข้าร่วม')` });
+    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn btn-danger btn-sm', onclick: `updateStatus(${idx},'ไม่อนุมัติ')` });
   }
   if (canApproveParticipantDetail && normalizedDetail === 'รอตรวจสอบผู้เข้าร่วม') {
-    actionBtns.push({ label: '✓ อนุมัติผู้เข้าร่วม', cls: 'btn-approve', onclick: `approveParticipantInDetail(${idx})` });
-    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn-reject', onclick: `rejectParticipantInDetail(${idx})` });
+    actionBtns.push({ label: '✓ อนุมัติผู้เข้าร่วม', cls: 'btn btn-filled btn-sm', onclick: `approveParticipantInDetail(${idx})` });
+    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn btn-danger btn-sm', onclick: `rejectParticipantInDetail(${idx})` });
   }
   if (canConfirmPaymentDetail && normalizedDetail === 'รอชำระเงิน') {
-    actionBtns.push({ label: '💳 ยืนยันชำระเงิน', cls: 'btn-approve', onclick: `confirmPayment(${idx})` });
+    actionBtns.push({ label: '💳 ยืนยันชำระเงิน', cls: 'btn btn-filled btn-sm', onclick: `confirmPayment(${idx})` });
   }
   if (canConfirmPaymentDetail && normalizedDetail === 'ชำระแล้ว') {
-    actionBtns.push({ label: '✅ เสร็จสิ้น', cls: 'btn-approve', onclick: `confirmPayment(${idx})` });
+    actionBtns.push({ label: '✅ เสร็จสิ้น', cls: 'btn btn-filled btn-sm', onclick: `confirmPayment(${idx})` });
   }
   if (canCancelDetail && !isCancelledDetail && normalizedDetail !== 'เสร็จสิ้น') {
-    actionBtns.push({ label: '🚫 ยกเลิก', cls: 'btn-reject', onclick: `cancelBooking(${idx})` });
+    actionBtns.push({ label: '🚫 ยกเลิก', cls: 'btn btn-danger btn-sm', onclick: `cancelBooking(${idx})` });
   }
 
   if (actionBtns.length > 0) {
     const actionBtnsHtml = actionBtns.map(b =>
-      `<button class="${b.cls}" onclick="${b.onclick}" style="font-size:13px;padding:8px 16px;white-space:nowrap;">${b.label}</button>`
+      `<button class="${b.cls}" onclick="${b.onclick}">${b.label}</button>`
     ).join('');
     const modalBody = document.getElementById('detailModalBody');
     if (modalBody) {
@@ -3332,8 +3330,8 @@ function renderAddUserTable(users) {
       <td>${escapeHtml(u.role)}</td>
       <td>${escapeHtml(u.displayName || '-')}</td>
       <td>
-        <button class="btn-refresh" onclick="editUser('${u.username}')">แก้ไข</button>
-        <button class="btn-refresh" onclick="deleteUser('${u.username}')">ลบ</button>
+        <button class="btn btn-outlined btn-sm" onclick="editUser('${u.username}')">แก้ไข</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')">ลบ</button>
       </td>
     </tr>`;
   }).join('');
@@ -3579,8 +3577,8 @@ async function editUser(username) {
         </div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
-        <button class="btn-approve" onclick="saveEditUser('${escHtml(user.username)}')">💾 บันทึก</button>
+        <button class="btn btn-outlined" onclick="closeEditModal()">ยกเลิก</button>
+        <button class="btn btn-filled" onclick="saveEditUser('${escHtml(user.username)}')">💾 บันทึก</button>
       </div>
     `;
     document.getElementById('editModalBg').classList.add('show');
@@ -4526,157 +4524,6 @@ function renderFloorPlan() {
   }).join('');
 }
 
-// ===== OVERVIEW TABLE (Embedded in Home) =====
-function buildOverviewDateFilter() {
-  const sel = document.getElementById('overviewFilterDate');
-  if (!sel) return;
-  const dates = [...new Set(allRows
-    .filter(r => r.ref && String(r.ref).trim() !== '')
-    .map(r => r.visitDate || r.visitDateISO)
-    .filter(Boolean)
-  )].sort();
-  sel.innerHTML = '<option value="">📅 ทุกวัน</option>' +
-    dates.map(d => '<option value="' + d + '">' + d + '</option>').join('');
-}
-
-function renderOverviewTable() {
-  const tbody = document.getElementById('overviewTableBody');
-  if (!tbody) return;
-  const countEl = document.getElementById('overviewTableCount');
-
-  const q = (document.getElementById('overviewSearch')?.value || '').toLowerCase();
-  const fs = document.getElementById('overviewFilterStatus')?.value || '';
-  const fd = document.getElementById('overviewFilterDate')?.value || '';
-  const role = currentUser ? currentUser.role : null;
-
-  const allowedStatuses = {
-    Superadmin: null,
-    Admin: null,
-    Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
-    Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
-    Vinai: ['รอตรวจสอบวินัย', 'รอตรวจสอบ']
-  };
-
-  let rows = allRows.filter(r => {
-    if (!r.ref || String(r.ref).trim() === '') return false;
-    if (allowedStatuses[role]) {
-      const normalized = normalizeStatus(r.status);
-      if (!allowedStatuses[role].includes(normalized)) return false;
-    }
-    if (fs && normalizeStatus(r.status) !== fs) return false;
-    if (fd && (r.visitDate || r.visitDateISO) !== fd) return false;
-    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
-    return true;
-  });
-
-  if (countEl) countEl.textContent = rows.length + ' รายการ';
-
-  const totalPages = Math.ceil(rows.length / overviewPageSize) || 1;
-  if (overviewPage > totalPages) overviewPage = totalPages;
-  if (overviewPage < 1) overviewPage = 1;
-
-  const startIdx = (overviewPage - 1) * overviewPageSize;
-  const pageRows = rows.slice(startIdx, startIdx + overviewPageSize);
-
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">ไม่พบข้อมูล</td></tr>';
-    renderOverviewPagination(0, 0);
-    return;
-  }
-
-  const role2 = currentUser ? currentUser.role : 'User';
-  const isAdminOrSuper = role2 === 'Superadmin' || role2 === 'Admin';
-  const canApproveDiscipline = isAdminOrSuper || hasPermission('approve_discipline');
-  const canRejectDiscipline = isAdminOrSuper || hasPermission('reject_discipline');
-  const canApproveParticipant = isAdminOrSuper || hasPermission('approve_participant');
-  const canConfirmPayment = (role2 === 'Superadmin' || role2 === 'Admin' || hasPermission('confirm_payment'));
-  const canCancel = isAdminOrSuper || hasPermission('cancel');
-
-  tbody.innerHTML = pageRows.map(r => {
-    const s = normalizeStatus(r.status);
-    const badgeClass = {
-      'รอตรวจสอบวินัย': 'badge-discipline-check',
-      'รอตรวจสอบผู้เข้าร่วม': 'badge-participant-check',
-      'รอชำระเงิน': 'badge-payment-pending',
-      'ชำระแล้ว': 'badge-paid',
-      'เสร็จสิ้น': 'badge-completed',
-      'ไม่อนุมัติ': 'badge-rejected',
-      'ยกเลิก': 'badge-cancelled'
-    }[s] || 'badge-discipline-check';
-
-    const rowIdx = allRows.indexOf(r);
-    const isCancelled = s === 'ยกเลิก';
-    const isDone = s === 'เสร็จสิ้น';
-
-    const actions = [];
-    actions.push('<button class="action-icon-btn" title="ดูสลิป" onclick="viewSlip(' + rowIdx + ')">🧾</button>');
-    actions.push('<button class="action-icon-btn" title="รายละเอียด" onclick="viewDetail(' + rowIdx + ')">📋</button>');
-    if (isAdminOrSuper) actions.push('<button class="action-icon-btn" title="แก้ไข" onclick="editBooking(' + rowIdx + ')">✏️</button>');
-    if (canConfirmPayment && s === 'รอชำระเงิน') actions.push('<button class="action-icon-btn btn-approve-icon" title="ยืนยันชำระเงิน" onclick="confirmPayment(' + rowIdx + ')">💳</button>');
-    if (canConfirmPayment && s === 'ชำระแล้ว') actions.push('<button class="action-icon-btn btn-approve-icon" title="เสร็จสิ้น" onclick="confirmPayment(' + rowIdx + ')">✅</button>');
-    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push('<button class="action-icon-btn btn-approve-icon" title="อนุมัติวินัย" onclick="updateStatus(' + rowIdx + ',\'รอตรวจสอบผู้เข้าร่วม\')">✓</button>');
-    if (canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push('<button class="action-icon-btn btn-reject-icon" title="ปฏิเสธวินัย" onclick="updateStatus(' + rowIdx + ',\'ไม่อนุมัติ\')">✗</button>');
-    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push('<button class="action-icon-btn btn-approve-icon" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(' + rowIdx + ',\'รอชำระเงิน\')">✓</button>');
-    if (canCancel && !isCancelled && !isDone) actions.push('<button class="action-icon-btn btn-cancel-icon" title="ยกเลิก" onclick="cancelBooking(' + rowIdx + ')">🚫</button>');
-
-    return '<tr>' +
-      '<td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:13px;cursor:pointer;text-decoration:underline" onclick="viewDetail(' + rowIdx + ')">' + escHtml(r.ref) + '</b></td>' +
-      '<td data-label="ผู้ต้องขัง/คู่เยี่ยม" style="white-space:normal">' +
-        '<div style="font-weight:700;font-size:14px;color:var(--blue)">' + escHtml(r.prisonerName || '—') + '</div>' +
-        '<div style="font-size:11px;color:var(--text2)">#' + escHtml(r.prisonerId || '') + '</div>' +
-        '<div style="border-top:1px dashed var(--border);padding-top:3px;margin-top:3px">' +
-          '<span style="font-size:13px;font-weight:600">' + escHtml(r.visitorName || '') + '</span>' +
-          '<span style="font-size:11px;color:var(--text2);margin-left:3px">' + escHtml(r.visitorPhone || '') + '</span>' +
-        '</div>' +
-      '</td>' +
-      '<td data-label="แดน" style="font-size:14px;font-weight:600">' + escHtml(r.wing || '—') + '</td>' +
-      '<td data-label="ยอด" style="font-size:13px">' + (r.total || 0).toLocaleString() + ' บ.</td>' +
-      '<td data-label="สถานะ" style="white-space:nowrap"><span class="badge ' + badgeClass + '" style="font-size:12px">' + escHtml(s) + '</span></td>' +
-      '<td data-label="วันที่" style="font-size:12px">' + escHtml(r.visitDate || '') + '</td>' +
-      '<td data-label="จัดการ"><div class="action-btns" style="flex-wrap:nowrap">' + actions.join('') + '</div></td>' +
-    '</tr>';
-  }).join('');
-
-  renderOverviewPagination(totalPages, rows.length);
-}
-
-function renderOverviewPagination(totalPages, totalFiltered) {
-  const container = document.getElementById('overviewPagination');
-  if (!container) return;
-  if (totalPages <= 1) { container.innerHTML = ''; return; }
-
-  const maxButtons = 5;
-  let startP = Math.max(1, overviewPage - Math.floor(maxButtons / 2));
-  let endP = Math.min(totalPages, startP + maxButtons - 1);
-  if (endP - startP + 1 < maxButtons) startP = Math.max(1, endP - maxButtons + 1);
-
-  let html = '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center">';
-  html += '<button class="page-btn" onclick="changeOverviewPage(' + (overviewPage - 1) + ')"' + (overviewPage === 1 ? ' disabled' : '') + '>←</button>';
-
-  if (startP > 1) {
-    html += '<button class="page-btn" onclick="changeOverviewPage(1)">1</button>';
-    if (startP > 2) html += '<span style="color:#94a3b8">…</span>';
-  }
-  for (let p = startP; p <= endP; p++) {
-    html += '<button class="page-btn' + (p === overviewPage ? ' active' : '') + '" onclick="changeOverviewPage(' + p + ')">' + p + '</button>';
-  }
-  if (endP < totalPages) {
-    if (endP < totalPages - 1) html += '<span style="color:#94a3b8">…</span>';
-    html += '<button class="page-btn" onclick="changeOverviewPage(' + totalPages + ')">' + totalPages + '</button>';
-  }
-
-  html += '<button class="page-btn" onclick="changeOverviewPage(' + (overviewPage + 1) + ')"' + (overviewPage === totalPages ? ' disabled' : '') + '>→</button>';
-  html += '<span style="font-size:12px;color:var(--text2);margin-left:8px">' + totalFiltered +  ' รายการ</span>';
-  html += '</div>';
-  container.innerHTML = html;
-}
-
-function changeOverviewPage(p) {
-  if (p < 1) return;
-  overviewPage = p;
-  renderOverviewTable();
-}
-
 // ===== OVERRIDE renderDashboardHome to include new components =====
 function renderDashboardHomeV2() {
   const role = currentUser && currentUser.role;
@@ -4686,8 +4533,7 @@ function renderDashboardHomeV2() {
   if (homeView && homeView.style.display === 'none') return;
 
   const showFull = (el) => { if (el) el.style.display = isFullAccess ? '' : 'none'; };
-  showFull(document.querySelector('.finance-summary-clean'));
-  showFull(document.querySelector('.quick-stats-row'));
+  showFull(document.querySelector('.metrics-strip'));
   showFull(document.querySelector('.dash-grid'));
   showFull(document.querySelector('.floor-plan-card'));
 
@@ -4708,13 +4554,8 @@ function renderDashboardHomeV2() {
       if (chartEl) d3.select(chartEl).selectAll('*').remove();
     }
     updateDashboardActionCards();
-    const tbody = document.getElementById('overviewTableBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">ไม่พบข้อมูล</td></tr>';
     return;
   }
-
-  buildOverviewDateFilter();
-  renderOverviewTable();
 
   const lastUpdatedEl = document.getElementById('overviewLastUpdated');
   if (lastUpdatedEl) {
@@ -5072,7 +4913,7 @@ function editBooking(idx) {
       <div class="edit-extra-row" data-ei="${i}" style="border-top:1px dashed var(--border);padding:10px 0;margin-top:4px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <span style="font-size:12px;font-weight:600;color:var(--blue);">👤 ผู้เข้าร่วมเพิ่มเติม #${i + 1}</span>
-          <button class="btn-cancel" onclick="removeEditExtra(this)" style="padding:3px 10px;font-size:11px;">✕ ลบ</button>
+          <button class="btn btn-icon btn-sm btn-outlined" onclick="removeEditExtra(this)">✕</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล</label>
@@ -5173,12 +5014,12 @@ function editBooking(idx) {
     <div style="margin-bottom:16px;" id="editExtraSection">
       <div style="font-weight:700;font-size:15px;margin-bottom:8px;">👥 ผู้เข้าร่วมเพิ่มเติม</div>
       <div id="editExtraList">${extraHtml}</div>
-      <button class="btn-approve" onclick="addEditExtra()" style="margin-top:8px;padding:6px 14px;font-size:12px;">➕ เพิ่มผู้เข้าร่วม</button>
+      <button class="btn btn-filled btn-sm" onclick="addEditExtra()" style="margin-top:8px;">➕ เพิ่มผู้เข้าร่วม</button>
     </div>
 
     <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
-      <button class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
-      <button class="btn-approve" onclick="saveBookingEdit(${idx})">💾 บันทึกการแก้ไข</button>
+      <button class="btn btn-outlined" onclick="closeEditModal()">ยกเลิก</button>
+      <button class="btn btn-filled" onclick="saveBookingEdit(${idx})">💾 บันทึกการแก้ไข</button>
     </div>
   `;
   document.getElementById('editModalBg').classList.add('show');
@@ -5219,7 +5060,7 @@ function addEditExtra() {
   div.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <span style="font-size:12px;font-weight:600;color:var(--green);">➕ ผู้เข้าร่วมเพิ่มเติม (ใหม่)</span>
-      <button class="btn-cancel" onclick="removeEditExtra(this)" style="padding:3px 10px;font-size:11px;">✕ ลบ</button>
+      <button class="btn btn-icon btn-sm btn-outlined" onclick="removeEditExtra(this)">✕</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">ชื่อ-นามสกุล</label>

@@ -678,25 +678,87 @@ And update the description paragraph after it to mention:
 
 ---
 
-## Implementation Checklist
+## Progress: Phase 8 — Material Design 3 Token System & Button Standardization
 
-| # | Task | File | Status |
-|---|------|------|--------|
-| 1 | Replace Primary KPIs with Action Required section | admin.html | ☐ |
-| 2 | Replace Secondary Metrics with Quick Stats | admin.html | ☐ |
-| 3 | Replace Finance Ribbon with Clean Summary | admin.html | ☐ |
-| 4 | Remove display:none from status filter | admin.html | ☐ |
-| 5 | Simplify Reservations controls layout | admin.html | ☐ |
-| 6 | Add Action Required CSS | admin.css | ☐ |
-| 7 | Add Quick Stats CSS | admin.css | ☐ |
-| 8 | Add Finance Summary CSS | admin.css | ☐ |
-| 9 | Add responsive styles | admin.css | ☐ |
-| 10 | Add filterByStatus function | admin.js | ☐ |
-| 11 | Update renderDashboard for new elements | admin.js | ☐ |
-| 12 | Add Quick Reference section | guide.html | ☐ |
-| 13 | Add Quick Reference CSS | guide.html | ☐ |
-| 14 | Update TOC in guide | guide.html | ☐ |
-| 15 | Update Settings section | guide.html | ☐ |
+### P0 — CSS Custom Properties → MD3 Tokens (DONE)
+- Added full MD3 token set to `:root`: `--md-primary`, `--md-on-primary`, `--md-primary-container`, `--md-on-primary-container`, `--md-secondary`, `--md-tertiary`, `--md-error`, `--md-background`, `--md-surface`, `--md-outline`, `--md-shape-*`, `--md-elevation-*`, `--md-disabled`
+- All 33 legacy variable names kept as `var(--md-*)` aliases (backward compat)
+- Dark mode `body.dark-mode` now sources from MD3 tokens instead of legacy vars
+
+### P1a — MD3 Button System CSS (DONE)
+- Added `.btn` base class (inline-flex, gap, font-weight 600, rounded corners)
+- 5 variants: `.btn-filled`, `.btn-tonal`, `.btn-outlined`, `.btn-text`, `.btn-danger`
+- Icon button: `.btn-icon` with `.btn-filled`/`.btn-danger`/`.btn-outlined` sub-variants
+- Size: `.btn-sm` (compact), `.btn-block` (full-width)
+- All with `:hover`, `:active`, `:disabled`, `:focus-visible` states
+
+### P1b — admin.html Button Migration (DONE)
+All static buttons in admin.html migrated from old classes to MD3 system.
+Buttons with inline `background:` colors had those removed (colors now come from MD3 variant classes).
+| Old Class | New Class(es) |
+|-----------|---------------|
+| `.login-btn` | kept (unique gradient) |
+| `(logout, no class)` | `.btn.btn-outlined.btn-sm` |
+| `.action-btn` (×4) | `.btn.btn-tonal.btn-sm` |
+| `.date-qnav-btn` (×4) | `.btn.btn-outlined.btn-sm` |
+| `.refresh-btn` (search) | `.btn.btn-outlined.btn-sm` |
+| `.btn-approve` (new booking) | `.btn.btn-filled.btn-sm` |
+| `.btn-export` (×3) | `.btn.btn-tonal.btn-sm` |
+| `.btn-print` | `.btn.btn-filled.btn-sm` |
+| `.refresh-btn` (sync wings) | `.btn.btn-filled.btn-sm` |
+| `.refresh-btn` (reports) | `.btn.btn-outlined.btn-sm` |
+| `.btn-approve` (create user) | `.btn.btn-filled.btn-sm.btn-block` |
+| `.btn-approve` (prisoner CSV) | `.btn.btn-filled.btn-sm` |
+| `.btn-approve` (test conn) | `.btn.btn-filled.btn-sm` |
+| `.btn-primary` | `.btn.btn-filled` |
+| `.btn-cancel` (×4) | `.btn.btn-outlined` or `.btn-outlined.btn-sm` |
+| `.btn-secondary` | `.btn.btn-tonal.btn-sm` |
+| `.btn-approve` (settings) | `.btn.btn-filled` |
+| (bulk bar, no classes) | `.btn.btn-tonal/.btn-danger/.btn-text` |
+
+### P1c — admin.js Button Template Migration (DONE)
+All dynamic button classes in admin.js migrated:
+| Template Location | Old Class | New Class |
+|---|---|---|
+| Row action icons (view slip, detail, edit) | `.action-icon-btn` | `.btn.btn-icon.btn-sm.btn-outlined` |
+| Confirm payment, complete, approve | `.action-icon-btn.btn-approve-icon` | `.btn.btn-icon.btn-sm.btn-filled` |
+| Reject discipline | `.action-icon-btn.btn-reject-icon` | `.btn.btn-icon.btn-sm.btn-danger` |
+| Cancel booking | `.action-icon-btn.btn-cancel-icon` | `.btn.btn-icon.btn-sm.btn-outlined` |
+| Detail modal action buttons (9 places) | `.btn-approve` / `.btn-reject` | `.btn.btn-filled.btn-sm` / `.btn.btn-danger.btn-sm` |
+| User management edit/delete | `.btn-refresh` | `.btn.btn-outlined.btn-sm` / `.btn.btn-danger.btn-sm` |
+| Edit user/cancel modal | `.btn-approve` / `.btn-cancel` | `.btn.btn-filled` / `.btn.btn-outlined` |
+| Edit booking actions | `.btn-approve` / `.btn-cancel` | `.btn.btn-filled` / `.btn.btn-outlined` |
+| Remove extra visitor (×2) | `.btn-cancel` | `.btn.btn-icon.btn-sm.btn-outlined` |
+| Inline styles removed from all migrated JS template buttons | `style="font-size:...;padding:...;"` | removed (handled by MD3 classes) |
+
+### P1d — Old Button CSS Removal (DONE)
+Removed these obsolete sections from admin.css:
+Removed these obsolete sections from admin.css:
+- Global button transitions/combinator list (36 lines)
+- `.btn-approve` through `.btn-print-vinai` individual classes (28 lines)
+- `.action-icon-btn` and `.btn-*-icon` variants (45 lines)
+- Touch-friendly mobile overrides for old button classes (replaced with `.btn`/`.btn-sm` equivalent)
+- `.detail-action-btn` section (dead CSS, 22 lines)
+
+### P2a — Metrics Strip (DONE)
+Replaced `.finance-summary-clean` (4 finance items in horizontal flex) and `.quick-stats-row` (4 booking count items in grid) with a single unified `.metrics-strip`:
+- 8 `.ms-item` cards in a responsive 4-column grid (2-col @ ≤768px, 1-col @ ≤480px)
+- Finance items (icons: `--md-primary-container` bg) + booking items (icons: `--md-tertiary-container` bg) visually grouped by icon tint
+- Values use `--md-on-surface`, `paid` → `--md-primary`, `unpaid` → `--md-error`
+- All element IDs preserved (`financeTotalBooked`, `statToday`, etc.) — zero JS changes needed beyond one selector update
+- Removed ~70 lines of old CSS (`.quick-stats-row`, `.quick-stat`, `.qs-*`, `.finance-summary-clean`, `.fs-*`, `.fs-divider`, responsive variants)
+- Added ~35 lines of new CSS (`.metrics-strip`, `.ms-item`, `.ms-icon`, `.ms-value`, `.ms-label` with MD3 tokens)
+
+### Next Steps (ordered by priority)
+
+| Priority | Task | Target |
+|----------|------|--------|
+| P1e | Remove inline styles from admin.html → CSS classes | admin.html + admin.css |
+| P2b | Reservations toolbar: collapse 3 control rows into 1 unified toolbar | admin.html |
+| P2c | Card consistency: all dash-card use same shape/elevation/padding | admin.css |
+| P3a | Modal/dialog standardization (MD3 surface colors, consistent buttons) | admin.css |
+| P3b | Sidebar polish (MD3 nav rail pattern) | admin.css |
+| P3c | Color hardcode cleanup (replace hex values with MD3 vars) | admin.css + admin.html |
 
 ---
 
@@ -705,9 +767,10 @@ And update the description paragraph after it to mention:
 - All element IDs are preserved to maintain compatibility with existing JavaScript
 - The `statTotal` ID is reused in Quick Stats (previously in Primary KPIs)
 - The `statWait`, `statOk`, `statReject` IDs are removed as they're replaced by Action Required cards
-- Mobile responsive styles ensure the new layout works on all devices
-- The guide's Quick Reference section provides a fast lookup for common tasks
+- Old CSS classes are KEPT in admin.css until admin.js template strings are migrated
+- `button` element base styles in old CSS still apply to all `<button>` elements (transition, font-weight, cursor, etc.)
+- `color-mix()` is used in MD3 button hover states — check browser compatibility
 
 ---
 
-*Plan created: June 26, 2569 (2026)*
+*Plan updated: July 8, 2569 (2026)*
