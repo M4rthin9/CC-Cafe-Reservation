@@ -238,8 +238,65 @@
                </div>
              </div>
            </div>
-           <div id="floorPlanGrid" class="floor-plan-grid"></div>
-         </div>
+            <div id="floorPlanGrid" class="floor-plan-grid"></div>
+          </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- REVENUE PROGRESS BAR (Full Width)               -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-card chart-full">
+          <div class="dash-card-h">
+            <span>📈 ความคืบหน้ารายได้</span>
+            <span class="overview-meta" id="progressMeta" style="font-size:13px;"></span>
+          </div>
+          <div id="revenueProgressBar" style="width:100%;padding:12px 0 4px;" aria-label="แถบความคืบหน้ารายได้"></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PIPELINE WATERFALL CHART (Full Width)           -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-card chart-full">
+          <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🔽 ช่องทางรายได้ (Waterfall)</span>
+            <button class="btn btn-text btn-sm" onclick="exportChart('pipelineWaterfallChart','Pipeline')" title="ดาวน์โหลด PNG">📥</button>
+          </div>
+          <div id="pipelineWaterfallChart" style="width:100%;height:260px;margin-top:8px;" aria-label="กราฟช่องทางรายได้"></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- 14-DAY REVENUE + ZONE PERFORMANCE               -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>📊 รายได้ 14 วัน</span>
+              <button class="btn btn-text btn-sm" onclick="exportChart('dailyRevenueChart','รายได้14วัน')" title="ดาวน์โหลด PNG">📥</button>
+            </div>
+            <div id="dailyRevenueChart" style="width:100%;height:260px;margin-top:8px;" aria-label="กราฟรายได้ 14 วัน"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>🏢 ผลงานตามแดน</span>
+              <label class="zone-toggle" id="zoneToggleLabel">
+                <span class="zone-toggle-text" id="zoneToggleText">จำนวนการจอง</span>
+                <input type="checkbox" id="zoneToggle" onchange="onZoneToggleChange()">
+                <span class="zone-toggle-slider"></span>
+              </label>
+            </div>
+            <div id="zonePerformanceChart" style="width:100%;height:260px;margin-top:8px;" aria-label="กราฟผลงานตามแดน"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- GROWTH LINE CHART (Full Width)                  -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="dash-card chart-full">
+          <div class="dash-card-h" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>📈 เติบโตรายได้ สัปดาห์ต่อสัปดาห์</span>
+            <button class="btn btn-text btn-sm" onclick="exportChart('growthLineChart','เติบโตรายได้')" title="ดาวน์โหลด PNG">📥</button>
+          </div>
+          <div id="growthLineChart" style="width:100%;height:280px;margin-top:8px;" aria-label="กราฟเติบโตรายได้รายสัปดาห์"></div>
+        </div>
 
       </div>
 

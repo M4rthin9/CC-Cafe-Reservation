@@ -4699,6 +4699,350 @@ renderReportsView = function() {
   drawVisitorTypeChart();
 }
 
+// ===== REVENUE DASHBOARD — DATA HELPERS =====
+
+function computeRevenueProgress(rows) {
+  const stats = computeFinanceStats(rows);
+  const { totalBooked, paid, unpaid, bookingCount } = stats;
+  const t = totalBooked || 1;
+  const paidPct = paid / t * 100;
+  const unpaidPct = unpaid / t * 100;
+  const otherPct = 100 - paidPct - unpaidPct;
+  return { totalBooked, paid, unpaid, paidPct, unpaidPct, otherPct, bookingCount };
+}
+
+function computePipelineWaterfall(rows) {
+  let totalExpected = 0, inReview = 0, waitingPayment = 0, paidAmount = 0;
+  (rows || []).forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
+    const amt = parseInt(r.total, 10) || 0;
+    totalExpected += amt;
+    if (s === 'รอตรวจสอบวินัย' || s === 'รอตรวจสอบผู้เข้าร่วม' || s === 'รอตรวจสอบ') inReview += amt;
+    else if (s === 'รอชำระเงิน') waitingPayment += amt;
+    else if (s === 'ชำระแล้ว' || s === 'เสร็จสิ้น') paidAmount += amt;
+  });
+  return { totalExpected, inReview, waitingPayment, paidAmount };
+}
+
+function computeDailyRevenue14(rows) {
+  const days = [];
+  const today = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    days.push({ key, label: d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' }), paid: 0, unpaid: 0 });
+  }
+  (rows || []).forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
+    const rowKey = getRowVisitDateKey(r);
+    if (!rowKey) return;
+    const day = days.find(d => d.key === rowKey);
+    if (!day) return;
+    const amt = parseInt(r.total, 10) || 0;
+    if (s === 'ชำระแล้ว' || s === 'เสร็จสิ้น') day.paid += amt;
+    else day.unpaid += amt;
+  });
+  return days;
+}
+
+function computeZoneData(rows) {
+  const zones = {};
+  (rows || []).forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
+    const wing = r.wing || 'ไม่ระบุ';
+    if (!zones[wing]) zones[wing] = { bookings: 0, revenue: 0 };
+    zones[wing].bookings++;
+    zones[wing].revenue += parseInt(r.total, 10) || 0;
+  });
+  const sorted = Object.entries(zones)
+    .map(([zone, data]) => ({ zone, bookings: data.bookings, revenue: data.revenue }))
+    .sort((a, b) => b.revenue - a.revenue);
+  return sorted;
+}
+
+function computeWeeklyRevenue(rows) {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset);
+
+  const days = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+  const currentWeek = days.map(() => 0);
+  const previousWeek = days.map(() => 0);
+
+  (rows || []).forEach(r => {
+    if (!r.ref || String(r.ref).trim() === '') return;
+    const s = normalizeStatus(r.status);
+    if (s === 'ยกเลิก' || s === 'ไม่อนุมัติ') return;
+    const rowKey = getRowVisitDateKey(r);
+    if (!rowKey) return;
+    const rowDate = new Date(rowKey + 'T12:00:00');
+    const diffDays = Math.round((rowDate - monday) / 86400000);
+    const amt = parseInt(r.total, 10) || 0;
+
+    if (diffDays >= 0 && diffDays <= 6) {
+      currentWeek[diffDays] += amt;
+    } else if (diffDays >= -7 && diffDays <= -1) {
+      previousWeek[diffDays + 7] += amt;
+    }
+  });
+
+  return { days, currentWeek, previousWeek };
+}
+
+// ===== REVENUE DASHBOARD — CHART RENDERERS =====
+
+function drawRevenueProgressBar() {
+  const container = document.getElementById('revenueProgressBar');
+  if (!container) return;
+  const data = computeRevenueProgress(allRows);
+  const isDark = document.documentElement.classList.contains('dark');
+  const bg = isDark ? '#1e293b' : '#e2e8f0';
+  const textColor = isDark ? '#cbd5e1' : '#475569';
+
+  container.innerHTML = `
+    <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;color:${textColor};font-weight:500;">ยอดคาดการณ์รวม</span>
+      <span style="font-size:20px;font-weight:700;color:${textColor};">${formatChartBahtShort(data.totalBooked)}</span>
+    </div>
+    <div style="position:relative;height:36px;background:${bg};border-radius:8px;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;height:100%;width:${Math.max(data.paidPct, 0.5)}%;background:linear-gradient(90deg,#059669,#22c55e);border-radius:8px 0 0 8px;transition:width .6s ease;" title="ชำระแล้ว ${formatBaht(data.paid)}"></div>
+      <div style="position:absolute;top:0;left:${Math.max(data.paidPct, 0.5)}%;height:100%;width:${Math.max(data.unpaidPct, 0.5)}%;background:#f59e0b;border-radius:0;transition:width .6s ease;" title="ค้างชำระ ${formatBaht(data.unpaid)}"></div>
+    </div>
+    <div style="margin-top:8px;display:flex;justify-content:space-between;font-size:12px;">
+      <span style="color:#22c55e;font-weight:600;">✅ ชำระแล้ว ${formatBaht(data.paid)} (${data.paidPct.toFixed(1)}%)</span>
+      <span style="color:#f59e0b;font-weight:600;">⏳ ค้างชำระ ${formatBaht(data.unpaid)} (${data.unpaidPct.toFixed(1)}%)</span>
+      <span style="color:${textColor};">📦 ${data.bookingCount} รายการ</span>
+    </div>`;
+
+  const metaEl = document.getElementById('progressMeta');
+  if (metaEl) metaEl.textContent = data.bookingCount + ' รายการ · ' + (data.paidPct + data.unpaidPct).toFixed(0) + '%';
+}
+
+function drawPipelineWaterfall() {
+  const container = document.getElementById('pipelineWaterfallChart');
+  if (!container) return;
+  if (container._apexChart) { container._apexChart.destroy(); }
+  const data = computePipelineWaterfall(allRows);
+  const isDark = document.documentElement.classList.contains('dark');
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+  const labels = ['ยอดคาดการณ์', 'รอตรวจสอบ', 'รอชำระเงิน', 'ชำระแล้ว'];
+  const values = [data.totalExpected, data.inReview, data.waitingPayment, data.paidAmount];
+  const barColors = ['#3b82f6', '#6b7280', '#f59e0b', '#22c55e'];
+
+  const options = {
+    chart: { type: 'bar', height: 260, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false } },
+    series: [{ name: 'จำนวน', data: values }],
+    colors: barColors,
+    xaxis: {
+      categories: labels,
+      labels: { style: { colors: textColor, fontSize: '12px' } }
+    },
+    yaxis: {
+      labels: { formatter: (v) => formatChartBahtShort(v), style: { colors: textColor } },
+      axisBorder: { show: true, color: isDark ? '#334155' : '#e2e8f0' },
+      axisTicks: { show: false }
+    },
+    grid: { show: false },
+    dataLabels: {
+      enabled: true,
+      formatter: (v) => formatChartBahtShort(v),
+      style: { fontSize: '12px', fontWeight: 600, colors: ['#fff'] },
+      offsetY: -4
+    },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      y: { formatter: (v) => formatBaht(v) }
+    },
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        borderRadius: 4,
+        barHeight: '50%',
+        distributed: true,
+        dataLabels: { position: 'top' }
+      }
+    },
+    legend: { show: false }
+  };
+
+  const chart = new ApexCharts(container, options);
+  chart.render();
+  container._apexChart = chart;
+}
+
+function drawDailyRevenueStacked() {
+  const container = document.getElementById('dailyRevenueChart');
+  if (!container) return;
+  if (container._apexChart) { container._apexChart.destroy(); }
+  const days = computeDailyRevenue14(allRows);
+  const isDark = document.documentElement.classList.contains('dark');
+
+  const options = {
+    chart: { type: 'bar', height: 260, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false }, stacked: true, stackType: 'normal' },
+    series: [
+      { name: 'ชำระแล้ว', data: days.map(d => d.paid), color: '#22c55e' },
+      { name: 'ค้างชำระ', data: days.map(d => d.unpaid), color: '#f59e0b' }
+    ],
+    xaxis: {
+      categories: days.map(d => d.label),
+      labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px' } }
+    },
+    yaxis: {
+      labels: { formatter: (v) => formatChartBahtShort(v), style: { colors: isDark ? '#94a3b8' : '#64748b' } },
+      axisBorder: { show: true, color: isDark ? '#334155' : '#e2e8f0' },
+      axisTicks: { show: false }
+    },
+    grid: { show: false },
+    dataLabels: { enabled: false },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      y: { formatter: (v) => formatBaht(v) }
+    },
+    plotOptions: {
+      bar: { columnWidth: '65%', borderRadius: 3, dataLabels: { position: 'top' } }
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'right',
+      labels: { colors: isDark ? '#cbd5e1' : '#475569' },
+      markers: { width: 10, height: 10, radius: 2 }
+    }
+  };
+
+  const chart = new ApexCharts(container, options);
+  chart.render();
+  container._apexChart = chart;
+}
+
+function drawZonePerformanceChart() {
+  const container = document.getElementById('zonePerformanceChart');
+  if (!container) return;
+  if (container._apexChart) { container._apexChart.destroy(); }
+  const zones = computeZoneData(allRows);
+  const isDark = document.documentElement.classList.contains('dark');
+  const toggle = document.getElementById('zoneToggle');
+  const useRevenue = toggle && toggle.checked;
+  const zoneNames = zones.map(z => z.zone);
+  const values = zones.map(z => useRevenue ? z.revenue : z.bookings);
+
+  const options = {
+    chart: { type: 'bar', height: 260, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false } },
+    series: [{ name: useRevenue ? 'รายได้' : 'จำนวนการจอง', data: values }],
+    colors: ['#3b82f6'],
+    xaxis: {
+      categories: zoneNames,
+      labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '12px' } }
+    },
+    yaxis: {
+      labels: {
+        formatter: (v) => useRevenue ? formatChartBahtShort(v) : String(v),
+        style: { colors: isDark ? '#94a3b8' : '#64748b' }
+      },
+      axisBorder: { show: true, color: isDark ? '#334155' : '#e2e8f0' },
+      axisTicks: { show: false }
+    },
+    grid: { show: false },
+    dataLabels: {
+      enabled: true,
+      formatter: (v) => useRevenue ? formatChartBahtShort(v) : String(v),
+      style: { fontSize: '11px', fontWeight: 600, colors: ['#fff'] },
+      offsetY: -4
+    },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      y: { formatter: (v) => useRevenue ? formatBaht(v) : v + ' รายการ' }
+    },
+    plotOptions: {
+      bar: { horizontal: true, borderRadius: 4, barHeight: '55%', dataLabels: { position: 'top' } }
+    },
+    legend: { show: false }
+  };
+
+  const chart = new ApexCharts(container, options);
+  chart.render();
+  container._apexChart = chart;
+}
+
+function drawGrowthLineChart() {
+  const container = document.getElementById('growthLineChart');
+  if (!container) return;
+  if (container._apexChart) { container._apexChart.destroy(); }
+  const data = computeWeeklyRevenue(allRows);
+  const isDark = document.documentElement.classList.contains('dark');
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+
+  const now = new Date();
+  const currentLabel = 'สัปดาห์นี้ (' + now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) + ')';
+  const prev = new Date(now); prev.setDate(prev.getDate() - 7);
+  const prevLabel = 'สัปดาห์ที่แล้ว (' + prev.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) + ')';
+
+  const options = {
+    chart: { type: 'line', height: 280, fontFamily: "'Sarabun', sans-serif", toolbar: { show: false } },
+    series: [
+      { name: currentLabel, data: data.currentWeek, color: '#22c55e' },
+      { name: prevLabel, data: data.previousWeek, color: '#94a3b8' }
+    ],
+    stroke: {
+      width: [3, 2],
+      dashArray: [0, 6],
+      curve: 'smooth'
+    },
+    markers: {
+      size: [5, 3],
+      hover: { size: 7 }
+    },
+    xaxis: {
+      categories: data.days.map(d => 'วัน' + d),
+      labels: { style: { colors: textColor, fontSize: '12px' } }
+    },
+    yaxis: {
+      labels: { formatter: (v) => formatChartBahtShort(v), style: { colors: textColor } },
+      axisBorder: { show: true, color: isDark ? '#334155' : '#e2e8f0' },
+      axisTicks: { show: false }
+    },
+    grid: { show: false },
+    dataLabels: {
+      enabled: true,
+      formatter: (v) => formatChartBahtShort(v),
+      style: { fontSize: '11px', fontWeight: 600, colors: ['#22c55e', '#94a3b8'] },
+      offsetY: -8,
+      background: { enabled: true, padding: 4, borderRadius: 4, borderColor: 'transparent' }
+    },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      y: { formatter: (v) => formatBaht(v) }
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'right',
+      labels: { colors: isDark ? '#cbd5e1' : '#475569' },
+      markers: { width: 12, height: 4, radius: 2 }
+    }
+  };
+
+  const chart = new ApexCharts(container, options);
+  chart.render();
+  container._apexChart = chart;
+}
+
+function onZoneToggleChange() {
+  const toggle = document.getElementById('zoneToggle');
+  const text = document.getElementById('zoneToggleText');
+  if (toggle && text) {
+    text.textContent = toggle.checked ? 'รายได้' : 'จำนวนการจอง';
+  }
+  drawZonePerformanceChart();
+}
+
 // ===== OVERRIDE renderDashboardHome to include new components =====
 function renderDashboardHomeV2() {
   const role = currentUser && currentUser.role;
@@ -4723,6 +5067,11 @@ function renderDashboardHomeV2() {
     drawReservationTrendChart();
     drawWeeklyHeatmapChart();
     drawWingCountChart();
+    drawRevenueProgressBar();
+    drawPipelineWaterfall();
+    drawDailyRevenueStacked();
+    drawZonePerformanceChart();
+    drawGrowthLineChart();
     _dashboardCache = { timestamp: now, data: cacheKey };
   }
 
@@ -5664,12 +6013,12 @@ document.addEventListener('click', (e) => {
 function updateAllChartsTheme(dark) {
   const theme = dark ? 'dark' : 'light';
   const isDark = dark;
-  const allIds = ['revenueSummary', 'pipelineChart', 'trendChart', 'statusDonutChart', 'monthlyRevenueChart', 'statusFunnelChart', 'visitorTypeChart', 'weeklyHeatmapChart', 'wingCountChart'];
+  const allIds = ['revenueSummary', 'pipelineChart', 'trendChart', 'statusDonutChart', 'monthlyRevenueChart', 'statusFunnelChart', 'visitorTypeChart', 'weeklyHeatmapChart', 'wingCountChart', 'pipelineWaterfallChart', 'dailyRevenueChart', 'zonePerformanceChart', 'growthLineChart'];
   allIds.forEach(id => {
     const el = document.getElementById(id);
     if (el && el._apexChart) {
       const opts = { theme: { mode: theme } };
-      if (id === 'revenueSummary' || id === 'trendChart' || id === 'monthlyRevenueChart' || id === 'statusFunnelChart' || id === 'visitorTypeChart' || id === 'weeklyHeatmapChart' || id === 'wingCountChart') {
+      if (id === 'revenueSummary' || id === 'trendChart' || id === 'monthlyRevenueChart' || id === 'statusFunnelChart' || id === 'visitorTypeChart' || id === 'weeklyHeatmapChart' || id === 'wingCountChart' || id === 'pipelineWaterfallChart' || id === 'dailyRevenueChart' || id === 'zonePerformanceChart' || id === 'growthLineChart') {
         opts.chart = { foreColor: isDark ? '#94a3b8' : '#64748b' };
       }
       el._apexChart.updateOptions(opts, false, true);
