@@ -611,17 +611,21 @@ function quickStatusAdvance(idx, action) {
   const row = allRows[idx];
   if (!row) return;
   const s = normalizeStatus(row.status);
+  const role = currentUser ? currentUser.role : null;
+  const isAdminOrSuper = role === 'Superadmin' || role === 'Admin';
 
   if (action === 'approve_participant') {
+    if (!isAdminOrSuper && !hasPermission('approve_participant')) { showToast('คุณไม่มีสิทธิ์ทำรายการนี้', 'error'); return; }
     updateStatus(idx, 'รอตรวจสอบวินัย');
   } else if (action === 'reject') {
     updateStatus(idx, 'ไม่อนุมัติ');
   } else if (action === 'approve_discipline') {
+    if (!isAdminOrSuper && !hasPermission('approve_discipline')) { showToast('คุณไม่มีสิทธิ์ทำรายการนี้', 'error'); return; }
     updateStatus(idx, 'รอชำระเงิน');
   } else if (action === 'confirm_payment') {
     confirmPayment(idx);
   } else if (action === 'complete') {
-    confirmPayment(idx); // same logic - advances to เสร็จสิ้น
+    confirmPayment(idx);
   } else if (action === 'cancel') {
     cancelBooking(idx);
   }
@@ -5785,13 +5789,18 @@ async function bulkApprove() {
   if (!indices.length) { showToast('กรุณาเลือกรายการ', 'warning'); return; }
   if (!confirm(`ยืนยันอนุมัติ ${indices.length} รายการ?`)) return;
 
+  const role = currentUser ? currentUser.role : null;
+  const isAdminOrSuper = role === 'Superadmin' || role === 'Admin';
+  const canApproveParticipant = isAdminOrSuper || hasPermission('approve_participant');
+  const canApproveDiscipline = isAdminOrSuper || hasPermission('approve_discipline');
+
   let success = 0, fail = 0;
   for (const idx of indices) {
     const r = allRows[idx];
     const s = normalizeStatus(r.status);
     let nextStatus = null;
-    if (s === 'รอตรวจสอบผู้เข้าร่วม') nextStatus = 'รอตรวจสอบวินัย';
-    else if (s === 'รอตรวจสอบวินัย') nextStatus = 'รอชำระเงิน';
+    if (s === 'รอตรวจสอบผู้เข้าร่วม' && canApproveParticipant) nextStatus = 'รอตรวจสอบวินัย';
+    else if (s === 'รอตรวจสอบวินัย' && canApproveDiscipline) nextStatus = 'รอชำระเงิน';
 
     if (nextStatus) {
       try {

@@ -448,6 +448,23 @@ function handleUpdateStatus(body, username) {
     'ยกเลิก': []
   };
 
+  const roleAllowedStatuses = {
+    'Superadmin': null,
+    'Admin': null,
+    'Tadtel': ['รอตรวจสอบวินัย', 'ไม่อนุมัติ'],
+    'Vinai': ['รอชำระเงิน', 'ไม่อนุมัติ'],
+    'Finance': ['เสร็จสิ้น', 'ไม่อนุมัติ']
+  };
+
+  const caller = getUserByUsername(username);
+  const callerRole = caller ? caller.role : null;
+  const roleAllowed = roleAllowedStatuses[callerRole];
+
+  if (roleAllowed !== null && roleAllowed !== undefined && !roleAllowed.includes(body.status)) {
+    logEvent(username, 'status_change_rejected', body.ref, { newStatus: body.status, reason: 'role_not_allowed', role: callerRole }, 'denied');
+    return jsonResp({ status: 'error', message: 'Role "' + callerRole + '" is not allowed to set status "' + body.status + '"' });
+  }
+
   const sheet = getMainSheet();
   const data = sheet.getDataRange().getValues();
   const refIdx = data[0].indexOf('ref');
