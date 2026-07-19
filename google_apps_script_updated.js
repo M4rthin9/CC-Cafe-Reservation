@@ -433,13 +433,35 @@ function handlePublicCancelBooking(body) {
 }
 
 function handleUpdateStatus(body, username) {
+  if (!body.ref || !body.status) return jsonResp({ status: 'error', message: 'Missing ref or status' });
+
+  const validStatuses = ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบวินัย', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
+  if (!validStatuses.includes(body.status)) return jsonResp({ status: 'error', message: 'Invalid status: ' + body.status });
+
+  const allowedTransitions = {
+    'รอตรวจสอบผู้เข้าร่วม': ['รอตรวจสอบวินัย', 'ไม่อนุมัติ', 'ยกเลิก'],
+    'รอตรวจสอบวินัย': ['รอชำระเงิน', 'ไม่อนุมัติ', 'ยกเลิก'],
+    'รอชำระเงิน': ['ชำระแล้ว', 'ยกเลิก'],
+    'ชำระแล้ว': ['เสร็จสิ้น', 'ยกเลิก'],
+    'เสร็จสิ้น': [],
+    'ไม่อนุมัติ': [],
+    'ยกเลิก': []
+  };
+
   const sheet = getMainSheet();
   const data = sheet.getDataRange().getValues();
   const refIdx = data[0].indexOf('ref');
   const statusIdx = data[0].indexOf('status');
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
-      const oldStatus = data[i][statusIdx];
+      const oldStatus = String(data[i][statusIdx] || '').trim();
+
+      const allowed = allowedTransitions[oldStatus];
+      if (allowed && !allowed.includes(body.status)) {
+        logEvent(username, 'status_change_rejected', body.ref, { oldStatus, newStatus: body.status, reason: 'invalid_transition' }, 'denied');
+        return jsonResp({ status: 'error', message: 'Cannot change from "' + oldStatus + '" to "' + body.status + '"' });
+      }
+
       sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
       logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
       invalidateReservationsCache();

@@ -697,9 +697,12 @@ function renderTable() {
     function stepState(step) {
       if (isRejected) return step === 1 ? 'rejected' : 'skipped';
       if (isCancelled) return 'skipped';
-      if (step === 1) return r.status !== 'รอตรวจสอบผู้เข้าร่วม' ? 'done' : 'pending';
-      if (step === 2) return (r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น') ? 'done' : 'pending';
-      if (step === 3) return (r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น') ? 'done' : 'pending';
+      if (step === 1) return r.status !== 'รอตรวจสอบผู้เข้าร่วม' ? 'done' : (r.status === 'รอตรวจสอบผู้เข้าร่วม' ? 'active' : 'pending');
+      if (step === 2) {
+        if (r.status === 'รอตรวจสอบวินัย') return 'active';
+        return (r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น') ? 'done' : 'pending';
+      }
+      if (step === 3) return (r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น') ? 'done' : (r.status === 'รอชำระเงิน' ? 'active' : 'pending');
       return 'pending';
     }
     function stepLabel(step) {
@@ -709,6 +712,7 @@ function renderTable() {
       if (state === 'done') return '✓';
       if (state === 'rejected') return '✗';
       if (state === 'skipped') return '—';
+      if (state === 'active') return '●';
       return ['', '1', '2', '3'][st];
     }
 

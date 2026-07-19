@@ -289,6 +289,20 @@ function renderResult(row) {
         <i class="ti ti-plus"></i> จองใหม่
       </a>
     `;
+  } else if (sLower === 'รอตรวจสอบผู้เข้าร่วม') {
+    paymentBlock = `
+      <div class="pay-section">
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px;">⏳ รอตรวจสอบผู้เข้าร่วม</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">เจ้าหน้าที่ฝ่ายทัณฑ์กำลังตรวจสอบรายชื่อผู้เข้าร่วม (1–2 วันทำการ) กรุณาตรวจสอบสถานะอีกครั้งในภายหลัง</div>
+      </div>
+    `;
+  } else if (sLower === 'รอตรวจสอบวินัย') {
+    paymentBlock = `
+      <div class="pay-section">
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px;">⏳ รอตรวจสอบวินัย</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">เจ้าหน้าที่ฝ่ายวินัยกำลังตรวจสอบประวัติวินัยของผู้ต้องขัง (1–2 วันทำการ) กรุณาตรวจสอบสถานะอีกครั้งในภายหลัง</div>
+      </div>
+    `;
   } else {
     paymentBlock = `
       <div class="pay-section">
@@ -404,19 +418,22 @@ function renderResult(row) {
 
 // ===== STATUS PILL =====
 function normalizeStatus(s) {
-  const v = (s || '').toString().trim().toLowerCase();
-  if (['อนุมัติ', 'approved', 'รอชำระเงิน'].includes(v)) return 'รอชำระเงิน';
-  if (['rejected', 'ไม่อนุมัติ'].includes(v)) return 'ไม่อนุมัติ';
-  if (['paid', 'ชำระแล้ว'].includes(v)) return 'ชำระแล้ว';
-  if (['done', 'เสร็จสิ้น'].includes(v)) return 'เสร็จสิ้น';
-  if (v === 'ยกเลิก') return 'ยกเลิก';
-  return s || 'รอตรวจสอบ';
+  const v = (s || '').toString().trim();
+  if (['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบวินัย', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ยกเลิก', 'ไม่อนุมัติ'].includes(v)) {
+    return v;
+  }
+  if (v === 'รอตรวจสอบ' || ['อนุมัติ', 'approved'].includes(v) || v.toLowerCase() === 'approved') return 'รอตรวจสอบวินัย';
+  if (v.toLowerCase() === 'rejected') return 'ไม่อนุมัติ';
+  if (v.toLowerCase() === 'paid') return 'ชำระแล้ว';
+  if (v.toLowerCase() === 'done') return 'เสร็จสิ้น';
+  return v || 'รอตรวจสอบผู้เข้าร่วม';
 }
 
 function getStatusPill(status) {
   const s = normalizeStatus(status);
+  if (s === 'รอตรวจสอบผู้เข้าร่วม') return `<span class="status-pill status-pending">⏳ รอตรวจสอบผู้เข้าร่วม</span>`;
+  if (s === 'รอตรวจสอบวินัย') return `<span class="status-pill status-pending">⏳ รอตรวจสอบวินัย</span>`;
   if (s === 'รอชำระเงิน') return `<span class="status-pill status-approved">✅ อนุมัติ — รอชำระเงิน</span>`;
-  if (s.includes('อนุมัติ') || s === 'approved') return `<span class="status-pill status-approved">✅ อนุมัติแล้ว</span>`;
   if (s.includes('ไม่อนุมัติ') || s === 'rejected') return `<span class="status-pill status-rejected">❌ ไม่อนุมัติ</span>`;
   if (s === 'เสร็จสิ้น') return `<span class="status-pill status-paid" style="background:#d1fae5;color:#065f46;border-color:rgba(6,95,70,0.3)">✅ เสร็จสิ้นแล้ว</span>`;
   if (s.includes('ชำระ') || s === 'paid') return `<span class="status-pill status-paid">💳 รอเจ้าหน้าที่ยืนยัน</span>`;
