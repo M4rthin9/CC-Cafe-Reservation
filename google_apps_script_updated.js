@@ -453,7 +453,7 @@ function handleUpdateStatus(body, username) {
     'Admin': null,
     'Tadtel': ['รอตรวจสอบวินัย', 'ไม่อนุมัติ'],
     'Vinai': ['รอชำระเงิน', 'ไม่อนุมัติ'],
-    'Finance': ['เสร็จสิ้น', 'ไม่อนุมัติ']
+    'Finance': ['ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ']
   };
 
   const caller = getUserByUsername(username);
