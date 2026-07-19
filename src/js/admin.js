@@ -553,12 +553,12 @@ async function batchApproveDayDiscipline(dateStr) {
     const idx = allRows.indexOf(row);
     if (idx < 0) continue;
     const oldStatus = row.status;
-    row.status = 'รอตรวจสอบผู้เข้าร่วม';
+    row.status = 'รอชำระเงิน';
     try {
       const resp = await appsScriptFetch('', {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอตรวจสอบผู้เข้าร่วม' })
+        body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอชำระเงิน' })
       }, 1);
       const data = await resp.json();
       if (data.status === 'ok') success++;
@@ -585,12 +585,12 @@ async function batchApproveDayParticipant(dateStr) {
     const idx = allRows.indexOf(row);
     if (idx < 0) continue;
     const oldStatus = row.status;
-    row.status = 'รอชำระเงิน';
+    row.status = 'รอตรวจสอบวินัย';
     try {
       const resp = await appsScriptFetch('', {
         method: 'POST', redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอชำระเงิน' })
+        body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอตรวจสอบวินัย' })
       }, 1);
       const data = await resp.json();
       if (data.status === 'ok') success++;
@@ -612,11 +612,11 @@ function quickStatusAdvance(idx, action) {
   if (!row) return;
   const s = normalizeStatus(row.status);
 
-  if (action === 'approve_discipline') {
-    updateStatus(idx, 'รอตรวจสอบผู้เข้าร่วม');
+  if (action === 'approve_participant') {
+    updateStatus(idx, 'รอตรวจสอบวินัย');
   } else if (action === 'reject') {
     updateStatus(idx, 'ไม่อนุมัติ');
-  } else if (action === 'approve_participant') {
+  } else if (action === 'approve_discipline') {
     updateStatus(idx, 'รอชำระเงิน');
   } else if (action === 'confirm_payment') {
     confirmPayment(idx);
@@ -697,13 +697,13 @@ function renderTable() {
     function stepState(step) {
       if (isRejected) return step === 1 ? 'rejected' : 'skipped';
       if (isCancelled) return 'skipped';
-      if (step === 1) return r.status !== 'รอตรวจสอบวินัย' ? 'done' : 'pending';
+      if (step === 1) return r.status !== 'รอตรวจสอบผู้เข้าร่วม' ? 'done' : 'pending';
       if (step === 2) return (r.status === 'รอชำระเงิน' || r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น') ? 'done' : 'pending';
       if (step === 3) return (r.status === 'ชำระแล้ว' || r.status === 'เสร็จสิ้น') ? 'done' : 'pending';
       return 'pending';
     }
     function stepLabel(step) {
-      return ['', 'ตรวจสอบวินัย', 'ตรวจสอบผู้เข้าร่วม', 'ยืนยันการเงิน'][step];
+      return ['', 'ตรวจสอบผู้เข้าร่วม', 'ตรวจสอบวินัย', 'ยืนยันการเงิน'][step];
     }
     function stepContent(state, st) {
       if (state === 'done') return '✓';
@@ -763,9 +763,9 @@ function renderTable() {
     if (isAdminOrSuper) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="แก้ไข" onclick="editBooking(${rowIdx})">✏️</button>`);
     if (canConfirmPayment && s === 'รอชำระเงิน') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="ยืนยันชำระเงิน" onclick="confirmPayment(${rowIdx})">💳</button>`);
     if (canConfirmPayment && s === 'ชำระแล้ว') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="เสร็จสิ้น" onclick="confirmPayment(${rowIdx})">✅</button>`);
-    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอตรวจสอบผู้เข้าร่วม')">✓</button>`);
+    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอตรวจสอบวินัย')">✓</button>`);
+    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
     if (canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-danger" title="ปฏิเสธวินัย" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
-    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
     if (canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ยกเลิก" onclick="cancelBooking(${rowIdx})">🚫</button>`);
 
     const actionsHtml = actions.join('');
@@ -1477,11 +1477,11 @@ async function updateStatus(idx, newStatus) {
 
   // Permission check based on source status
   if (role !== 'Superadmin' && role !== 'Admin') {
-    if (currentStatus === 'รอตรวจสอบวินัย' && (newStatus === 'รอตรวจสอบผู้เข้าร่วม' || newStatus === 'ไม่อนุมัติ') && !hasPermission('approve_discipline')) {
+    if (currentStatus === 'รอตรวจสอบผู้เข้าร่วม' && (newStatus === 'รอตรวจสอบวินัย' || newStatus === 'ไม่อนุมัติ') && !hasPermission('approve_participant')) {
       showToast('คุณไม่มีสิทธิ์ทำรายการนี้', 'error');
       return;
     }
-    if (currentStatus === 'รอตรวจสอบผู้เข้าร่วม' && (newStatus === 'รอชำระเงิน' || newStatus === 'ไม่อนุมัติ') && !hasPermission('approve_participant')) {
+    if (currentStatus === 'รอตรวจสอบวินัย' && (newStatus === 'รอชำระเงิน' || newStatus === 'ไม่อนุมัติ') && !hasPermission('approve_discipline')) {
       showToast('คุณไม่มีสิทธิ์ทำรายการนี้', 'error');
       return;
     }
@@ -2053,13 +2053,13 @@ ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้�
   const normalizedDetail = normalizeStatus(s);
 
   let actionBtns = [];
-  if (canApproveDisciplineDetail && normalizedDetail === 'รอตรวจสอบวินัย') {
-    actionBtns.push({ label: '✓ อนุมัติวินัย', cls: 'btn btn-filled btn-sm', onclick: `updateStatus(${idx},'รอตรวจสอบผู้เข้าร่วม')` });
-    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn btn-danger btn-sm', onclick: `updateStatus(${idx},'ไม่อนุมัติ')` });
-  }
   if (canApproveParticipantDetail && normalizedDetail === 'รอตรวจสอบผู้เข้าร่วม') {
     actionBtns.push({ label: '✓ อนุมัติผู้เข้าร่วม', cls: 'btn btn-filled btn-sm', onclick: `approveParticipantInDetail(${idx})` });
     actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn btn-danger btn-sm', onclick: `rejectParticipantInDetail(${idx})` });
+  }
+  if (canApproveDisciplineDetail && normalizedDetail === 'รอตรวจสอบวินัย') {
+    actionBtns.push({ label: '✓ อนุมัติวินัย', cls: 'btn btn-filled btn-sm', onclick: `updateStatus(${idx},'รอชำระเงิน')` });
+    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn btn-danger btn-sm', onclick: `updateStatus(${idx},'ไม่อนุมัติ')` });
   }
   if (canConfirmPaymentDetail && normalizedDetail === 'รอชำระเงิน') {
     actionBtns.push({ label: '💳 ยืนยันชำระเงิน', cls: 'btn btn-filled btn-sm', onclick: `confirmPayment(${idx})` });
@@ -2107,14 +2107,14 @@ async function approveParticipantInDetail(idx) {
   if (!confirm(`อนุมัติผู้เข้าร่วมสำหรับ "${row.visitorName}" ใช่หรือไม่?`)) return;
 
   const oldStatus = row.status;
-  row.status = 'รอชำระเงิน';
+  row.status = 'รอตรวจสอบวินัย';
 
   try {
     const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอชำระเงิน' })
+      body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: 'รอตรวจสอบวินัย' })
     }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
@@ -2219,7 +2219,7 @@ async function approveAllVisitorsInDetail(idx) {
   row.total = total;
 
   // Now approve to next status
-  const newStatus = 'รอชำระเงิน';
+  const newStatus = 'รอตรวจสอบวินัย';
 
   try {
     const resp = await appsScriptFetch('', {
@@ -5392,7 +5392,7 @@ async function submitNewBooking() {
   const totalPersons = n + 1;
   const total = calc.total;
 
-  const ref = 'VIS-' + Math.floor(10000 + Math.random() * 90000);
+  const ref = generateUniqueRef(allRows.map(r => r.ref).filter(Boolean));
   const d = new Date(visitDateISO + 'T00:00:00');
   const thDate = d.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const now = new Date().toLocaleString('th-TH');
@@ -5421,7 +5421,7 @@ async function submitNewBooking() {
     adultCount: calc.adults,
     child5to8Count: calc.kids5_8,
     childUnder5Count: calc.kidsUnder5,
-    status: 'รอตรวจสอบวินัย',
+    status: 'รอตรวจสอบผู้เข้าร่วม',
     slipImage: ''
   };
 
@@ -5786,8 +5786,8 @@ async function bulkApprove() {
     const r = allRows[idx];
     const s = normalizeStatus(r.status);
     let nextStatus = null;
-    if (s === 'รอตรวจสอบวินัย') nextStatus = 'รอตรวจสอบผู้เข้าร่วม';
-    else if (s === 'รอตรวจสอบผู้เข้าร่วม') nextStatus = 'รอชำระเงิน';
+    if (s === 'รอตรวจสอบผู้เข้าร่วม') nextStatus = 'รอตรวจสอบวินัย';
+    else if (s === 'รอตรวจสอบวินัย') nextStatus = 'รอชำระเงิน';
 
     if (nextStatus) {
       try {

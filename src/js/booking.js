@@ -853,7 +853,6 @@ function goBack() { showPage(1); }
 // ===== SUBMIT =====
 async function submitBooking() {
   await initBackendUrl();
-  const ref = 'VIS-' + Math.floor(10000 + Math.random() * 90000);
   const n = parseInt(document.getElementById('visitorCount').value);
   const totalPersons = n + 1;
   const d = parseLocalDate(selectedDate);  // ✅ parse local ไม่ผ่าน UTC
@@ -870,9 +869,11 @@ async function submitBooking() {
   // ── ตรวจสอบเลขผู้ต้องขังซ้ำในวันเดียวกัน ──
   document.getElementById('overlay').classList.add('show');
   document.getElementById('submitBtn').disabled = true;
+  let existingRefs = [];
   try {
     const rows = await fetchAllReservations();
     if (rows) {
+      existingRefs = rows.map(r => r.ref).filter(Boolean);
       const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
       const duplicate = rows.find(r =>
         String(r.prisonerId || '').trim() === prisonerId &&
@@ -889,6 +890,8 @@ async function submitBooking() {
   } catch (err) {
     console.warn('Duplicate check skipped:', err);
   }
+
+  const ref = generateUniqueRef(existingRefs);
 
   const cost = calculateTotal();
   const data = {
@@ -914,7 +917,7 @@ async function submitBooking() {
     adultCount: cost.adults,
     child5to8Count: cost.kids5_8,
     childUnder5Count: cost.kidsUnder5,
-    status: 'รอตรวจสอบวินัย',
+    status: 'รอตรวจสอบผู้เข้าร่วม',
     slipImage: ''
   };
 
