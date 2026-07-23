@@ -31,7 +31,7 @@ const translations = {
     ctaJoin: "📋 ร่วมกิจกรรม",
     ctaCheck: "🔍 ตรวจสอบสถานะ",
     footer: "ทัณฑสถานบำบัดพิเศษกลาง · กรมราชทัณฑ์<br>สอบถามเพิ่มเติมติดต่อเจ้าหน้าที่ ณ ทัณฑสถาน",
-    
+
     // Booking page
     bookingTitle: "จองคิวเพื่อร่วมกิจกรรม",
     backHome: "หน้าหลัก",
@@ -42,7 +42,7 @@ const translations = {
     stepConfirm: "ยืนยันข้อมูล",
     stepRef: "รับเลขอ้างอิง",
     visitorInfo: "ข้อมูลผู้เข้าร่วมกิจกรรม",
-    prisonerInfo: "ข้อมูลผู้ต้องขัง",
+    prisonerInfo: "ข้อมูลผู้ต้องขังที่เข้าร่วมกิจกรรม",
     selectDate: "วันที่ต้องการเข้าร่วมกิจกรรม",
     confirmRules: "ข้อปฏิบัติ:",
     confirmInfo: "ตรวจสอบข้อมูลการจอง",
@@ -68,7 +68,7 @@ const translations = {
     verifyInfo: "โปรดตรวจสอบให้แน่ใจว่าข้อมูลข้างต้นถูกต้องทุกประการ<br>หลังส่งคำขอแล้วจะได้รับเลขอ้างอิงทันทีเพื่อติดตามสถานะ",
     copySummary: "คัดลอกสรุปการจองของฉัน (บันทึกส่วนตัว)",
     copied: "คัดลอกแล้ว",
-    
+
     // Form labels
     nameLabel: "ชื่อ-นามสกุล",
     namePlaceholder: "เช่น สมชาย ใจดี",
@@ -101,7 +101,7 @@ const translations = {
     extraVisitorAge: "อายุ (ปี)",
     ageChildText: " (อายุ {age} ปี)",
     ageChildRule: " (อายุ <5 ฟรี, 5-8=500, >8=1000)",
-    
+
     // Status page
     statusTitle: "ตรวจสอบสถานะการจอง",
     statusH1: "ตรวจสอบสถานะการจอง",
@@ -121,7 +121,7 @@ const translations = {
     cancelFail: "ไม่สามารถยกเลิกการจองได้",
     successPage: "ชำระเงินและจองสำเร็จ!",
     successPageSub: "เจ้าหน้าที่จะยืนยันนัดหมายผ่านโทรศัพท์ภายใน 1 วันทำการ",
-    
+
     // Calendar
     calPrev: "‹",
     calNext: "›",
@@ -129,7 +129,7 @@ const translations = {
     quotaFull: "เต็ม (20/20)",
     quotaPast: "ผ่านแล้ว",
     quotaHoliday: "หยุด/วันหยุดราชการ",
-    
+
     // Chatbot
     chatGreeting: "🤖 สวัสดี! ฉันเป็น M4RTHIN9 AI ผู้ช่วยตอบคำถามเกี่ยวกับการจองเข้ากิจกรรม ลองถามมาได้เลย",
     chatPlaceholder: "พิมพ์คำถาม...",
@@ -137,7 +137,7 @@ const translations = {
     retry: "ลองใหม่",
     copiedSuccess: "✅ คัดลอกแล้ว! สามารถวางส่งต่อแผนกได้เลย",
     copyFallback: "คัดลอกข้อความด้านล่าง (กด Ctrl+C):",
-    
+
     // Validation/alerts
     alertFill: "กรุณากรอก ",
     alertSelectDate: "กรุณาเลือกวันที่ต้องการร่วมกิจกรรม",
@@ -145,14 +145,14 @@ const translations = {
     alertConsent: "กรุณายืนยันและยินยอมก่อนดำเนินการ",
     alertNoMatch: "⚠️ ไม่สามารถจองได้\\n\\nมีการจองผู้ต้องขังหมายเลข \"{id}\" ในวันนี้อยู่แล้ว\\n\\nกรุณาเลือกวันอื่น หรือตรวจสอบสถานะการจองเดิม",
     alertSubmitFail: "❌ การส่งคำขอจองล้มเหลว\\n\\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองใหม่อีกครั้ง\\nหรือติดต่อเจ้าหน้าที่หากปัญหายังคงอยู่",
-    
+
     // Common
     home: "หน้าหลัก",
     loadingPrisoners: "⏳ กำลังโหลดรายชื่อผู้ต้องขังจากฐานข้อมูล...",
     loadSuccess: "✓ โหลดรายชื่อสำเร็จ ({count} คน)",
     loadFail: "⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้ — กรอกเองได้ชั่วคราว"
   },
-  
+
   en: {
     // Index page  
     heroBadge: "Online System · Central Special Correctional Institution",
@@ -181,7 +181,7 @@ const translations = {
     ctaJoin: "📋 Join Activity",
     ctaCheck: "🔍 Check Status",
     footer: "Central Special Correctional Institution · Department of Corrections<br>For inquiries, contact officers at the institution",
-    
+
     // Booking page
     bookingTitle: "Book a Slot",
     backHome: "Home",
@@ -217,7 +217,7 @@ const translations = {
     costSummary: "Cost Summary",
     verifyInfo: "Please verify all information is correct<br>You will receive reference number immediately after submission",
     copySummary: "Copy My Booking Summary (Personal Record)",
-    
+
     // Form labels
     nameLabel: "Name",
     namePlaceholder: "e.g. Somchai Jai Dee",
@@ -250,7 +250,7 @@ const translations = {
     extraVisitorAge: "Age (years)",
     ageChildText: " (Age {age} years)",
     ageChildRule: " (<5 free, 5-8=500, >8=1000)",
-    
+
     // Status page
     statusTitle: "Check Booking Status",
     statusH1: "Check Booking Status",
@@ -270,7 +270,7 @@ const translations = {
     cancelFail: "Unable to cancel booking",
     successPage: "Payment & Booking Successful!",
     successPageSub: "Officer will confirm appointment by phone within 1 business day",
-    
+
     // Calendar
     calPrev: "‹",
     calNext: "›",
@@ -278,7 +278,7 @@ const translations = {
     quotaFull: "Full (20/20)",
     quotaPast: "Past",
     quotaHoliday: "Holiday/Public Holiday",
-    
+
     // Chatbot
     chatGreeting: "🤖 Hello! I'm the M4RTHIN9 AI assistant for the reservation system. Feel free to ask any questions.",
     chatPlaceholder: "Type your question...",
@@ -287,14 +287,14 @@ const translations = {
     copySuccess: "Copied!",
     copiedSuccess: "✅ Copied! You can paste to share.",
     copyFallback: "Copy the text below (Ctrl+C):",
-    
+
     // Common
     home: "Home",
     loadingPrisoners: "⏳ Loading prisoner list...",
     loadSuccess: "✓ Loaded ({count} people)",
     loadFail: "⚠️ Failed to load from database — manual entry available"
   },
-  
+
   zh: {
     // Index page  
     heroBadge: "在线系统 · 中央特别矫正院",
@@ -323,7 +323,7 @@ const translations = {
     ctaJoin: "📋 参与活动",
     ctaCheck: "🔍 查询状态",
     footer: "中央特别矫正院 · 泰国监狱局<br>如需查询，请联系矫正院工作人员",
-    
+
     // Booking page
     bookingTitle: "预约名额",
     backHome: "主页",
@@ -359,7 +359,7 @@ const translations = {
     costSummary: "费用总计",
     verifyInfo: "请确认以上信息全部正确<br>提交后将立即获取参考编号",
     copySummary: "复制我的预约摘要",
-    
+
     // Form labels
     nameLabel: "姓名",
     namePlaceholder: "例如：张伟",
@@ -392,7 +392,7 @@ const translations = {
     extraVisitorAge: "年龄（岁）",
     ageChildText: " (年龄 {age} 岁)",
     ageChildRule: " (<5 岁免费, 5-8岁=500, >8岁=1000)",
-    
+
     // Status page
     statusTitle: "查询预约状态",
     statusH1: "查询预约状态",
@@ -412,7 +412,7 @@ const translations = {
     cancelFail: "无法取消预约",
     successPage: "付款和预约成功！",
     successPageSub: "工作人员将在 1 个工作日内电话确认预约",
-    
+
     // Calendar
     calPrev: "‹",
     calNext: "›",
@@ -420,7 +420,7 @@ const translations = {
     quotaFull: "已满 (20/20)",
     quotaPast: "过去",
     quotaHoliday: "假日/公假",
-    
+
     // Chatbot
     chatGreeting: "🤖 您好！我是此预约系统的AI助手。欢迎提问。",
     chatPlaceholder: "请输入问题...",
@@ -429,7 +429,7 @@ const translations = {
     copySuccess: "已复制！",
     copiedSuccess: "✅ 复制成功！可以粘贴分享。",
     copyFallback: "复制以下文本（Ctrl+C）：",
-    
+
     // Common
     home: "主页",
     loadingPrisoners: "⏳ 正在从数据库加载囚犯列表...",
@@ -443,10 +443,10 @@ function setLanguage(lang) {
   localStorage.setItem('lang', lang);
   document.documentElement.lang = lang;
   updatePageTranslations();
-  
+
   // Dispatch custom event for other scripts to listen to
   window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang } }));
-  
+
   // Update language switcher button text
   const langSwitcherBtn = document.querySelector('.lang-switcher button');
   if (langSwitcherBtn) {
@@ -458,7 +458,7 @@ function setLanguage(lang) {
 function updatePageTranslations() {
   const t = translations[currentLang];
   if (!t) return;
-  
+
   // Handle elements with data-i18n
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
@@ -480,7 +480,7 @@ function updatePageTranslations() {
       }
     }
   });
-  
+
   // Update specific elements by ID
   const titleEl = document.querySelector('title');
   if (titleEl && t.appName) {
