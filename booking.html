@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
   <link rel="stylesheet" href="src/css/base.css">
   <link rel="stylesheet" href="src/css/booking.css">
-  
+
   <script src="src/js/config.js?v=2" defer></script>
   <script src="src/js/utils.js?v=2" defer></script>
   <script src="src/js/i18n.js" defer></script>
@@ -63,9 +63,11 @@
             <input type="text" id="visitorName" placeholder="เช่น สมชาย ใจดี">
           </div>
           <div class="form-group">
-            <label data-i18n="idLabel">เลขประจำตัว (บัตรประชาชน / Passport) <span style="color:var(--red)">*</span></label>
+            <label data-i18n="idLabel">เลขประจำตัว (บัตรประชาชน / Passport) <span
+                style="color:var(--red)">*</span></label>
             <input type="text" id="visitorId" placeholder="X-XXXX-XXXXX-XX-X หรือ Passport No." maxlength="20">
-            <div style="font-size:11px;color:var(--text2);margin-top:3px;">สามารถกรอกเลขบัตรประชาชน หรือ Passport No.</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:3px;">สามารถกรอกเลขบัตรประชาชน หรือ Passport No.
+            </div>
           </div>
           <div class="form-group">
             <label data-i18n="phoneLabel">หมายเลขโทรศัพท์ <span style="color:var(--red)">*</span></label>
@@ -129,7 +131,8 @@
       </div>
 
       <div class="section">
-        <div class="section-title"><i class="ti ti-lock"></i> <span data-i18n="prisonerInfo">ข้อมูลผู้ต้องขัง</span>
+        <div class="section-title"><i class="ti ti-lock"></i> <span
+            data-i18n="prisonerInfo">ข้อมูลผู้ต้องขังที่เข้าร่วมกิจกรรม</span>
         </div>
 
         <!-- Prisoner search (REQUIRED - no manual typing for name/id/wing) -->
@@ -237,7 +240,8 @@
 
       <div class="rules" style="border-left-color:var(--gold);background:var(--gold-light);">
         <strong data-i18n="afterSubmit">⏳ หลังส่งคำขอจอง:</strong> <span
-          data-i18n="afterSubmitText">เจ้าหน้าที่จะตรวจสอบผู้เข้าร่วมก่อน จากนั้นตรวจสอบประวัติวินัยของผู้ต้องขัง (1–2 วันทำการ)</span><br>
+          data-i18n="afterSubmitText">เจ้าหน้าที่จะตรวจสอบผู้เข้าร่วมก่อน จากนั้นตรวจสอบประวัติวินัยของผู้ต้องขัง (1–2
+          วันทำการ)</span><br>
         <strong data-i18n="checkStatusInfo">🔍 ตรวจสอบสถานะ:</strong> <span data-i18n="checkStatusInfoText">ใช้
           <strong>Ref No.</strong> หรือ <strong>เลขผู้ต้องขัง</strong> ในหน้า "ตรวจสอบสถานะ"</span><br>
         <strong data-i18n="paymentInfo">💰 ชำระเงิน:</strong> <span data-i18n="paymentInfoText">เมื่อสถานะ "รอชำระเงิน"
@@ -262,7 +266,8 @@
         <p style="font-size:14px;color:var(--text2);margin-bottom:1rem" data-i18n="successSub">
           เจ้าหน้าที่จะตรวจสอบประวัติวินัยและดำเนินการภายใน 1–2 วันทำการ</p>
 
-        <div class="status-pill status-pending">⏳ <span data-i18n="bookingInitialStatus">รอตรวจสอบผู้เข้าร่วม</span></div>
+        <div class="status-pill status-pending">⏳ <span data-i18n="bookingInitialStatus">รอตรวจสอบผู้เข้าร่วม</span>
+        </div>
 
         <div class="ref-box">
           <div class="ref-label" data-i18n="refLabel">เลขอ้างอิง (Ref No.)</div>
@@ -305,7 +310,7 @@
       style="color:#0B2545;text-decoration:underline;">main.correct.go.th</a>
   </div>
 
-  
+
 </body>
 
 </html>
