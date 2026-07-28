@@ -90,10 +90,10 @@ function doGetHandler(e) {
     if (cached) return jsonResp({ status: 'ok', prisoners: JSON.parse(cached) });
 
     const sheet = getPrisonerSheet();
-    const data = sheet.getDataRange().getValues();
+    let data = sheet.getDataRange().getValues();
     if (data.length <= 1) return jsonResp({ status: 'ok', prisoners: [] });
 
-    const headers = data[0];
+    let headers = data[0];
     const nameIdx = headers.indexOf('prisonerName');
     const idIdx = headers.indexOf('prisonerId');
     const wingIdx = headers.indexOf('wing');
@@ -102,6 +102,36 @@ function doGetHandler(e) {
 
     if (nameIdx === -1 || idIdx === -1 || wingIdx === -1) {
       return jsonResp({ status: 'error', message: 'Invalid prisoner sheet headers' });
+    }
+
+    if (statusIdx >= 0 && vinaiDateIdx >= 0) {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      let cleaned = 0;
+      for (let i = 1; i < data.length; i++) {
+        const sStatus = String(data[i][statusIdx] || '').trim();
+        const sVinaiDate = data[i][vinaiDateIdx];
+        if (sStatus === 'ติดวินัย งดเยี่ยม' && sVinaiDate) {
+          let vdDate = null;
+          if (sVinaiDate instanceof Date) {
+            vdDate = sVinaiDate;
+          } else {
+            const parsed = new Date(String(sVinaiDate).trim());
+            if (!isNaN(parsed.getTime())) vdDate = parsed;
+          }
+          if (vdDate && vdDate <= oneYearAgo) {
+            sheet.getRange(i + 1, statusIdx + 1).clearContent();
+            sheet.getRange(i + 1, vinaiDateIdx + 1).clearContent();
+            cleaned++;
+          }
+        }
+      }
+      if (cleaned > 0) {
+        console.log('[AutoCleanup] Cleared discipline for ' + cleaned + ' prisoners');
+        try { CacheService.getScriptCache().remove('prisoners'); } catch (e) {}
+        data = sheet.getDataRange().getValues();
+        headers = data[0];
+      }
     }
 
     const prisoners = [];
@@ -120,29 +150,6 @@ function doGetHandler(e) {
       }
     }
     prisoners.sort((a, b) => a.prisonerName.localeCompare(b.prisonerName, 'th'));
-
-    if (statusIdx >= 0 && vinaiDateIdx >= 0) {
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      let cleaned = 0;
-      for (let i = 1; i < data.length; i++) {
-        const sStatus = String(data[i][statusIdx] || '').trim();
-        const sVinaiDate = data[i][vinaiDateIdx];
-        if (sStatus === 'ติดวินัย งดเยี่ยม' && sVinaiDate instanceof Date) {
-          const vd = Utilities.formatDate(sVinaiDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-          const vdDate = new Date(vd + 'T00:00:00');
-          if (vdDate <= oneYearAgo) {
-            sheet.getRange(i + 1, statusIdx + 1).clearContent();
-            sheet.getRange(i + 1, vinaiDateIdx + 1).clearContent();
-            cleaned++;
-          }
-        }
-      }
-      if (cleaned > 0) {
-        console.log('[AutoCleanup] Cleared discipline for ' + cleaned + ' prisoners');
-        try { CacheService.getScriptCache().remove('prisoners'); } catch (e) {}
-      }
-    }
 
     try { cache.put('prisoners', JSON.stringify(prisoners), PUBLIC_CACHE_TTL); } catch (e) {}
     return jsonResp({ status: 'ok', prisoners: prisoners });
@@ -1227,4 +1234,64 @@ function handleSyncPrisonerWings(body, username, pass) {
 
 function listAllSheets() {
   return getSpreadsheet().getSheets().map(s => ({ name: s.getName(), rows: s.getLastRow(), cols: s.getLastColumn() }));
+}
+
+function cleanupExpiredDiscipline() {
+  const sheet = getPrisonerSheet();
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return;
+
+  const headers = data[0];
+  const statusIdx = headers.indexOf('status');
+  const vinaiDateIdx = headers.indexOf('vinaiDate');
+  if (statusIdx < 0 || vinaiDateIdx < 0) return;
+
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  let cleaned = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const sStatus = String(data[i][statusIdx] || '').trim();
+    const sVinaiDate = data[i][vinaiDateIdx];
+    if (sStatus === 'ติดวินัย งดเยี่ยม' && sVinaiDate) {
+      let vdDate = null;
+      if (sVinaiDate instanceof Date) {
+        vdDate = sVinaiDate;
+      } else {
+        const parsed = new Date(String(sVinaiDate).trim());
+        if (!isNaN(parsed.getTime())) vdDate = parsed;
+      }
+      if (vdDate && vdDate <= oneYearAgo) {
+        sheet.getRange(i + 1, statusIdx + 1).clearContent();
+        sheet.getRange(i + 1, vinaiDateIdx + 1).clearContent();
+        cleaned++;
+      }
+    }
+  }
+
+  if (cleaned > 0) {
+    console.log('[DailyCleanup] Cleared discipline for ' + cleaned + ' prisoners');
+    try { CacheService.getScriptCache().remove('prisoners'); } catch (e) {}
+  }
+}
+
+function setupDailyTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  const existing = triggers.find(t =>
+    t.getHandlerFunction() === 'cleanupExpiredDiscipline' &&
+    t.getEventType() === ScriptApp.TriggerSource.CLOCK
+  );
+  if (existing) {
+    return 'Daily cleanup trigger already exists (ID: ' + existing.getUniqueId() + ')';
+  }
+
+  ScriptApp.newTrigger('cleanupExpiredDiscipline')
+    .timeBased()
+    .everyDays(1)
+    .atHour(0)
+    .nearMinute(0)
+    .inTimezone('Asia/Bangkok')
+    .create();
+
+  return 'Daily cleanup trigger created — runs at midnight Bangkok time';
 }

@@ -462,14 +462,14 @@ function selectPrisoner(p) {
   const isRestricted = String(p.status || '').trim() === 'ติดวินัย งดเยี่ยม';
   if (isRestricted) {
     const vinaiDateStr = String(p.vinaiDate || '').trim();
-    if (vinaiDateStr) {
-      const vinaiDate = new Date(vinaiDateStr + 'T00:00:00');
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      if (vinaiDate <= oneYearAgo) {
-        // Discipline expired — allow selection
-      } else {
-        if (typeof Swal !== 'undefined') {
+      if (vinaiDateStr) {
+        const vinaiDate = vinaiDateStr.indexOf('T') >= 0 ? new Date(vinaiDateStr) : new Date(vinaiDateStr + 'T00:00:00');
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        if (vinaiDate <= oneYearAgo) {
+          // Discipline expired — allow selection
+        } else {
+          if (typeof Swal !== 'undefined') {
           Swal.fire({
             icon: 'error',
             title: 'ไม่สามารถจองได้',
@@ -783,7 +783,7 @@ function validate() {
       if (isRestricted) {
         const vinaiDateStr = String(prisoner.vinaiDate || '').trim();
         if (vinaiDateStr) {
-          const vinaiDate = new Date(vinaiDateStr + 'T00:00:00');
+          const vinaiDate = vinaiDateStr.indexOf('T') >= 0 ? new Date(vinaiDateStr) : new Date(vinaiDateStr + 'T00:00:00');
           const oneYearAgo = new Date();
           oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
           if (vinaiDate <= oneYearAgo) {
