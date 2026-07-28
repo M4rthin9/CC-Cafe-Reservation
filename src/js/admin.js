@@ -3275,6 +3275,7 @@ function previewPrisonerCSV() {
         prisonerName: headerRow.indexOf('prisonername'),
         wing: headerRow.indexOf('wing'),
         status: headerRow.indexOf('status'),
+        vinaiDate: headerRow.indexOf('vinaidate'),
         note: headerRow.indexOf('note')
       };
 
@@ -3291,12 +3292,14 @@ function previewPrisonerCSV() {
 
       // Store parsed data for import
       const hasStatus = colMap.status >= 0;
+      const hasVinaiDate = colMap.vinaiDate >= 0;
       const hasNote = colMap.note >= 0;
       window._parsedPrisoners = dataRows.map(r => ({
         prisonerId: r[colMap.prisonerId] || '',
         prisonerName: r[colMap.prisonerName] || '',
         wing: colMap.wing >= 0 ? (r[colMap.wing] || '') : '',
         status: hasStatus ? (r[colMap.status] || '') : '',
+        vinaiDate: hasVinaiDate ? (r[colMap.vinaiDate] || '') : '',
         note: hasNote ? (r[colMap.note] || '') : ''
       }));
 
@@ -3304,6 +3307,7 @@ function previewPrisonerCSV() {
       const previewHeader = document.getElementById('prisonerPreviewHeader');
       let headerHtml = '<th>#</th><th>prisonerId</th><th>prisonerName</th><th>wing</th>';
       if (hasStatus) headerHtml += '<th>status</th>';
+      if (hasVinaiDate) headerHtml += '<th>vinaiDate</th>';
       if (hasNote) headerHtml += '<th>note</th>';
       previewHeader.innerHTML = headerHtml;
 
@@ -3315,6 +3319,7 @@ function previewPrisonerCSV() {
           <td>${escapeHtml(p.prisonerName)}</td>
           <td>${escapeHtml(p.wing)}</td>`;
         if (hasStatus) cells += `<td>${escapeHtml(p.status)}</td>`;
+        if (hasVinaiDate) cells += `<td>${escapeHtml(p.vinaiDate)}</td>`;
         if (hasNote) cells += `<td>${escapeHtml(p.note)}</td>`;
         return `<tr>${cells}</tr>`;
       }).join('');

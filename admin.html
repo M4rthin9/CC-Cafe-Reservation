@@ -582,8 +582,8 @@
         <div class="dash-card prisoner-card">
           <div class="prisoner-title">📤 นำเข้าข้อมูลผู้ต้องขัง (CSV)</div>
           <div class="prisoner-desc">
-            รูปแบบ CSV: <code>prisonerId, prisonerName, wing</code>
-            &nbsp;·&nbsp; อัปเดตอัตโนมัติถ้า <code>prisonerId</code> ซ้ำ
+             รูปแบบ CSV: <code>prisonerId, prisonerName, wing, status, vinaiDate, note</code>
+             &nbsp;·&nbsp; อัปเดตอัตโนมัติถ้า <code>prisonerId</code> ซ้ำ
           </div>
           <div class="prisoner-actions">
             <input type="file" id="csvFileInput" accept=".csv" style="font-size:13px;">
@@ -605,6 +605,8 @@
                   <th>prisonerId</th>
                   <th>prisonerName</th>
                   <th>wing</th>
+                  <th>status</th>
+                  <th>vinaiDate</th>
                 </tr>
               </thead>
               <tbody id="prisonerPreviewBody"></tbody>

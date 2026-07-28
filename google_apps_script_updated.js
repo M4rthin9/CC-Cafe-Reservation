@@ -97,6 +97,8 @@ function doGetHandler(e) {
     const nameIdx = headers.indexOf('prisonerName');
     const idIdx = headers.indexOf('prisonerId');
     const wingIdx = headers.indexOf('wing');
+    const statusIdx = headers.indexOf('status');
+    const vinaiDateIdx = headers.indexOf('vinaiDate');
 
     if (nameIdx === -1 || idIdx === -1 || wingIdx === -1) {
       return jsonResp({ status: 'error', message: 'Invalid prisoner sheet headers' });
@@ -112,10 +114,36 @@ function doGetHandler(e) {
       const key = id + '|' + name.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        prisoners.push({ prisonerName: name, prisonerId: id, wing: wing });
+        const statusVal = statusIdx >= 0 ? String(data[i][statusIdx] || '').trim() : '';
+        const vinaiDateVal = vinaiDateIdx >= 0 ? data[i][vinaiDateIdx] : '';
+        prisoners.push({ prisonerName: name, prisonerId: id, wing: wing, status: statusVal, vinaiDate: vinaiDateVal });
       }
     }
     prisoners.sort((a, b) => a.prisonerName.localeCompare(b.prisonerName, 'th'));
+
+    if (statusIdx >= 0 && vinaiDateIdx >= 0) {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      let cleaned = 0;
+      for (let i = 1; i < data.length; i++) {
+        const sStatus = String(data[i][statusIdx] || '').trim();
+        const sVinaiDate = data[i][vinaiDateIdx];
+        if (sStatus === 'ติดวินัย งดเยี่ยม' && sVinaiDate instanceof Date) {
+          const vd = Utilities.formatDate(sVinaiDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+          const vdDate = new Date(vd + 'T00:00:00');
+          if (vdDate <= oneYearAgo) {
+            sheet.getRange(i + 1, statusIdx + 1).clearContent();
+            sheet.getRange(i + 1, vinaiDateIdx + 1).clearContent();
+            cleaned++;
+          }
+        }
+      }
+      if (cleaned > 0) {
+        console.log('[AutoCleanup] Cleared discipline for ' + cleaned + ' prisoners');
+        try { CacheService.getScriptCache().remove('prisoners'); } catch (e) {}
+      }
+    }
+
     try { cache.put('prisoners', JSON.stringify(prisoners), PUBLIC_CACHE_TTL); } catch (e) {}
     return jsonResp({ status: 'ok', prisoners: prisoners });
   }
@@ -821,7 +849,7 @@ function saveSlipToDrive(ref, base64Data, mimeTypeOverride, fileNameOverride) {
 function getPrisonerSheet() {
   const sheet = getCachedSheet(PRISONER_SHEET);
   if (sheet.getLastRow() === 0) {
-    const headers = ['prisonerId', 'prisonerName', 'wing', 'status', 'note'];
+    const headers = ['prisonerId', 'prisonerName', 'wing', 'status', 'vinaiDate', 'note'];
     sheet.appendRow(headers);
     const range = sheet.getRange(1, 1, 1, headers.length);
     range.setFontWeight('bold');
@@ -1082,6 +1110,7 @@ function handleImportPrisoners(body, username) {
   const nameIdx = headers.indexOf('prisonerName');
   const wingIdx = headers.indexOf('wing');
   const statusIdx = headers.indexOf('status');
+  const vinaiDateIdx = headers.indexOf('vinaiDate');
   const noteIdx = headers.indexOf('note');
 
   let added = 0, updated = 0, errors = [];
@@ -1105,21 +1134,29 @@ function handleImportPrisoners(body, username) {
 
     if (foundRow >= 0) {
       const rowNum = foundRow + 1;
-      updates.push({ row: rowNum, name: name, wing: String(p.wing || '').trim(), status: String(p.status || '').trim(), note: String(p.note || '').trim(), isNew: false });
+      updates.push({ row: rowNum, name: name, wing: String(p.wing || '').trim(), status: String(p.status || '').trim(), vinaiDate: String(p.vinaiDate || '').trim(), note: String(p.note || '').trim(), isNew: false });
       updated++;
     } else {
-      updates.push({ row: null, id: prisonerId, name: name, wing: String(p.wing || '').trim(), status: String(p.status || '').trim(), note: String(p.note || '').trim(), isNew: true });
+      updates.push({ row: null, id: prisonerId, name: name, wing: String(p.wing || '').trim(), status: String(p.status || '').trim(), vinaiDate: String(p.vinaiDate || '').trim(), note: String(p.note || '').trim(), isNew: true });
       added++;
     }
   });
 
   updates.forEach(u => {
     if (u.isNew) {
-      sheet.appendRow([u.id, u.name, u.wing, u.status, u.note]);
+      const newRow = new Array(headers.length).fill('');
+      if (idIdx >= 0) newRow[idIdx] = u.id;
+      if (nameIdx >= 0) newRow[nameIdx] = u.name;
+      if (wingIdx >= 0) newRow[wingIdx] = u.wing;
+      if (statusIdx >= 0) newRow[statusIdx] = u.status;
+      if (vinaiDateIdx >= 0) newRow[vinaiDateIdx] = u.vinaiDate;
+      if (noteIdx >= 0) newRow[noteIdx] = u.note;
+      sheet.appendRow(newRow);
     } else {
       if (nameIdx >= 0) sheet.getRange(u.row, nameIdx + 1).setValue(u.name);
       if (wingIdx >= 0) sheet.getRange(u.row, wingIdx + 1).setValue(u.wing);
       if (statusIdx >= 0) sheet.getRange(u.row, statusIdx + 1).setValue(u.status);
+      if (vinaiDateIdx >= 0) sheet.getRange(u.row, vinaiDateIdx + 1).setValue(u.vinaiDate);
       if (noteIdx >= 0) sheet.getRange(u.row, noteIdx + 1).setValue(u.note);
     }
   });

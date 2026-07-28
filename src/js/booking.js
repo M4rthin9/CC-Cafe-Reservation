@@ -449,6 +449,7 @@ function filterPrisonerSuggestions() {
       <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
         #${escHtml(p.prisonerId)}<br>
         <span style="color:var(--blue);font-weight:600;">${escHtml(p.wing || '')}</span>
+        ${p.status ? `<br><span style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:4px;font-size:10px;background:${p.status === 'ติดวินัย งดเยี่ยม' ? '#fee2e2;color:#991b1b' : '#dbeafe;color:#1e40af'};font-weight:600;">${escHtml(p.status)}</span>` : ''}
       </div>
     `;
     div.onclick = () => selectPrisoner(p);
@@ -458,6 +459,45 @@ function filterPrisonerSuggestions() {
 }
 
 function selectPrisoner(p) {
+  const isRestricted = String(p.status || '').trim() === 'ติดวินัย งดเยี่ยม';
+  if (isRestricted) {
+    const vinaiDateStr = String(p.vinaiDate || '').trim();
+    if (vinaiDateStr) {
+      const vinaiDate = new Date(vinaiDateStr + 'T00:00:00');
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      if (vinaiDate <= oneYearAgo) {
+        // Discipline expired — allow selection
+      } else {
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            icon: 'error',
+            title: 'ไม่สามารถจองได้',
+            text: 'ผู้ต้องขังรายนี้อยู่ในสถานะ "ติดวินัย งดเยี่ยม" — ไม่สามารถจองได้',
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#dc2626'
+          });
+        } else {
+          alert('ผู้ต้องขังรายนี้อยู่ในสถานะ "ติดวินัย งดเยี่ยม" — ไม่สามารถจองได้');
+        }
+        return;
+      }
+    } else {
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'error',
+          title: 'ไม่สามารถจองได้',
+          text: 'ผู้ต้องขังรายนี้อยู่ในสถานะ "ติดวินัย งดเยี่ยม" — ไม่สามารถจองได้',
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#dc2626'
+        });
+      } else {
+        alert('ผู้ต้องขังรายนี้อยู่ในสถานะ "ติดวินัย งดเยี่ยม" — ไม่สามารถจองได้');
+      }
+      return;
+    }
+  }
+
   // Set hidden fields (used by validate/submit/confirm)
   document.getElementById('prisonerId').value = p.prisonerId;
   document.getElementById('prisonerName').value = p.prisonerName;
@@ -467,6 +507,13 @@ function selectPrisoner(p) {
   document.getElementById('dispPrisonerName').textContent = maskPrisonerName(p.prisonerName);
   document.getElementById('dispPrisonerId').textContent = p.prisonerId;
   document.getElementById('dispWing').textContent = p.wing || '';
+  const statusDisplay = document.getElementById('dispPrisonerStatus');
+  if (p.status) {
+    statusDisplay.textContent = p.status;
+    statusDisplay.style.color = p.status === 'ติดวินัย งดเยี่ยม' ? 'var(--red)' : 'var(--text2)';
+  } else {
+    statusDisplay.textContent = '';
+  }
   document.getElementById('selectedPrisonerDisplay').style.display = 'block';
 
   // Clear search + hide dropdown
@@ -721,6 +768,38 @@ function validate() {
         showError('prisonerSearch', 'กรุณาเลือกผู้ต้องขังที่มีอยู่ในฐานข้อมูล');
         scrollToFirstError();
         return false;
+      }
+    }
+  }
+
+  // ── Check prisoner discipline status ──
+  if (prisonerMaster.length > 0) {
+    const prisoner = prisonerMaster.find(p =>
+      p.prisonerId === pidHidden ||
+      (p.prisonerName.toLowerCase() === pnameHidden.toLowerCase() && p.wing === wingHidden)
+    );
+    if (prisoner) {
+      const isRestricted = String(prisoner.status || '').trim() === 'ติดวินัย งดเยี่ยม';
+      if (isRestricted) {
+        const vinaiDateStr = String(prisoner.vinaiDate || '').trim();
+        if (vinaiDateStr) {
+          const vinaiDate = new Date(vinaiDateStr + 'T00:00:00');
+          const oneYearAgo = new Date();
+          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+          if (vinaiDate <= oneYearAgo) {
+            // Discipline expired — allow booking
+          } else {
+            // Discipline still active — reject
+            showError('prisonerSearch', '⚠️ ผู้ต้องขังรายนี้อยู่ในสถานะ "ติดวินัย งดเยี่ยม" — ไม่สามารถจองได้');
+            scrollToFirstError();
+            return false;
+          }
+        } else {
+          // No vinaiDate — block by default
+          showError('prisonerSearch', '⚠️ ผู้ต้องขังรายนี้อยู่ในสถานะ "ติดวินัย งดเยี่ยม" — ไม่สามารถจองได้');
+          scrollToFirstError();
+          return false;
+        }
       }
     }
   }
