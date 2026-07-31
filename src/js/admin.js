@@ -1510,7 +1510,7 @@ async function updateStatus(idx, newStatus) {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: newStatus })
+      body: JSON.stringify({ action: 'updateStatus', username: currentUser.username, password: currentUser.password, ref: row.ref, status: newStatus, reason: newStatus === 'ไม่อนุมัติ' ? 'วินัย' : undefined })
     }, 1);
 
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -1691,7 +1691,7 @@ async function submitCancelWithReason() {
     const resp = await appsScriptFetch('', {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'cancelBooking', username: currentUser.username, password: currentUser.password, ref: row.ref })
+      body: JSON.stringify({ action: 'cancelBooking', username: currentUser.username, password: currentUser.password, ref: row.ref, reason: reason })
     }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();

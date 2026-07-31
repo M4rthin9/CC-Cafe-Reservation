@@ -256,10 +256,12 @@ function renderResult(row) {
       </div>
     `;
   } else if (sLower === 'ไม่อนุมัติ' || sLower === 'rejected') {
+    const rejectReason = (row.cancelReason || '').trim();
     paymentBlock = `
       <div class="rejected-notice">
         <h3>❌ การจองถูกปฏิเสธ</h3>
         <p>เจ้าหน้าที่ไม่สามารถอนุมัติการจองนี้ได้ เนื่องจากมีข้อมูลวินัยที่เกี่ยวข้อง หากมีข้อสงสัยกรุณาติดต่อเจ้าหน้าที่ ณ ทัณฑสถาน</p>
+        ${rejectReason ? `<div class="reason-box"><div class="reason-label">📌 เหตุผลทางวินัย</div><div class="reason-text">${escHtml(rejectReason)}</div></div>` : ''}
       </div>
       <a href="booking.html" class="btn-secondary" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1rem">
         <i class="ti ti-plus"></i> จองใหม่
@@ -280,10 +282,12 @@ function renderResult(row) {
       </div>
     `;
   } else if (sLower === 'ยกเลิก') {
+    const cancelReasonText = (row.cancelReason || '').trim();
     paymentBlock = `
       <div class="rejected-notice">
         <h3>🚫 การจองถูกยกเลิก</h3>
         <p>การจองนี้ถูกยกเลิกแล้ว หากต้องการจองใหม่กรุณากดปุ่มด้านล่าง</p>
+        ${cancelReasonText ? `<div class="reason-box"><div class="reason-label">📌 เหตุผล</div><div class="reason-text">${escHtml(cancelReasonText)}</div></div>` : ''}
       </div>
       <a href="booking.html" class="btn-secondary" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1rem">
         <i class="ti ti-plus"></i> จองใหม่
@@ -757,6 +761,42 @@ function getDemoRows() {
       totalPersons: 2,
       total: 2000,
       status: 'รอตรวจสอบ'
+    },
+    {
+      ref: 'VIS-44444',
+      timestamp: '1/6/2569 08:30',
+      visitorName: 'สมปอง ใจเย็น',
+      visitorId: '3333333333333',
+      visitorPhone: '081-333-3333',
+      relation: 'คู่สมรส',
+      prisonerName: 'สมศักดิ์ มั่นคง',
+      prisonerId: '56781234',
+      wing: 'แดน 3',
+      visitDate: 'วันศุกร์ที่ 6 มิถุนายน พ.ศ. 2569',
+      visitDateISO: '2026-06-06',
+      visitorCount: 1,
+      totalPersons: 2,
+      total: 2000,
+      status: 'ยกเลิก',
+      cancelReason: 'ผู้เยี่ยมไม่สะดวกเข้าเยี่ยมในวันดังกล่าว',
+    },
+    {
+      ref: 'VIS-55555',
+      timestamp: '1/6/2569 09:00',
+      visitorName: 'สมหมาย จริงใจ',
+      visitorId: '4444444444444',
+      visitorPhone: '081-444-4444',
+      relation: 'พี่น้อง',
+      prisonerName: 'สมศักดิ์ มั่นคง',
+      prisonerId: '56781234',
+      wing: 'แดน 3',
+      visitDate: 'วันศุกร์ที่ 6 มิถุนายน พ.ศ. 2569',
+      visitDateISO: '2026-06-06',
+      visitorCount: 1,
+      totalPersons: 2,
+      total: 2000,
+      status: 'ไม่อนุมัติ',
+      cancelReason: 'วินัย'
     }
   ];
 }

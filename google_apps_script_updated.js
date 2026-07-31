@@ -377,7 +377,7 @@ function ensureHeaders(sheet) {
     'religion','allergy','extraVisitorReligions','extraVisitorAllergies',
     'extraVisitorNames','visitorApproved','extraVisitorApproved',
     'prisonerName','prisonerId','wing','visitDate','visitDateISO',
-    'visitorCount','totalPersons','total','adultCount','child5to8Count','childUnder5Count','status','slipImage'];
+    'visitorCount','totalPersons','total','adultCount','child5to8Count','childUnder5Count','status','slipImage','cancelReason'];
 
   // If sheet is empty, write headers and set up formatting
   if (sheet.getLastRow() === 0) {
@@ -440,9 +440,13 @@ function handleCancelBooking(body, username) {
   const data = sheet.getDataRange().getValues();
   const refIdx = data[0].indexOf('ref');
   const statusIdx = data[0].indexOf('status');
+  const cancelReasonIdx = data[0].indexOf('cancelReason');
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][refIdx]).trim() === String(body.ref).trim()) {
       sheet.getRange(i + 1, statusIdx + 1).setValue('ยกเลิก');
+      if (body.reason && cancelReasonIdx >= 0) {
+        sheet.getRange(i + 1, cancelReasonIdx + 1).setValue(body.reason);
+      }
       logEvent(username, 'booking_cancelled', body.ref, { previousStatus: data[i][statusIdx] }, 'success');
       invalidateReservationsCache();
       return jsonResp({ status: 'ok' });
@@ -515,6 +519,12 @@ function handleUpdateStatus(body, username) {
       }
 
       sheet.getRange(i + 1, statusIdx + 1).setValue(body.status);
+      if (body.reason && (body.status === 'ไม่อนุมัติ' || body.status === 'ยกเลิก')) {
+        const cancelReasonIdx = data[0].indexOf('cancelReason');
+        if (cancelReasonIdx >= 0) {
+          sheet.getRange(i + 1, cancelReasonIdx + 1).setValue(body.reason);
+        }
+      }
       logEvent(username, 'status_changed', body.ref, { oldStatus, newStatus: body.status }, 'success');
       invalidateReservationsCache();
       return jsonResp({ status: 'ok' });
