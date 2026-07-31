@@ -121,11 +121,11 @@ function invalidateReservationsCache() {
 }
 
 function invalidateUserCache(username) {
-  try { CacheService.getScriptCache().remove('user_' + String(username || '').toLowerCase()); } catch (e) {}
+  try { CacheService.getScriptCache().remove('user_' + String(username || '').toLowerCase()); } catch (e) { }
 }
 
 function invalidatePrisonersCache() {
-  try { CacheService.getScriptCache().remove('prisoners'); } catch (e) {}
+  try { CacheService.getScriptCache().remove('prisoners'); } catch (e) { }
 }
 
 function checkRateLimit(key, maxAttempts, ttlSeconds) {
@@ -414,7 +414,7 @@ function getUserByUsername(username) {
       const parsed = JSON.parse(cached);
       if (parsed && typeof parsed === 'object') return parsed;
     } catch (e) {
-      try { cache.remove(cacheKey); } catch (e2) {}
+      try { cache.remove(cacheKey); } catch (e2) { }
     }
   }
   const sheet = getUsersSheet();
@@ -423,7 +423,7 @@ function getUserByUsername(username) {
   if (rowNum === -1) return null;
   const user = {};
   table.headers.forEach((h, idx) => user[h] = table.rows[rowNum - 2][idx]);
-  try { cache.put(cacheKey, JSON.stringify(user), 300); } catch (e) {}
+  try { cache.put(cacheKey, JSON.stringify(user), 300); } catch (e) { }
   return user;
 }
 
@@ -461,7 +461,7 @@ function getValidRoleNames() {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] && !names.includes(String(data[i][0]))) names.push(String(data[i][0]));
     }
-  } catch (e) {}
+  } catch (e) { }
   return names;
 }
 
@@ -516,7 +516,8 @@ function saveSlipToDrive(ref, base64Data, mimeTypeOverride, fileNameOverride) {
 // SECTION 5 — AUTH & SECURITY
 // ══════════════════════════════════════════════════════════════════
 function sha256Hex(input) {
-  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, input, Utilities.Charset.UTF_8);
+  const value = (input === undefined || input === null) ? '' : String(input);
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value, Utilities.Charset.UTF_8);
   return digest.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
 }
 
@@ -577,9 +578,9 @@ function handleLogin(body) {
     return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
   }
   if (String(user.password || '').indexOf('sha256$') !== 0) {
-    try { updatePassword(rawUsername, String(body.password)); } catch (e) {}
+    try { updatePassword(rawUsername, String(body.password)); } catch (e) { }
   }
-  try { CacheService.getScriptCache().remove('login_' + username); } catch (e) {}
+  try { CacheService.getScriptCache().remove('login_' + username); } catch (e) { }
   return jsonResp({ status: 'ok', user: { username: user.username, role: user.role, displayName: user.displayName || user.username } });
 }
 
@@ -623,7 +624,7 @@ function getAllReservations_() {
         return jsonResp({ status: 'ok', rows: parsed.rows });
       }
     } catch (e) {
-      try { cache.remove(CACHE_KEY); } catch (e2) {}
+      try { cache.remove(CACHE_KEY); } catch (e2) { }
     }
   }
 
@@ -646,7 +647,7 @@ function getAllReservations_() {
     });
 
   const reversed = rows.reverse();
-  try { cache.put(CACHE_KEY, JSON.stringify({ headersHash: headersHash, lastRow: lastRow, rows: reversed }), PUBLIC_CACHE_TTL); } catch (e) {}
+  try { cache.put(CACHE_KEY, JSON.stringify({ headersHash: headersHash, lastRow: lastRow, rows: reversed }), PUBLIC_CACHE_TTL); } catch (e) { }
   return jsonResp({ status: 'ok', rows: reversed });
 }
 
@@ -1329,7 +1330,7 @@ function handleGetPrisoners(params) {
   }
   prisoners.sort((a, b) => a.prisonerName.localeCompare(b.prisonerName, 'th'));
 
-  try { cache.put('prisoners', JSON.stringify(prisoners), PUBLIC_CACHE_TTL); } catch (e) {}
+  try { cache.put('prisoners', JSON.stringify(prisoners), PUBLIC_CACHE_TTL); } catch (e) { }
   return jsonResp({ status: 'ok', prisoners: prisoners });
 }
 
@@ -1436,10 +1437,12 @@ const POST_ROUTES = {
   syncPrisonerWings: { auth: true, run: handleSyncPrisonerWings },
   getUsers: { auth: true, run: () => jsonResp({ status: 'ok', users: getAllUsers().map(u => ({ username: u.username, role: u.role, displayName: u.displayName || u.username, createdAt: u.createdAt })) }) },
   getRoles: { auth: true, run: () => jsonResp({ status: 'ok', roles: getRolesList() }) },
-  logClientEvent: { auth: true, run: (body, username) => {
-    logEvent(username || 'client', body.clientAction || 'client_action', body.targetRef || '', body.details || {}, 'success');
-    return jsonResp({ status: 'ok' });
-  } }
+  logClientEvent: {
+    auth: true, run: (body, username) => {
+      logEvent(username || 'client', body.clientAction || 'client_action', body.targetRef || '', body.details || {}, 'success');
+      return jsonResp({ status: 'ok' });
+    }
+  }
 };
 
 function doGetHandler(e) {
