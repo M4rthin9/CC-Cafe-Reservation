@@ -289,6 +289,7 @@ function renderResult(row) {
         <p>การจองนี้ถูกยกเลิกแล้ว หากต้องการจองใหม่กรุณากดปุ่มด้านล่าง</p>
         ${cancelReasonText ? `<div class="reason-box"><div class="reason-label">📌 เหตุผล</div><div class="reason-text">${escHtml(cancelReasonText)}</div></div>` : ''}
       </div>
+      <div id="cancelNotesArea"></div>
       <a href="booking.html" class="btn-secondary" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1rem">
         <i class="ti ti-plus"></i> จองใหม่
       </a>
@@ -418,6 +419,41 @@ function renderResult(row) {
       <i class="ti ti-search"></i> ค้นหาอีกครั้ง
     </button>
   `;
+
+  if (sLower === 'ยกเลิก') renderCancelNotes(row.ref);
+}
+
+async function renderCancelNotes(ref) {
+  const el = document.getElementById('cancelNotesArea');
+  if (!el) return;
+  let notes = [];
+  try {
+    const result = await appsScriptPost({ action: 'getNotes', ref: ref });
+    if (result && result.status === 'ok' && Array.isArray(result.notes)) {
+      notes = result.notes.map(n => ({
+        text: String(n.text || ''),
+        user: String(n.user || ''),
+        timestamp: String(n.timestamp || '')
+      }));
+    }
+  } catch (e) {
+    console.warn('Failed to load cancel notes:', e);
+    return;
+  }
+  if (!notes.length) return;
+  const items = notes.map(n => {
+    const text = n.text.replace(/^ยกเลิก:\s*/i, '').trim() || n.text;
+    return `
+      <div style="padding:6px 0;border-bottom:1px dashed #fcd34d;">
+        <div style="color:#78350f;font-size:13px;line-height:1.6;">📝 ${escHtml(text)}</div>
+        ${(n.user || n.timestamp) ? `<div style="font-size:11px;color:#92400e;margin-top:2px;">${escHtml(n.user)} · ${escHtml(n.timestamp)}</div>` : ''}
+      </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:10px 14px;margin-top:8px;font-size:13px;">
+      <div style="font-weight:600;color:#92400e;margin-bottom:4px;">📌 หมายเหตุการยกเลิก</div>
+      ${items}
+    </div>`;
 }
 
 // ===== STATUS PILL =====
