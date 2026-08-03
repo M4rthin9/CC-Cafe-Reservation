@@ -363,6 +363,7 @@
               <button class="btn btn-filled btn-sm" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️</button>
               <button class="btn btn-tonal btn-sm" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤มีเบอร์</button>
               <button class="btn btn-outlined btn-sm" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่" title="โหลดข้อมูลใหม่">🔄</button>
+              <button class="btn btn-filled btn-sm" onclick="dedupeReservations()" id="btnDedupe" style="display:none;" title="ลบรายการจองที่มีเลขอ้างอิงซ้ำ (เก็บแถวแรก)">🧹 ลบ Ref ซ้ำ</button>
               <button class="btn btn-filled btn-sm" onclick="syncPrisonerWings()" id="btnSyncWings" style="display:none;">🔄 Sync</button>
             </div>
           </div>
@@ -806,7 +807,7 @@
 
       <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
         <button class="btn btn-outlined" onclick="closeNewBookingModal()">ยกเลิก</button>
-        <button class="btn btn-filled" onclick="submitNewBooking()">💾 บันทึกการจอง</button>
+        <button type="button" class="btn btn-filled" onclick="submitNewBooking()" id="nbSubmitBtn">💾 บันทึกการจอง</button>
       </div>
     </div>
   </div>

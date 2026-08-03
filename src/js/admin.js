@@ -332,12 +332,14 @@ async function doLogin() {
     const btnExportPhones = document.getElementById('btnExportPhones');
     const btnSyncWings = document.getElementById('btnSyncWings');
     const btnNewBooking = document.getElementById('btnNewBooking');
+    const btnDedupe = document.getElementById('btnDedupe');
     if (filterStatusEl) filterStatusEl.style.display = isAdminOrSuper ? '' : 'none';
     if (btnExport) btnExport.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrint) btnPrint.style.display = isAdminOrSuper ? '' : 'none';
     if (btnExportPhones) btnExportPhones.style.display = isAdminOrSuper ? '' : 'none';
     if (btnSyncWings) btnSyncWings.style.display = isAdminOrSuper ? '' : 'none';
     if (btnNewBooking) btnNewBooking.style.display = isAdminOrSuper ? '' : 'none';
+    if (btnDedupe) btnDedupe.style.display = isAdminOrSuper ? '' : 'none';
 
     // Show role-specific sidebar links and bottom nav
     ['sbUsers', 'sbPrisoners', 'sbConnection', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnConnection', 'bnSettings'].forEach(id => {
@@ -2522,6 +2524,39 @@ async function syncPrisonerWings() {
     }
   } catch (e) {
     showToast('Sync Wings Error: ' + e.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function dedupeReservations() {
+  if (!confirm('จะลบรายการจองที่มี "เลขอ้างอิง (Ref)" ซ้ำกันออกจากชีต (เก็บแถวแรกไว้) ใช่หรือไม่?')) return;
+  const btn = document.getElementById('btnDedupe');
+  if (btn) btn.disabled = true;
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'dedupeReservations', username: currentUser.username, password: currentUser.password })
+    }, 1);
+    const data = JSON.parse(await resp.text());
+    if (data.status === 'ok') {
+      if (data.removed > 0) {
+        showToast('🧹 ลบการจองที่มี Ref ซ้ำ ' + data.removed + ' แถว', 'success');
+        logEvent('dedupe_reservations', `ลบการจอง Ref ซ้ำ ${data.removed} แถว`);
+      } else {
+        showToast('ไม่พบเลขอ้างอิงซ้ำในชีต', 'success');
+      }
+      await loadData();
+      renderTable();
+      updateStats();
+      renderDashboardHome();
+    } else {
+      showToast('ลบ Ref ซ้ำล้มเหลว: ' + (data.message || ''), 'error');
+    }
+  } catch (e) {
+    showToast('ลบ Ref ซ้ำ Error: ' + e.message, 'error');
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -5411,11 +5446,17 @@ function openNewBookingModal() {
   document.getElementById('nbPrisonerMatchStatus').style.display = 'none';
 
   updateNbTotal();
+  adminBookingSubmitting = false;
+  const nbSubmitBtn = document.getElementById('nbSubmitBtn');
+  if (nbSubmitBtn) nbSubmitBtn.disabled = false;
   document.getElementById('newBookingModalBg').classList.add('show');
 }
 
 function closeNewBookingModal(event) {
   if (event && event.target !== event.currentTarget) return;
+  adminBookingSubmitting = false;
+  const nbSubmitBtn = document.getElementById('nbSubmitBtn');
+  if (nbSubmitBtn) nbSubmitBtn.disabled = false;
   document.getElementById('newBookingModalBg').classList.remove('show');
 }
 
@@ -5504,7 +5545,14 @@ function nbGetExtraVisitors() {
   return extras;
 }
 
+let adminBookingSubmitting = false;
+
 async function submitNewBooking() {
+  if (adminBookingSubmitting) return;
+  adminBookingSubmitting = true;
+  const nbSubmitBtn = document.getElementById('nbSubmitBtn');
+  if (nbSubmitBtn) nbSubmitBtn.disabled = true;
+
   const visitorName = document.getElementById('nbVisitorName').value.trim();
   const visitorId = document.getElementById('nbVisitorId').value.trim();
   let visitorPhone = document.getElementById('nbVisitorPhone').value.trim();
@@ -5586,15 +5634,20 @@ async function submitNewBooking() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const result = JSON.parse(await resp.text());
     if (result.status !== 'ok') throw new Error(result.message || 'ไม่สำเร็จ');
+    ref = String(result.ref || '').trim() || ref;
 
     showToast('✅ จองสำเร็จ! เลขอ้างอิง: ' + ref, 'success');
     logEvent('admin_new_booking', `Admin สร้างการจอง ${ref} โดย ${currentUser.username}`);
+    adminBookingSubmitting = false;
+    if (nbSubmitBtn) nbSubmitBtn.disabled = false;
     closeNewBookingModal();
     loadData();
     updateStats();
     renderDashboardHome();
   } catch (e) {
     console.error('New booking error:', e);
+    adminBookingSubmitting = false;
+    if (nbSubmitBtn) nbSubmitBtn.disabled = false;
     showToast('ไม่สามารถบันทึกการจองได้: ' + e.message, 'error');
   }
 }

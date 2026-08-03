@@ -253,7 +253,7 @@
         <button class="btn-secondary" onclick="goBack()" style="flex:0.45">
           <i class="ti ti-arrow-left"></i> <span data-i18n="editBtn">แก้ไข</span>
         </button>
-        <button class="btn-primary" onclick="submitBooking()" style="flex:1" id="submitBtn">
+        <button type="button" class="btn-primary" onclick="submitBooking()" style="flex:1" id="submitBtn">
           <i class="ti ti-send"></i> <span data-i18n="submitBtn">ส่งคำขอจอง</span>
         </button>
       </div>
@@ -301,7 +301,7 @@
   <!-- Overlay -->
   <div class="overlay" id="overlay">
     <div class="spinner"></div>
-    <p data-i18n="loadingPrisoners">กำลังส่งคำขอ...</p>
+    <p data-i18n="submittingBooking">⏳ กำลังส่งคำขอ กรุณาอย่ากดปุ่มซ้ำ...</p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

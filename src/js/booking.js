@@ -931,7 +931,15 @@ function goToConfirm() {
 function goBack() { showPage(1); }
 
 // ===== SUBMIT =====
+let bookingSubmitting = false;
+
 async function submitBooking() {
+  if (bookingSubmitting) return;
+  bookingSubmitting = true;
+  const submitBtn = document.getElementById('submitBtn');
+  if (submitBtn) submitBtn.disabled = true;
+  document.getElementById('overlay').classList.add('show');
+
   await initBackendUrl();
   const n = parseInt(document.getElementById('visitorCount').value);
   const totalPersons = n + 1;
@@ -947,8 +955,6 @@ async function submitBooking() {
   const prisonerId = document.getElementById('prisonerId').value.trim();
 
   // ── ตรวจสอบเลขผู้ต้องขังซ้ำในวันเดียวกัน ──
-  document.getElementById('overlay').classList.add('show');
-  document.getElementById('submitBtn').disabled = true;
   let existingRefs = [];
   try {
     const dupData = await appsScriptGet({ action: 'lookupByRef', prisonerId: prisonerId });
@@ -960,8 +966,10 @@ async function submitBooking() {
         activeStatuses.includes(r.status)
       );
       if (duplicate) {
+        bookingSubmitting = false;
         document.getElementById('overlay').classList.remove('show');
-        document.getElementById('submitBtn').disabled = false;
+        const btn = document.getElementById('submitBtn');
+        if (btn) btn.disabled = false;
         showInlineError('confirmSummary', `⚠️ ไม่สามารถจองได้ — มีการจองผู้ต้องขังหมายเลข "${escHtml(prisonerId)}" ในวันนี้อยู่แล้ว (Ref: ${escHtml(duplicate.ref)})`);
         return;
       }
@@ -1002,6 +1010,8 @@ async function submitBooking() {
 
   // overlay already shown from duplicate check; do NOT add again
   let submitSuccess = false;
+  let savedRef = '';
+  let submitError = '';
   try {
     const resp = await appsScriptFetch('', {
       method: 'POST',
@@ -1013,11 +1023,14 @@ async function submitBooking() {
     const result = JSON.parse(await resp.text());
     if (result.status !== 'ok') throw new Error(result.message || 'ไม่สำเร็จ');
     submitSuccess = true;
+    savedRef = String(result.ref || '').trim() || ref;
   } catch (err) {
+    submitError = err && err.message ? String(err.message) : '';
     const isDemoMode = APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
     if (isDemoMode) {
       console.warn('Demo mode — Apps Script URL not configured (fake success for demo)');
       submitSuccess = true;
+      savedRef = ref;
     } else {
       console.error('Submit error:', err);
       submitSuccess = false;
@@ -1027,13 +1040,19 @@ async function submitBooking() {
   }
 
   if (!submitSuccess) {
-    document.getElementById('submitBtn').disabled = false;
-    showInlineError('confirmSummary', '❌ การส่งคำขอจองล้มเหลว — กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองใหม่อีกครั้ง หรือติดต่อเจ้าหน้าที่หากปัญหายังคงอยู่');
+    bookingSubmitting = false;
+    const btn = document.getElementById('submitBtn');
+    if (btn) btn.disabled = false;
+    const isServerRejection = submitError && (submitError.indexOf('⚠️') === 0 || submitError.indexOf('ไม่สามารถจองได้') === 0 || submitError.indexOf('Cannot change') === 0);
+    const failMsg = isServerRejection
+      ? submitError
+      : '❌ การส่งคำขอจองล้มเหลว — กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองใหม่อีกครั้ง\n⚠️ หากหน้าจอก่อนหน้าแสดงเลขอ้างอิงแล้ว กรุณาไปที่หน้า "ตรวจสอบสถานะ" ก่อนส่งซ้ำ เพื่อหลีกเลี่ยงการจองซ้ำ';
+    showInlineError('confirmSummary', failMsg);
     return;
   }
 
   // ✅ Success path (real save or demo)
-  document.getElementById('refNumber').textContent = ref;
+  document.getElementById('refNumber').textContent = savedRef;
 
   // Optimistic update local quota (counts pending bookings too)
   bookings[selectedDate] = (bookings[selectedDate] || 0) + 1;
@@ -1044,7 +1063,7 @@ async function submitBooking() {
 
   document.getElementById('finalSummary').innerHTML = `
     <div style="text-align:center;margin-bottom:8px">
-      <strong style="color:#185fa5">✅ ส่งคำขอเรียบร้อย — Ref: ${escHtml(ref)}</strong>
+      <strong style="color:#185fa5">✅ ส่งคำขอเรียบร้อย — Ref: ${escHtml(savedRef)}</strong>
     </div>
     
     <div class="booking-details">
@@ -1083,7 +1102,7 @@ async function submitBooking() {
 
   // Store ref in sessionStorage for status page
   try {
-    sessionStorage.setItem('lastRef', ref);
+    sessionStorage.setItem('lastRef', savedRef);
     sessionStorage.setItem('lastPrisonerId', data.prisonerId);
   } catch (e) { }
 
@@ -1134,6 +1153,7 @@ function resetAll() {
   selectedDate = null;
   document.getElementById('selectedDateDisplay').textContent = '';
   document.getElementById('submitBtn').disabled = false;
+  bookingSubmitting = false;
   renderCalendar();
   showPage(1);
 }

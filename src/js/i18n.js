@@ -149,6 +149,7 @@ const translations = {
     // Common
     home: "หน้าหลัก",
     loadingPrisoners: "⏳ กำลังโหลดรายชื่อผู้ต้องขังจากฐานข้อมูล...",
+    submittingBooking: "⏳ กำลังส่งคำขอ กรุณาอย่ากดปุ่มซ้ำ...",
     loadSuccess: "✓ โหลดรายชื่อสำเร็จ ({count} คน)",
     loadFail: "⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้ — กรอกเองได้ชั่วคราว"
   },
@@ -291,6 +292,7 @@ const translations = {
     // Common
     home: "Home",
     loadingPrisoners: "⏳ Loading prisoner list...",
+    submittingBooking: "⏳ Submitting, please do not press the button again...",
     loadSuccess: "✓ Loaded ({count} people)",
     loadFail: "⚠️ Failed to load from database — manual entry available"
   },
@@ -433,6 +435,7 @@ const translations = {
     // Common
     home: "主页",
     loadingPrisoners: "⏳ 正在从数据库加载囚犯列表...",
+    submittingBooking: "⏳ 正在提交，请勿重复点击按钮...",
     loadSuccess: "✓ 已加载 ({count} 人)",
     loadFail: "⚠️ 无法从数据库加载 — 可暂时手动输入"
   }

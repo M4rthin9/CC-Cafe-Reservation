@@ -197,6 +197,40 @@ function findRowByRef(table, ref) {
   return -1;
 }
 
+function findRowsByRef(table, ref) {
+  const idx = table.headers.indexOf('ref');
+  if (idx === -1) return [];
+  const target = String(ref || '').trim();
+  const matches = [];
+  for (let i = 0; i < table.rows.length; i++) {
+    if (String(table.rows[i][idx]).trim() === target) matches.push(i + 2);
+  }
+  return matches;
+}
+
+function generateUniqueRefServer(existingRefs) {
+  const existing = {};
+  (existingRefs || []).forEach(r => { existing[String(r).trim()] = true; });
+  let ref, attempts = 0;
+  do {
+    ref = 'VIS-' + Math.floor(10000 + Math.random() * 90000);
+    attempts++;
+  } while (existing[ref] && attempts < 100);
+  return ref;
+}
+
+function isActiveReservationStatus(status) {
+  return ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบวินัย', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'].includes(String(status || '').trim());
+}
+
+function normalizeVisitDateISO(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) return formatDateISO(value);
+  const s = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const parsed = new Date(s);
+  return !isNaN(parsed.getTime()) ? formatDateISO(parsed) : s;
+}
+
 function findRowByKey(table, keyCol, value, caseInsensitive) {
   const idx = table.headers.indexOf(keyCol);
   if (idx === -1) return -1;
@@ -875,20 +909,115 @@ function handleSaveReservation(body) {
   const validation = validateSaveReservation(body);
   if (!validation.ok) return jsonResp({ status: 'error', message: validation.message });
 
-  const sheet = getMainSheet();
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const newRow = headers.map(h => validation.data[h] !== undefined ? validation.data[h] : '');
-  const rowNum = sheet.getLastRow() + 1;
-  sheet.getRange(rowNum, 1, 1, headers.length).setValues([newRow]);
+  const lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(20000)) {
+      return jsonResp({ status: 'error', message: '⚠️ ระบบกำลังรับคำขอจำนวนมาก กรุณารอสักครู่แล้วลองใหม่อีกครั้ง' });
+    }
 
-  const phoneIdx = headers.indexOf('visitorPhone');
-  if (phoneIdx >= 0) {
-    sheet.getRange(rowNum, phoneIdx + 1).setNumberFormat('@');
+    const sheet = getMainSheet();
+    const table = readSheetTable(sheet);
+    const headers = table.headers;
+    const refIdx = headers.indexOf('ref');
+    const prisonerIdIdx = headers.indexOf('prisonerId');
+    const dateIdx = headers.indexOf('visitDateISO');
+    const statusIdx = headers.indexOf('status');
+
+    // ── Guard: reject duplicate booking for the same prisoner on the same day ──
+    const newPrisonerId = String(validation.data.prisonerId || '').trim();
+    const newDate = normalizeVisitDateISO(validation.data.visitDateISO);
+    if (prisonerIdIdx >= 0 && dateIdx >= 0 && newPrisonerId && newDate) {
+      for (let i = 0; i < table.rows.length; i++) {
+        const row = table.rows[i];
+        if (String(row[prisonerIdIdx] || '').trim() === newPrisonerId &&
+            normalizeVisitDateISO(row[dateIdx]) === newDate &&
+            isActiveReservationStatus(row[statusIdx])) {
+          const dupRef = String(row[refIdx] || '').trim();
+          return jsonResp({ status: 'error', message: '⚠️ ไม่สามารถจองได้ — มีการจองผู้ต้องขังหมายเลข "' + newPrisonerId + '" ในวันนี้อยู่แล้ว' + (dupRef ? ' (Ref: ' + dupRef + ')' : '') });
+        }
+      }
+    }
+
+    // ── Guard: ensure ref is unique against the LIVE sheet (not cache) ──
+    const existingRefs = [];
+    if (refIdx >= 0) {
+      for (let i = 0; i < table.rows.length; i++) {
+        const r = String(table.rows[i][refIdx] || '').trim();
+        if (r) existingRefs.push(r);
+      }
+    }
+    let ref = String(validation.data.ref || '').trim();
+    if (!ref || existingRefs.indexOf(ref) !== -1) {
+      ref = generateUniqueRefServer(existingRefs);
+    }
+
+    const data = Object.assign({}, validation.data, { ref: ref });
+    const newRow = headers.map(h => data[h] !== undefined ? data[h] : '');
+    const rowNum = sheet.getLastRow() + 1;
+    sheet.getRange(rowNum, 1, 1, headers.length).setValues([newRow]);
+
+    const phoneIdx = headers.indexOf('visitorPhone');
+    if (phoneIdx >= 0) {
+      sheet.getRange(rowNum, phoneIdx + 1).setNumberFormat('@');
+    }
+
+    invalidateReservationsCache();
+    logEvent('public', 'booking_submitted', ref, { visitorName: data.visitorName, prisonerName: data.prisonerName, visitDate: data.visitDate }, 'success');
+    return jsonResp({ status: 'ok', ref: ref });
+  } catch (err) {
+    Logger.log('handleSaveReservation failed: ' + err.toString());
+    return jsonResp({ status: 'error', message: 'เกิดข้อผิดพลาดในการบันทึกการจอง — ' + err.toString() });
+  } finally {
+    try { lock.releaseLock(); } catch (e) { }
+  }
+}
+
+function handleDedupeReservations(body, username) {
+  if (!hasPermission(username, 'manage_users') && !hasPermission(username, 'approve')) {
+    return jsonResp({ status: 'error', message: 'ไม่มีสิทธิ์ดำเนินการนี้' });
   }
 
-  invalidateReservationsCache();
-  logEvent('public', 'booking_submitted', validation.data.ref || '', { visitorName: validation.data.visitorName, prisonerName: validation.data.prisonerName, visitDate: validation.data.visitDate }, 'success');
-  return jsonResp({ status: 'ok', ref: validation.data.ref });
+  const lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(20000)) {
+      return jsonResp({ status: 'error', message: '⚠️ ระบบกำลังไม่ว่าง กรุณาลองใหม่อีกครั้ง' });
+    }
+
+    const sheet = getMainSheet();
+    const table = readSheetTable(sheet);
+    const refIdx = table.headers.indexOf('ref');
+    if (refIdx === -1) return jsonResp({ status: 'error', message: 'ไม่พบคอลัมน์ "ref" ในชีต' });
+
+    const seen = {};
+    const rowsToDelete = [];
+    for (let i = 0; i < table.rows.length; i++) {
+      const ref = String(table.rows[i][refIdx] || '').trim();
+      if (!ref) continue;
+      if (seen[ref]) {
+        rowsToDelete.push(i + 2);
+      } else {
+        seen[ref] = true;
+      }
+    }
+
+    if (rowsToDelete.length === 0) {
+      return jsonResp({ status: 'ok', removed: 0, message: 'ไม่พบเลขอ้างอิงซ้ำในชีต' });
+    }
+
+    rowsToDelete.sort((a, b) => b - a);
+    rowsToDelete.forEach(rowNum => {
+      sheet.deleteRow(rowNum);
+    });
+
+    invalidateReservationsCache();
+    logEvent(username, 'dedupe_reservations', '', { removed: rowsToDelete.length }, 'success');
+    return jsonResp({ status: 'ok', removed: rowsToDelete.length, message: 'ลบการจองซ้ำ ' + rowsToDelete.length + ' แถว' });
+  } catch (err) {
+    Logger.log('handleDedupeReservations failed: ' + err.toString());
+    return jsonResp({ status: 'error', message: err.message || err.toString() });
+  } finally {
+    try { lock.releaseLock(); } catch (e) { }
+  }
 }
 
 function validateSaveReservation(body) {
@@ -920,16 +1049,19 @@ function handleCancelBooking(body, username) {
   const table = readSheetTable(sheet);
   const statusIdx = table.headers.indexOf('status');
   const cancelReasonIdx = table.headers.indexOf('cancelReason');
-  const rowNum = findRowByRef(table, body.ref);
-  if (rowNum === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
+  const rowNums = findRowsByRef(table, body.ref);
+  if (rowNums.length === 0) return jsonResp({ status: 'error', message: 'Ref not found' });
 
-  const prevStatus = statusIdx >= 0 ? table.rows[rowNum - 2][statusIdx] : '';
-  const cols = [];
-  if (statusIdx >= 0) cols.push([statusIdx, 'ยกเลิก']);
-  if (body.reason && cancelReasonIdx >= 0) cols.push([cancelReasonIdx, sanitizeStr(body.reason, 2000)]);
-  writeColumnsToRows(sheet, [{ row: rowNum, cols: cols }]);
+  const prevStatus = statusIdx >= 0 ? table.rows[rowNums[0] - 2][statusIdx] : '';
+  const updates = rowNums.map(rowNum => {
+    const cols = [];
+    if (statusIdx >= 0) cols.push([statusIdx, 'ยกเลิก']);
+    if (body.reason && cancelReasonIdx >= 0) cols.push([cancelReasonIdx, sanitizeStr(body.reason, 2000)]);
+    return { row: rowNum, cols: cols };
+  });
+  writeColumnsToRows(sheet, updates);
 
-  logEvent(username, 'booking_cancelled', body.ref, { previousStatus: prevStatus }, 'success');
+  logEvent(username, 'booking_cancelled', body.ref, { previousStatus: prevStatus, affectedRows: rowNums.length }, 'success');
   invalidateReservationsCache();
   return jsonResp({ status: 'ok' });
 }
@@ -938,13 +1070,18 @@ function handlePublicCancelBooking(body) {
   const sheet = getMainSheet();
   const table = readSheetTable(sheet);
   const statusIdx = table.headers.indexOf('status');
-  const rowNum = findRowByRef(table, body.ref);
-  if (rowNum === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
+  const rowNums = findRowsByRef(table, body.ref);
+  if (rowNums.length === 0) return jsonResp({ status: 'error', message: 'Ref not found' });
 
-  const prevStatus = statusIdx >= 0 ? table.rows[rowNum - 2][statusIdx] : '';
-  if (statusIdx >= 0) writeColumnsToRows(sheet, [{ row: rowNum, cols: [[statusIdx, 'ยกเลิก']] }]);
+  const prevStatus = statusIdx >= 0 ? table.rows[rowNums[0] - 2][statusIdx] : '';
+  const updates = rowNums.map(rowNum => {
+    const cols = [];
+    if (statusIdx >= 0) cols.push([statusIdx, 'ยกเลิก']);
+    return { row: rowNum, cols: cols };
+  });
+  if (statusIdx >= 0) writeColumnsToRows(sheet, updates);
 
-  logEvent('public', 'booking_cancelled', body.ref, { previousStatus: prevStatus }, 'success');
+  logEvent('public', 'booking_cancelled', body.ref, { previousStatus: prevStatus, affectedRows: rowNums.length }, 'success');
   invalidateReservationsCache();
   return jsonResp({ status: 'ok' });
 }
@@ -987,24 +1124,33 @@ function handleUpdateStatus(body, username) {
   const table = readSheetTable(sheet);
   const statusIdx = table.headers.indexOf('status');
   const cancelReasonIdx = table.headers.indexOf('cancelReason');
-  const rowNum = findRowByRef(table, ref);
-  if (rowNum === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
+  const rowNums = findRowsByRef(table, ref);
+  if (rowNums.length === 0) return jsonResp({ status: 'error', message: 'Ref not found' });
 
-  const oldStatus = statusIdx >= 0 ? String(table.rows[rowNum - 2][statusIdx] || '').trim() : '';
-  const allowed = allowedTransitions[oldStatus];
-  if (allowed && !allowed.includes(status)) {
-    logEvent(username, 'status_change_rejected', ref, { oldStatus: oldStatus, newStatus: status, reason: 'invalid_transition' }, 'denied');
-    return jsonResp({ status: 'error', message: 'Cannot change from "' + oldStatus + '" to "' + status + '"' });
+  let rejected = null;
+  rowNums.forEach(rowNum => {
+    const oldStatus = statusIdx >= 0 ? String(table.rows[rowNum - 2][statusIdx] || '').trim() : '';
+    const allowed = allowedTransitions[oldStatus];
+    if (allowed && !allowed.includes(status) && !rejected) {
+      rejected = { oldStatus: oldStatus, newStatus: status };
+    }
+  });
+  if (rejected) {
+    logEvent(username, 'status_change_rejected', ref, { oldStatus: rejected.oldStatus, newStatus: rejected.newStatus, reason: 'invalid_transition' }, 'denied');
+    return jsonResp({ status: 'error', message: 'Cannot change from "' + rejected.oldStatus + '" to "' + status + '"' });
   }
 
-  const cols = [];
-  if (statusIdx >= 0) cols.push([statusIdx, status]);
-  if (body.reason && (status === 'ไม่อนุมัติ' || status === 'ยกเลิก') && cancelReasonIdx >= 0) {
-    cols.push([cancelReasonIdx, sanitizeStr(body.reason, 2000)]);
-  }
-  writeColumnsToRows(sheet, [{ row: rowNum, cols: cols }]);
+  const updates = rowNums.map(rowNum => {
+    const cols = [];
+    if (statusIdx >= 0) cols.push([statusIdx, status]);
+    if (body.reason && (status === 'ไม่อนุมัติ' || status === 'ยกเลิก') && cancelReasonIdx >= 0) {
+      cols.push([cancelReasonIdx, sanitizeStr(body.reason, 2000)]);
+    }
+    return { row: rowNum, cols: cols };
+  });
+  writeColumnsToRows(sheet, updates);
 
-  logEvent(username, 'status_changed', ref, { oldStatus: oldStatus, newStatus: status }, 'success');
+  logEvent(username, 'status_changed', ref, { newStatus: status, affectedRows: rowNums.length }, 'success');
   invalidateReservationsCache();
   return jsonResp({ status: 'ok' });
 }
@@ -1029,9 +1175,9 @@ function handleUpdateVisitorApproval(body, username) {
     evaIdx = headers.indexOf('extraVisitorApproved');
   }
 
-  const rowNum = findRowByRef(table, body.ref);
-  if (rowNum === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
-  const rowIndex = rowNum - 2;
+  const rowNums = findRowsByRef(table, body.ref);
+  if (rowNums.length === 0) return jsonResp({ status: 'error', message: 'Ref not found' });
+  const rowIndex = rowNums[0] - 2;
 
   const mainApproved = (body.visitorApproved || '').toString().trim().toLowerCase() === 'yes' ? 1 : 0;
   let correctTotal = 2000;
@@ -1078,9 +1224,10 @@ function handleUpdateVisitorApproval(body, username) {
   if (body.extraVisitorApproved !== undefined) cols.push([evaIdx, sanitizeStr(body.extraVisitorApproved, 5000)]);
   if (vcIdx > -1) cols.push([vcIdx, correctVisitorCount]);
   if (tIdx > -1) cols.push([tIdx, correctTotal]);
-  writeColumnsToRows(sheet, [{ row: rowNum, cols: cols }]);
+  const updates = rowNums.map(rowNum => ({ row: rowNum, cols: cols.slice() }));
+  writeColumnsToRows(sheet, updates);
 
-  logEvent(username, 'visitor_approval_updated', body.ref, { visitorApproved: body.visitorApproved, extraVisitorApproved: body.extraVisitorApproved, visitorCount: correctVisitorCount, total: correctTotal }, 'success');
+  logEvent(username, 'visitor_approval_updated', body.ref, { visitorApproved: body.visitorApproved, extraVisitorApproved: body.extraVisitorApproved, visitorCount: correctVisitorCount, total: correctTotal, affectedRows: rowNums.length }, 'success');
   invalidateReservationsCache();
   return jsonResp({ status: 'ok', visitorCount: correctVisitorCount, total: correctTotal });
 }
@@ -1105,8 +1252,8 @@ function handleUpdateSlipAndStatus(body, username) {
   const table = readSheetTable(sheet);
   const statusIdx = table.headers.indexOf('status');
   const slipIdx = table.headers.indexOf('slipImage');
-  const rowNum = findRowByRef(table, body.ref);
-  if (rowNum === -1) return jsonResp({ status: 'error', message: 'Ref not found' });
+  const rowNums = findRowsByRef(table, body.ref);
+  if (rowNums.length === 0) return jsonResp({ status: 'error', message: 'Ref not found' });
 
   const cols = [];
   if (statusIdx >= 0) cols.push([statusIdx, sanitizeStr(body.status, 50) || 'ชำระแล้ว']);
@@ -1117,7 +1264,8 @@ function handleUpdateSlipAndStatus(body, username) {
     }
     cols.push([slipIdx, slipVal]);
   }
-  writeColumnsToRows(sheet, [{ row: rowNum, cols: cols }]);
+  const updates = rowNums.map(rowNum => ({ row: rowNum, cols: cols.slice() }));
+  writeColumnsToRows(sheet, updates);
 
   logEvent(username, 'slip_and_status_updated', body.ref, { status: body.status }, 'success');
   invalidateReservationsCache();
@@ -1257,8 +1405,8 @@ function handleUpdateBooking(body, username) {
   const sheet = getMainSheet();
   const table = readSheetTable(sheet);
   const headers = table.headers;
-  const rowNum = findRowByRef(table, ref);
-  if (rowNum === -1) return jsonResp({ status: 'error', message: 'ไม่พบการจองที่ระบุ' });
+  const rowNums = findRowsByRef(table, ref);
+  if (rowNums.length === 0) return jsonResp({ status: 'error', message: 'ไม่พบการจองที่ระบุ' });
 
   const phoneIdx = headers.indexOf('visitorPhone');
   const cols = [];
@@ -1288,9 +1436,12 @@ function handleUpdateBooking(body, username) {
   if (errors.length > 0) return jsonResp({ status: 'error', message: errors.join('; ') });
 
   if (cols.length > 0) {
-    writeColumnsToRows(sheet, [{ row: rowNum, cols: cols }]);
+    const updates = rowNums.map(rowNum => ({ row: rowNum, cols: cols.slice() }));
+    writeColumnsToRows(sheet, updates);
     if (phoneIdx >= 0 && changes.visitorPhone !== undefined) {
-      sheet.getRange(rowNum, phoneIdx + 1).setNumberFormat('@');
+      rowNums.forEach(rowNum => {
+        sheet.getRange(rowNum, phoneIdx + 1).setNumberFormat('@');
+      });
     }
   }
   logEvent(username, 'update_booking', ref, changes, 'success');
@@ -1779,6 +1930,7 @@ const POST_ROUTES = {
   login: { auth: false, run: handleLogin },
   changePassword: { auth: false, run: handleChangePassword },
   saveReservation: { auth: false, run: handleSaveReservation },
+  dedupeReservations: { auth: true, run: handleDedupeReservations },
   getAll: { auth: true, run: () => getAllReservations_() },
   getAllWithArchive: { auth: true, run: () => getAllReservationsWithArchive_() },
   getCountsByDate: { auth: false, run: () => getCountsByDate() },
