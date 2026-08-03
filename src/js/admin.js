@@ -90,7 +90,68 @@ async function toggleArchive() {
     btn.textContent = archiveLoaded ? '🗄️ ซ่อนย้อนหลัง' : '🗄️ ดูย้อนหลัง';
     btn.classList.toggle('active', archiveLoaded);
   }
+  buildDateFilter();
   refreshCurrentView();
+}
+
+// Whether the deployed backend supports getAllWithArchive (server-side merge).
+// null = not yet detected, true = supported, false = must merge client-side.
+let backendServerMerge = null;
+
+function backendCall(action) {
+  return appsScriptFetch('', {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: action, username: currentUser.username, password: currentUser.password })
+  }, 1);
+}
+
+async function fetchMergedRows() {
+  if (backendServerMerge !== false) {
+    try {
+      const resp = await backendCall('getAllWithArchive');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if (data.status === 'ok' && Array.isArray(data.rows)) {
+        backendServerMerge = true;
+        return data.rows;
+      }
+      if (data.status !== 'error' || data.message !== 'Unknown action') {
+        throw new Error(data.message || 'Unknown error');
+      }
+      backendServerMerge = false;
+    } catch (e) {
+      if (String(e.message) !== 'Unknown action') throw e;
+      backendServerMerge = false;
+    }
+  }
+
+  // Backend not updated yet — merge active + archive rows client-side.
+  const [activeResp, archiveResp] = await Promise.all([
+    backendCall('getAll'),
+    backendCall('getArchivedReservations')
+  ]);
+  if (!activeResp.ok) throw new Error('HTTP ' + activeResp.status);
+  const activeData = await activeResp.json();
+  if (activeData.status !== 'ok') throw new Error(activeData.message || 'Unknown error');
+  const active = activeData.rows || [];
+  const rows = active.slice();
+  if (archiveResp.ok) {
+    try {
+      const archiveData = await archiveResp.json();
+      if (archiveData.status === 'ok' && Array.isArray(archiveData.rows)) {
+        const activeRefs = new Set(active.map(r => String(r.ref || '').trim().toUpperCase()));
+        archiveData.rows.forEach(r => {
+          const ref = String(r.ref || '').trim();
+          if (ref && !activeRefs.has(ref.toUpperCase())) {
+            rows.push(Object.assign({}, r, { _archived: true }));
+          }
+        });
+      }
+    } catch (e) { /* archive merge is best-effort */ }
+  }
+  return rows;
 }
 
 async function pollData() {
@@ -102,22 +163,12 @@ async function pollData() {
   } catch (e) { /* fall through */ }
 
   try {
-    const resp = await appsScriptFetch('', {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getAllWithArchive', username: currentUser.username, password: currentUser.password })
-    }, 1);
-    if (!resp.ok) return;
-    const text = await resp.text();
-    const data = JSON.parse(text);
-    if (data.status !== 'ok' || !data.rows) return;
-
+    const rows = await fetchMergedRows();
     const oldRefs = allRows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
-    const newRefs = data.rows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
+    const newRefs = rows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
     if (oldRefs === newRefs) return;
 
-    allRows = data.rows || [];
+    allRows = rows;
     const lastUpdated = document.getElementById('lastUpdated');
     if (lastUpdated) lastUpdated.textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
 
@@ -399,17 +450,7 @@ async function loadData() {
   const tableBody = document.getElementById('tableBody');
   if (tableBody) tableBody.innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
-    const resp = await appsScriptFetch('', {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getAllWithArchive', username: currentUser.username, password: currentUser.password })
-    }, 1);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const text = await resp.text();
-    const data = JSON.parse(text);
-    if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
-    allRows = data.rows || [];
+    allRows = await fetchMergedRows();
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
     lastDataVersion = (await fetchDataVersion()) ?? lastDataVersion;
   } catch (e) {
@@ -483,6 +524,7 @@ function stripDayPrefix(dateStr) {
 function buildDateFilter() {
   const dateMap = {};
   allRows.forEach(r => {
+    if (r._archived && !archiveLoaded) return;
     if (r.visitDate && r.visitDateISO && !dateMap[r.visitDate]) {
       dateMap[r.visitDate] = r.visitDateISO;
     }
