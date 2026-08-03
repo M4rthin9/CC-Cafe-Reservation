@@ -725,6 +725,24 @@ function getAllReservations_() {
   }
 }
 
+function getAllReservationsWithArchive_() {
+  try {
+    const active = getActiveRows();
+    const archived = getArchivedRows();
+    const activeRefs = new Set(active.map(r => String(r.ref || '').trim().toUpperCase()));
+    const merged = active.slice();
+    archived.forEach(r => {
+      const ref = String(r.ref || '').trim();
+      if (ref && !activeRefs.has(ref.toUpperCase())) {
+        merged.push(Object.assign({}, r, { _archived: true }));
+      }
+    });
+    return jsonResp({ status: 'ok', rows: merged });
+  } catch (e) {
+    return jsonResp({ status: 'error', message: e.message || e.toString() });
+  }
+}
+
 function getArchiveSheet() {
   const sheet = getCachedSheet(ARCHIVE_SHEET);
   ensureArchiveHeaders(sheet);
@@ -1742,6 +1760,7 @@ const GET_ROUTES = {
   getBackendUrl: { run: () => jsonResp({ url: ScriptApp.getService().getUrl() }) },
   resolveUrl: { run: () => jsonResp({ status: 'ok', url: ScriptApp.getService().getUrl(), resolvedUrl: ScriptApp.getService().getUrl(), message: 'resolveUrl endpoint reached successfully' }) },
   getAll: { auth: true, run: () => getAllReservations_() },
+  getAllWithArchive: { auth: true, run: () => getAllReservationsWithArchive_() },
   getCountsByDate: { run: () => getCountsByDate() },
   lookupByRef: { run: (params) => lookupByRef(params) },
   getArchivedReservations: { auth: true, run: (params) => getArchivedReservations(params) },
@@ -1761,6 +1780,7 @@ const POST_ROUTES = {
   changePassword: { auth: false, run: handleChangePassword },
   saveReservation: { auth: false, run: handleSaveReservation },
   getAll: { auth: true, run: () => getAllReservations_() },
+  getAllWithArchive: { auth: true, run: () => getAllReservationsWithArchive_() },
   getCountsByDate: { auth: false, run: () => getCountsByDate() },
   lookupByRef: { auth: false, run: (body) => lookupByRef(body) },
   getArchivedReservations: { auth: true, run: (body) => getArchivedReservations(body) },

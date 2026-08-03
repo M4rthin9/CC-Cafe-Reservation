@@ -82,36 +82,6 @@ function refreshCurrentView() {
   }
 }
 
-async function loadArchived(silent) {
-  if (!currentUser) return false;
-  let archivedRows = [];
-  try {
-    const resp = await appsScriptFetch('', {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getArchivedReservations', username: currentUser.username, password: currentUser.password })
-    }, 1);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
-    archivedRows = data.rows || [];
-  } catch (e) {
-    console.error('Load archived error:', e);
-    if (!silent) showToast('โหลดข้อมูลย้อนหลังไม่สำเร็จ: ' + e.message, 'error');
-    return false;
-  }
-  const activeRefs = new Set(allRows.map(r => r.ref));
-  const merged = allRows.slice();
-  archivedRows.forEach(r => {
-    if (r.ref && !activeRefs.has(r.ref)) {
-      merged.push(Object.assign({}, r, { _archived: true }));
-    }
-  });
-  allRows = merged;
-  return true;
-}
-
 async function toggleArchive() {
   if (!currentUser) return;
   archiveLoaded = !archiveLoaded;
@@ -119,20 +89,6 @@ async function toggleArchive() {
   if (btn) {
     btn.textContent = archiveLoaded ? '🗄️ ซ่อนย้อนหลัง' : '🗄️ ดูย้อนหลัง';
     btn.classList.toggle('active', archiveLoaded);
-  }
-  if (archiveLoaded) {
-    const ok = await loadArchived(false);
-    if (ok) {
-      showToast('โหลดข้อมูลย้อนหลังแล้ว', 'success');
-    } else {
-      archiveLoaded = false;
-      if (btn) {
-        btn.textContent = '🗄️ ดูย้อนหลัง';
-        btn.classList.toggle('active', false);
-      }
-    }
-  } else {
-    await loadData();
   }
   refreshCurrentView();
 }
@@ -150,21 +106,18 @@ async function pollData() {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getAll', username: currentUser.username, password: currentUser.password })
+      body: JSON.stringify({ action: 'getAllWithArchive', username: currentUser.username, password: currentUser.password })
     }, 1);
     if (!resp.ok) return;
     const text = await resp.text();
     const data = JSON.parse(text);
     if (data.status !== 'ok' || !data.rows) return;
 
-    const oldRefs = allRows.filter(r => !r._archived).map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
+    const oldRefs = allRows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
     const newRefs = data.rows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
     if (oldRefs === newRefs) return;
 
     allRows = data.rows || [];
-    if (archiveLoaded) {
-      await loadArchived(true);
-    }
     const lastUpdated = document.getElementById('lastUpdated');
     if (lastUpdated) lastUpdated.textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
 
@@ -450,16 +403,13 @@ async function loadData() {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getAll', username: currentUser.username, password: currentUser.password })
+      body: JSON.stringify({ action: 'getAllWithArchive', username: currentUser.username, password: currentUser.password })
     }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const data = JSON.parse(text);
     if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
     allRows = data.rows || [];
-    if (archiveLoaded) {
-      await loadArchived(true);
-    }
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
     lastDataVersion = (await fetchDataVersion()) ?? lastDataVersion;
   } catch (e) {
@@ -480,6 +430,7 @@ async function loadData() {
     buildDateFilter();
     buildWingFilter();
     renderTable();
+    renderDashboardHome();
   } catch (renderErr) {
     console.error('Render error after data load:', renderErr);
     showToast('เกิดข้อผิดพลาดในการแสดงผล: ' + renderErr.message, 'error');
@@ -789,6 +740,7 @@ function renderTable() {
 
   let rows = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
+    if (r._archived && !archiveLoaded) return false;
     if (allowedStatuses[role]) {
       const normalized = normalizeStatus(r.status);
       if (!allowedStatuses[role].includes(normalized)) return false;
@@ -3649,6 +3601,7 @@ function getReportsFilteredRows() {
   const fw = wingEl ? wingEl.value : '';
 
   return allRows.filter(r => {
+    if (r._archived && !archiveLoaded) return false;
     if (fs && normalizeStatus(r.status) !== fs) return false;
     if (fd && r.visitDate !== fd) return false;
     if (fw && (r.wing || '') !== fw) return false;
@@ -3716,7 +3669,7 @@ function renderReportsView() {
 
   if (filtered.length === 0) {
     const archiveBtn = !archiveLoaded
-      ? `<button class="btn btn-tonal btn-sm" style="margin-top:12px" onclick="toggleArchive()">🗄️ โหลดข้อมูลย้อนหลัง (มากกว่า ${ARCHIVE_MONTHS} เดือน)</button>`
+      ? `<button class="btn btn-tonal btn-sm" style="margin-top:12px" onclick="toggleArchive()">🗄️ ดูข้อมูลย้อนหลัง (มากกว่า ${ARCHIVE_MONTHS} เดือน)</button>`
       : '';
     container.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--text2);">ไม่พบข้อมูลตามเงื่อนไขที่กรอง<br>ลองเปลี่ยน Filter ด้านบน<br>${archiveBtn}</div>`;
     return;
