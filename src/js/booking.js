@@ -951,12 +951,11 @@ async function submitBooking() {
   document.getElementById('submitBtn').disabled = true;
   let existingRefs = [];
   try {
-    const rows = await fetchAllReservations();
-    if (rows) {
-      existingRefs = rows.map(r => r.ref).filter(Boolean);
+    const dupData = await appsScriptGet({ action: 'lookupByRef', prisonerId: prisonerId });
+    if (dupData && dupData.status === 'ok' && Array.isArray(dupData.rows)) {
+      existingRefs = dupData.rows.map(r => r.ref).filter(Boolean);
       const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
-      const duplicate = rows.find(r =>
-        String(r.prisonerId || '').trim() === prisonerId &&
+      const duplicate = dupData.rows.find(r =>
         (r.visitDateISO || '') === selectedDate &&
         activeStatuses.includes(r.status)
       );
@@ -1149,41 +1148,67 @@ async function appsScriptGet(params) {
   catch { throw new Error('Invalid JSON: ' + text.slice(0, 100)); }
 }
 
-async function fetchAllReservations() {
+async function fetchBookingCounts() {
    // Try cache-only approach first for calendar counts
    try {
      const cache = localStorage.getItem('calendar_cache');
      const cacheTime = localStorage.getItem('calendar_cache_time');
      if (cache && cacheTime && (Date.now() - parseInt(cacheTime)) < 60000) {
        const data = JSON.parse(cache);
-       if (data && data.status === 'ok' && Array.isArray(data.rows)) return data.rows;
+       if (data && data.status === 'ok') {
+         if (data.counts) return data.counts;
+         if (Array.isArray(data.rows)) {
+           const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+           const counts = {};
+           data.rows.forEach(r => {
+             if (!r.visitDateISO) return;
+             if (!activeStatuses.includes(r.status)) return;
+             const dk = String(r.visitDateISO).trim();
+             if (/^\d{4}-\d{2}-\d{2}$/.test(dk)) counts[dk] = (counts[dk] || 0) + 1;
+           });
+           return counts;
+         }
+       }
      }
    } catch (e) {}
 
    const attempts = [
-     { action: 'getAll' },
-     { action: 'getAll', username: 'public' }
+     { action: 'getCountsByDate' },
+     { action: 'getAll' }
    ];
 
    let lastErr = null;
    for (const params of attempts) {
      try {
        const data = await appsScriptGet(params);
-       if (data && data.status === 'ok' && Array.isArray(data.rows)) {
-         // Cache successful response locally
-         try {
-           localStorage.setItem('calendar_cache', JSON.stringify(data));
-           localStorage.setItem('calendar_cache_time', String(Date.now()));
-         } catch (e) {}
-         return data.rows;
+       if (data && data.status === 'ok') {
+         if (params.action === 'getCountsByDate' && data.counts) {
+           try {
+             localStorage.setItem('calendar_cache', JSON.stringify({ status: 'ok', counts: data.counts }));
+             localStorage.setItem('calendar_cache_time', String(Date.now()));
+           } catch (e) {}
+           return data.counts;
+         }
+         if (params.action === 'getAll' && Array.isArray(data.rows)) {
+           const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+           const counts = {};
+           data.rows.forEach(r => {
+             if (!r.visitDateISO) return;
+             if (!activeStatuses.includes(r.status)) return;
+             const dk = String(r.visitDateISO).trim();
+             if (/^\d{4}-\d{2}-\d{2}$/.test(dk)) counts[dk] = (counts[dk] || 0) + 1;
+           });
+           return counts;
+         }
+         throw new Error('Invalid getCountsByDate response');
        }
        if (data && data.status === 'error') throw new Error(data.message || 'Unknown server error');
-       throw new Error('Invalid getAll response');
+       throw new Error('Invalid getCountsByDate response');
      } catch (err) {
        lastErr = err;
      }
    }
-   throw lastErr || new Error('Cannot load reservations');
+   throw lastErr || new Error('Cannot load booking counts');
  }
 
 // ===== CONNECTION BANNER =====
@@ -1226,38 +1251,18 @@ async function retryLoadBookingCounts() {
 // ===== โหลดจำนวนการจองจริงจาก Sheet ก่อน render ปฏิทิน =====
 async function loadBookingCounts() {
    await initBackendUrl();
-   // นับเฉพาะสถานะที่ "ครอบครองโต๊ะ" — ไม่นับ ยกเลิก และ ไม่อนุมัติ
-   const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
    try {
-     const rows = await fetchAllReservations();
-     if (rows && Array.isArray(rows)) {
+     const counts = await fetchBookingCounts();
+     if (counts && typeof counts === 'object') {
        bookings = {};
-       rows.forEach(r => {
-         if (!r.visitDateISO) return;
-         if (!activeStatuses.includes(r.status)) return;
-
-         // ✅ normalize visitDateISO → "YYYY-MM-DD"
-         let dateKey = String(r.visitDateISO).trim();
-
-         if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
-           const parsed = new Date(dateKey);
-           if (!isNaN(parsed)) {
-             const y = parsed.getFullYear();
-             const m = String(parsed.getMonth() + 1).padStart(2, '0');
-             const d = String(parsed.getDate()).padStart(2, '0');
-             dateKey = `${y}-${m}-${d}`;
-           } else {
-             return; // parse ไม่ได้ ข้ามไป
-           }
-         }
-
-         bookings[dateKey] = (bookings[dateKey] || 0) + 1;
+       Object.keys(counts).forEach(dk => {
+         if (/^\d{4}-\d{2}-\d{2}$/.test(dk)) bookings[dk] = counts[dk];
        });
        const existing = document.getElementById('connBanner');
        if (existing) existing.remove();
        console.log('[Calendar] Loaded booking counts from server');
      } else {
-       console.warn('[Calendar] No rows in response, using empty bookings');
+       console.warn('[Calendar] No counts in response, using empty bookings');
        if (!bookings || Object.keys(bookings).length === 0) {
          showConnBanner('warn', '⚠️ ไม่พบข้อมูลการจองจากเซิร์ฟเวอร์ — แสดงข้อมูลว่าง');
        }

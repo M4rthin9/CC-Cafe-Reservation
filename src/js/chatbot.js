@@ -185,7 +185,7 @@ function getDemoRows() {
 async function fetchBookingByRef(ref) {
   let rows = [];
   try {
-    const data = await appsScriptGet({ action: 'getAll' });
+    const data = await appsScriptGet({ action: 'lookupByRef', ref: ref });
     if (data.status === 'ok') rows = data.rows || [];
   } catch (err) {
     console.error('[Chatbot] Fetch error:', err);

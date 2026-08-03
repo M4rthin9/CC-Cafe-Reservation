@@ -7,6 +7,9 @@ const PRISONER_SHEET = 'ผู้ต้องขัง';
 const USERS_SHEET = 'Users';
 const NOTES_SHEET = 'Notes';
 const SETTINGS_SHEET = 'Settings';
+const ARCHIVE_SHEET = 'การจอง_Archive';
+const ARCHIVE_MONTHS = 3;
+const BACKUP_RETENTION_DAYS = 30;
 
 const AVAILABLE_PERMISSIONS = [
   'approve', 'reject', 'approve_discipline', 'reject_discipline', 'approve_participant', 'cancel', 'confirm_payment',
@@ -118,6 +121,19 @@ function invalidateReservationsCache() {
   } catch (e) {
     Logger.log('invalidateReservationsCache failed: ' + e.toString());
   }
+  bumpDataVersion();
+}
+
+function getDataVersion() {
+  try {
+    return parseInt(PropertiesService.getScriptProperties().getProperty('DATA_VERSION') || '0', 10) || 0;
+  } catch (e) { return 0; }
+}
+
+function bumpDataVersion() {
+  try {
+    PropertiesService.getScriptProperties().setProperty('DATA_VERSION', String(getDataVersion() + 1));
+  } catch (e) { Logger.log('bumpDataVersion failed: ' + e.toString()); }
 }
 
 function invalidateUserCache(username) {
@@ -319,20 +335,60 @@ function ensureUserHeadersAndUsers(sheet) {
 }
 
 function seedDefaultUsers(sheet, headers) {
+  const scriptProps = PropertiesService.getScriptProperties();
+  const seedJson = scriptProps.getProperty('SEED_USERS_JSON');
+  if (!seedJson) {
+    Logger.log('seedDefaultUsers skipped: SEED_USERS_JSON not set in Script Properties');
+    return;
+  }
+  let seedUsers;
+  try {
+    seedUsers = JSON.parse(seedJson);
+  } catch (e) {
+    Logger.log('seedDefaultUsers failed: invalid SEED_USERS_JSON');
+    return;
+  }
+  if (!Array.isArray(seedUsers)) return;
+
   const now = new Date().toISOString();
-  const defaultUsers = [
-    ['superadmin', 'SuperAdmin@10900', 'Superadmin', 'ผู้ดูแลระบบ'],
-    ['finance', 'Finance@10900', 'Finance', 'การเงิน'],
-    ['vinai', 'Vinai@10900', 'Vinai', 'ตรวจสอบวินัย'],
-    ['cida', 'Cida@10900', 'Tadtel', 'ฝ่ายทัณฑ์'],
-    ['vinai001', 'Vinai@123', 'Vinai', 'พี่เหน่ง'],
-    ['vinai002', 'Vinai@123', 'Vinai', 'พี่แมน'],
-    ['admin', 'Admin@123', 'Admin', 'นายเสกสรรค์ ประจำสุข'],
-    ['cida001', 'Cida@123', 'Tadtel', 'พี่ก่ำ'],
-    ['cida002', 'Cida@123', 'Admin', 'พี่ฟ้า']
-  ];
-  const rows = defaultUsers.map(u => [u[0], hashPassword(u[0], u[1]), u[2], u[3], now]);
+  const rows = [];
+  const defaultHashes = {};
+  seedUsers.forEach(u => {
+    if (!Array.isArray(u) || u.length < 2) return;
+    const username = String(u[0]).trim();
+    const password = String(u[1]);
+    const role = String(u[2] || 'User').trim();
+    const displayName = String(u[3] || username).trim();
+    if (!username || !password) return;
+    const hashed = hashPassword(username, password);
+    rows.push([username, hashed, role, displayName, now]);
+    defaultHashes[username.toLowerCase()] = hashed;
+  });
+  if (rows.length === 0) return;
+
   appendRows(sheet, rows);
+  try {
+    scriptProps.setProperty('DEFAULT_ACCOUNTS_JSON', JSON.stringify(defaultHashes));
+  } catch (e) { Logger.log('seedDefaultUsers: failed to store default account hashes'); }
+}
+
+function getDefaultAccountHashes() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty('DEFAULT_ACCOUNTS_JSON');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+
+function clearDefaultAccountFlag(username) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const map = getDefaultAccountHashes();
+    const key = String(username || '').toLowerCase();
+    if (map[key]) {
+      delete map[key];
+      props.setProperty('DEFAULT_ACCOUNTS_JSON', JSON.stringify(map));
+    }
+  } catch (e) { }
 }
 
 function getRolesSheet() {
@@ -564,6 +620,7 @@ function updatePassword(username, newPassword) {
   if (rowNum === -1 || passwordIdx === -1) return false;
   writeColumnsToRows(sheet, [{ row: rowNum, cols: [[passwordIdx, hashPassword(uname, newPassword)]] }]);
   invalidateUserCache(uname);
+  clearDefaultAccountFlag(uname);
   return true;
 }
 
@@ -581,7 +638,16 @@ function handleLogin(body) {
     try { updatePassword(rawUsername, String(body.password)); } catch (e) { }
   }
   try { CacheService.getScriptCache().remove('login_' + username); } catch (e) { }
-  return jsonResp({ status: 'ok', user: { username: user.username, role: user.role, displayName: user.displayName || user.username } });
+  const defaultHashes = getDefaultAccountHashes();
+  const mustChangePassword = defaultHashes[username] === user.password;
+  if (mustChangePassword) {
+    logEvent(username, 'login_default_password', '', { action: 'force_password_change' }, 'warning');
+  }
+  return jsonResp({
+    status: 'ok',
+    user: { username: user.username, role: user.role, displayName: user.displayName || user.username },
+    mustChangePassword: mustChangePassword || false
+  });
 }
 
 function handleChangePassword(body) {
@@ -601,18 +667,18 @@ function handleChangePassword(body) {
 // ══════════════════════════════════════════════════════════════════
 // SECTION 6 — BUSINESS HANDLERS
 // ══════════════════════════════════════════════════════════════════
-function getAllReservations_() {
+function getActiveRows() {
   const cache = CacheService.getScriptCache();
   const CACHE_KEY = CACHE_VERSION + ':allReservations';
 
   const sheet = getMainSheet();
   const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return jsonResp({ status: 'ok', rows: [] });
+  if (lastRow <= 1) return [];
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const refIdx = headers.indexOf('ref');
   if (refIdx === -1) {
-    return jsonResp({ status: 'error', message: 'Sheet is missing the required "ref" column header — please check sheet structure' });
+    throw new Error('Sheet is missing the required "ref" column header — please check sheet structure');
   }
 
   const headersHash = headers.join('||');
@@ -621,7 +687,7 @@ function getAllReservations_() {
     try {
       const parsed = JSON.parse(cached);
       if (parsed && parsed.headersHash === headersHash && parsed.lastRow === lastRow && Array.isArray(parsed.rows)) {
-        return jsonResp({ status: 'ok', rows: parsed.rows });
+        return parsed.rows;
       }
     } catch (e) {
       try { cache.remove(CACHE_KEY); } catch (e2) { }
@@ -648,7 +714,143 @@ function getAllReservations_() {
 
   const reversed = rows.reverse();
   try { cache.put(CACHE_KEY, JSON.stringify({ headersHash: headersHash, lastRow: lastRow, rows: reversed }), PUBLIC_CACHE_TTL); } catch (e) { }
-  return jsonResp({ status: 'ok', rows: reversed });
+  return reversed;
+}
+
+function getAllReservations_() {
+  try {
+    return jsonResp({ status: 'ok', rows: getActiveRows() });
+  } catch (e) {
+    return jsonResp({ status: 'error', message: e.message || e.toString() });
+  }
+}
+
+function getArchiveSheet() {
+  const sheet = getCachedSheet(ARCHIVE_SHEET);
+  ensureArchiveHeaders(sheet);
+  return sheet;
+}
+
+function ensureArchiveHeaders(sheet) {
+  const existingHeaders = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
+  if (existingHeaders.length === 0) {
+    const headers = STANDARD_HEADERS.concat('archivedAt');
+    appendRows(sheet, [headers]);
+    const range = sheet.getRange(1, 1, 1, headers.length);
+    range.setFontWeight('bold');
+    range.setBackground('#185FA5');
+    range.setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+    const slipCol = headers.indexOf('slipImage') + 1;
+    if (slipCol > 0) sheet.hideColumns(slipCol);
+    return;
+  }
+  if (!existingHeaders.includes('archivedAt')) {
+    const startCol = existingHeaders.length + 1;
+    sheet.getRange(1, startCol, 1, 1).setValue('archivedAt');
+  }
+}
+
+function getArchivedRows() {
+  const sheet = getArchiveSheet();
+  const table = readSheetTable(sheet);
+  if (table.rows.length === 0) return [];
+  const refIdx = table.headers.indexOf('ref');
+  if (refIdx === -1) return [];
+  const rows = table.rows
+    .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
+    .map(row => {
+      const obj = {};
+      table.headers.forEach((h, i) => {
+        let val = row[i];
+        obj[h] = val instanceof Date ? (h === 'visitDateISO' ? formatDateISO(val) : Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')) : val;
+      });
+      if (!obj.visitDateISO && obj.visitDate) {
+        const d = obj.visitDate instanceof Date ? obj.visitDate : new Date(obj.visitDate);
+        if (!isNaN(d)) obj.visitDateISO = formatDateISO(d);
+      }
+      return obj;
+    });
+  return rows.reverse();
+}
+
+function getCountsByDate() {
+  try {
+    const rows = getActiveRows();
+    const counts = {};
+    const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
+    rows.forEach(r => {
+      if (!r.visitDateISO) return;
+      const vdi = String(r.visitDateISO).trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(vdi)) return;
+      if (!activeStatuses.includes(String(r.status || ''))) return;
+      counts[vdi] = (counts[vdi] || 0) + 1;
+    });
+    return jsonResp({ status: 'ok', counts: counts });
+  } catch (e) {
+    return jsonResp({ status: 'error', message: e.message || e.toString() });
+  }
+}
+
+const PUBLIC_LOOKUP_FIELDS = ['ref', 'timestamp', 'status', 'visitDate', 'visitDateISO', 'prisonerName', 'prisonerId', 'wing', 'visitorName', 'visitorApproved', 'extraVisitorNames', 'extraVisitorApproved', 'visitorCount', 'totalPersons', 'total', 'cancelReason', 'archivedAt'];
+
+function maskRowForPublic(row) {
+  const out = {};
+  PUBLIC_LOOKUP_FIELDS.forEach(k => {
+    if (row[k] === undefined || row[k] === null || String(row[k]) === '') return;
+    if (k === 'extraVisitorNames') {
+      out[k] = String(row[k]).split(';;').map(part => {
+        const p = part.split('|');
+        return (p[0] || '').trim();
+      }).filter(n => n).join(';;');
+    } else {
+      out[k] = row[k];
+    }
+  });
+  return out;
+}
+
+function lookupByRef(params) {
+  try {
+    const ref = sanitizeStr(params.ref, 64);
+    const prisonerId = sanitizeStr(params.prisonerId, 64);
+    if (!ref && !prisonerId) return jsonResp({ status: 'error', message: 'Missing ref or prisonerId' });
+
+    let matches = [];
+    const active = getActiveRows();
+    if (ref) matches = active.filter(r => String(r.ref).toUpperCase() === ref.toUpperCase());
+    else matches = active.filter(r => String(r.prisonerId).trim() === prisonerId);
+
+    if (matches.length === 0) {
+      const archived = getArchivedRows();
+      if (ref) matches = archived.filter(r => String(r.ref).toUpperCase() === ref.toUpperCase());
+      else matches = archived.filter(r => String(r.prisonerId).trim() === prisonerId);
+    }
+
+    return jsonResp({ status: 'ok', rows: matches.map(maskRowForPublic) });
+  } catch (e) {
+    return jsonResp({ status: 'error', message: e.message || e.toString() });
+  }
+}
+
+function getArchivedReservations(params) {
+  try {
+    let rows = getArchivedRows();
+    const from = sanitizeStr(params.from, 10);
+    const to = sanitizeStr(params.to, 10);
+    if (from || to) {
+      rows = rows.filter(r => {
+        const vdi = String(r.visitDateISO || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(vdi)) return false;
+        if (from && vdi < from) return false;
+        if (to && vdi > to) return false;
+        return true;
+      });
+    }
+    return jsonResp({ status: 'ok', rows: rows });
+  } catch (e) {
+    return jsonResp({ status: 'error', message: e.message || e.toString() });
+  }
 }
 
 function handleSaveReservation(body) {
@@ -998,6 +1200,7 @@ function handleUpdateUser(body, username) {
     const np = String(body.newPassword);
     if (np.length < 6) return jsonResp({ status: 'error', message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร' });
     if (passIdx >= 0) cols.push([passIdx, hashPassword(targetUser, np)]);
+    clearDefaultAccountFlag(targetUser);
   }
   if (cols.length > 0) writeColumnsToRows(sheet, [{ row: rowNum, cols: cols }]);
   invalidateUserCache(targetUser);
@@ -1372,25 +1575,160 @@ function cleanupExpiredDiscipline() {
   }
 }
 
-function setupDailyTrigger() {
-  const triggers = ScriptApp.getProjectTriggers();
-  const existing = triggers.find(t =>
-    t.getHandlerFunction() === 'cleanupExpiredDiscipline' &&
-    t.getEventType() === ScriptApp.TriggerSource.CLOCK
-  );
-  if (existing) {
-    return 'Daily cleanup trigger already exists (ID: ' + existing.getUniqueId() + ')';
+function archiveOldReservations() {
+  const mainSheet = getMainSheet();
+  const archiveSheet = getArchiveSheet();
+  const table = readSheetTable(mainSheet);
+  if (table.rows.length === 0) return { status: 'ok', archived: 0 };
+
+  const headers = table.headers;
+  const refIdx = headers.indexOf('ref');
+  const vdiIdx = headers.indexOf('visitDateISO');
+  if (refIdx === -1 || vdiIdx === -1) {
+    logEvent('system', 'reservations_archive_failed', '', { reason: 'missing_columns' }, 'error');
+    return { status: 'error', message: 'Main sheet is missing required columns' };
   }
 
-  ScriptApp.newTrigger('cleanupExpiredDiscipline')
-    .timeBased()
-    .everyDays(1)
-    .atHour(0)
-    .nearMinute(0)
-    .inTimezone('Asia/Bangkok')
-    .create();
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - ARCHIVE_MONTHS);
+  const cutoffStr = formatDateISO(cutoff);
 
-  return 'Daily cleanup trigger created — runs at midnight Bangkok time';
+  const archiveHeaders = archiveSheet.getLastRow() > 0 ? archiveSheet.getRange(1, 1, 1, archiveSheet.getLastColumn()).getValues()[0] : [];
+  const archivedAtIdx = archiveHeaders.indexOf('archivedAt');
+  const archiveWidth = Math.max(archiveHeaders.length, headers.length + 1);
+  const nowStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+  const toArchive = [];
+  const remaining = [];
+  let archivedCount = 0;
+
+  for (let i = 0; i < table.rows.length; i++) {
+    const row = table.rows[i];
+    const rawVdi = row[vdiIdx];
+    let vdi = '';
+    if (rawVdi instanceof Date) vdi = formatDateISO(rawVdi);
+    else if (rawVdi) vdi = String(rawVdi).trim();
+
+    if (vdi && /^\d{4}-\d{2}-\d{2}$/.test(vdi) && vdi < cutoffStr) {
+      const archRow = new Array(archiveWidth).fill('');
+      headers.forEach((h, j) => {
+        const aIdx = archiveHeaders.indexOf(h);
+        if (aIdx >= 0) archRow[aIdx] = row[j];
+      });
+      if (archivedAtIdx >= 0) archRow[archivedAtIdx] = nowStr;
+      toArchive.push(archRow);
+      archivedCount++;
+    } else {
+      remaining.push(row);
+    }
+  }
+
+  if (archivedCount === 0) return { status: 'ok', archived: 0 };
+
+  appendRows(archiveSheet, toArchive);
+
+  const oldRowCount = table.rows.length;
+  const lastCol = Math.max(headers.length, 1);
+  mainSheet.getRange(2, 1, oldRowCount, lastCol).clearContents();
+
+  if (remaining.length > 0) {
+    const newData = remaining.map(row => {
+      const out = new Array(headers.length).fill('');
+      headers.forEach((h, j) => { out[j] = row[j]; });
+      return out;
+    });
+    mainSheet.getRange(2, 1, newData.length, headers.length).setValues(newData);
+    const phoneIdx = headers.indexOf('visitorPhone');
+    if (phoneIdx >= 0) {
+      mainSheet.getRange(2, phoneIdx + 1, newData.length, 1).setNumberFormat('@');
+    }
+  }
+
+  invalidateReservationsCache();
+  logEvent('system', 'reservations_archived', '', { archived: archivedCount, cutoff: cutoffStr }, 'success');
+  console.log('[Archive] Archived ' + archivedCount + ' reservations older than ' + cutoffStr);
+  return { status: 'ok', archived: archivedCount };
+}
+
+function backupSpreadsheet() {
+  try {
+    const ss = getSpreadsheet();
+    const folderName = 'Backup';
+    const folderIter = DriveApp.getFoldersByName(folderName);
+    const folder = folderIter.hasNext() ? folderIter.next() : DriveApp.createFolder(folderName);
+
+    const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmm');
+    const name = ss.getName() + '_' + stamp;
+    const backup = ss.copy(name);
+    const file = DriveApp.getFileById(backup.getId());
+    folder.addFile(file);
+    const parents = file.getParents();
+    while (parents.hasNext()) {
+      const p = parents.next();
+      if (p.getId() !== folder.getId()) p.removeFile(file);
+    }
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - BACKUP_RETENTION_DAYS);
+    const files = folder.getFiles();
+    let pruned = 0;
+    while (files.hasNext()) {
+      const f = files.next();
+      try {
+        const created = f.getDateCreated();
+        if (created && created < cutoff) {
+          DriveApp.getFileById(f.getId()).setTrashed(true);
+          pruned++;
+        }
+      } catch (e) { }
+    }
+
+    logEvent('system', 'spreadsheet_backup', '', { name: name, pruned: pruned }, 'success');
+    return { status: 'ok', name: name, pruned: pruned };
+  } catch (e) {
+    logEvent('system', 'spreadsheet_backup_failed', '', { error: e.toString() }, 'error');
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+function setupDailyTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  const hasHandler = (fn) => triggers.some(t =>
+    t.getHandlerFunction() === fn &&
+    t.getEventType() === ScriptApp.TriggerSource.CLOCK
+  );
+
+  if (!hasHandler('cleanupExpiredDiscipline')) {
+    ScriptApp.newTrigger('cleanupExpiredDiscipline')
+      .timeBased()
+      .everyDays(1)
+      .atHour(0)
+      .nearMinute(0)
+      .inTimezone('Asia/Bangkok')
+      .create();
+  }
+
+  if (!hasHandler('backupSpreadsheet')) {
+    ScriptApp.newTrigger('backupSpreadsheet')
+      .timeBased()
+      .everyDays(1)
+      .atHour(0)
+      .nearMinute(5)
+      .inTimezone('Asia/Bangkok')
+      .create();
+  }
+
+  if (!hasHandler('archiveOldReservations')) {
+    ScriptApp.newTrigger('archiveOldReservations')
+      .timeBased()
+      .everyDays(1)
+      .atHour(0)
+      .nearMinute(15)
+      .inTimezone('Asia/Bangkok')
+      .create();
+  }
+
+  return 'Daily triggers created — cleanup at 00:00, backup at 00:05, archive at 00:15 Bangkok time';
 }
 
 function listAllSheets() {
@@ -1403,7 +1741,11 @@ function listAllSheets() {
 const GET_ROUTES = {
   getBackendUrl: { run: () => jsonResp({ url: ScriptApp.getService().getUrl() }) },
   resolveUrl: { run: () => jsonResp({ status: 'ok', url: ScriptApp.getService().getUrl(), resolvedUrl: ScriptApp.getService().getUrl(), message: 'resolveUrl endpoint reached successfully' }) },
-  getAll: { run: () => getAllReservations_() },
+  getAll: { auth: true, run: () => getAllReservations_() },
+  getCountsByDate: { run: () => getCountsByDate() },
+  lookupByRef: { run: (params) => lookupByRef(params) },
+  getArchivedReservations: { auth: true, run: (params) => getArchivedReservations(params) },
+  getDataVersion: { auth: true, run: () => jsonResp({ status: 'ok', version: getDataVersion() }) },
   getEventLogs: { auth: true, run: (params) => jsonResp({ status: 'ok', logs: getEventLogs(params) }) },
   getPrisoners: { run: (params) => handleGetPrisoners(params) },
   getRoles: { auth: true, run: () => jsonResp({ status: 'ok', roles: getRolesList() }) },
@@ -1418,7 +1760,11 @@ const POST_ROUTES = {
   login: { auth: false, run: handleLogin },
   changePassword: { auth: false, run: handleChangePassword },
   saveReservation: { auth: false, run: handleSaveReservation },
-  getAll: { auth: false, run: () => getAllReservations_() },
+  getAll: { auth: true, run: () => getAllReservations_() },
+  getCountsByDate: { auth: false, run: () => getCountsByDate() },
+  lookupByRef: { auth: false, run: (body) => lookupByRef(body) },
+  getArchivedReservations: { auth: true, run: (body) => getArchivedReservations(body) },
+  getDataVersion: { auth: true, run: () => jsonResp({ status: 'ok', version: getDataVersion() }) },
   publicCancelBooking: { auth: false, run: handlePublicCancelBooking },
   uploadSlip: { auth: false, run: handleUploadSlip },
   updateSlipAndStatus: { auth: false, run: handleUpdateSlipAndStatus },

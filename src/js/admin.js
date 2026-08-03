@@ -43,6 +43,7 @@ const PRICING = {
 // ===== POLLING FOR REALTIME UPDATES =====
 let pollInterval = null;
 const POLL_INTERVAL_MS = 30000;
+const ARCHIVE_MONTHS = 3;
 
 function startPolling() {
   stopPolling();
@@ -56,8 +57,94 @@ function stopPolling() {
   }
 }
 
+async function fetchDataVersion() {
+  if (!currentUser) return null;
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getDataVersion', username: currentUser.username, password: currentUser.password })
+    }, 1);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return (data.status === 'ok') ? (data.version || 0) : null;
+  } catch (e) { return null; }
+}
+
+function refreshCurrentView() {
+  const activeView = document.querySelector('.view:not([style*="display: none"])');
+  if (activeView) {
+    const viewId = activeView.id.replace('view-', '');
+    if (viewId === 'home') renderDashboardHome();
+    else if (viewId === 'reservations') renderTable();
+    else if (viewId === 'reports') renderReportsView();
+  }
+}
+
+async function loadArchived(silent) {
+  if (!currentUser) return false;
+  let archivedRows = [];
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getArchivedReservations', username: currentUser.username, password: currentUser.password })
+    }, 1);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
+    archivedRows = data.rows || [];
+  } catch (e) {
+    console.error('Load archived error:', e);
+    if (!silent) showToast('โหลดข้อมูลย้อนหลังไม่สำเร็จ: ' + e.message, 'error');
+    return false;
+  }
+  const activeRefs = new Set(allRows.map(r => r.ref));
+  const merged = allRows.slice();
+  archivedRows.forEach(r => {
+    if (r.ref && !activeRefs.has(r.ref)) {
+      merged.push(Object.assign({}, r, { _archived: true }));
+    }
+  });
+  allRows = merged;
+  return true;
+}
+
+async function toggleArchive() {
+  if (!currentUser) return;
+  archiveLoaded = !archiveLoaded;
+  const btn = document.getElementById('btnArchive');
+  if (btn) {
+    btn.textContent = archiveLoaded ? '🗄️ ซ่อนย้อนหลัง' : '🗄️ ดูย้อนหลัง';
+    btn.classList.toggle('active', archiveLoaded);
+  }
+  if (archiveLoaded) {
+    const ok = await loadArchived(false);
+    if (ok) {
+      showToast('โหลดข้อมูลย้อนหลังแล้ว', 'success');
+    } else {
+      archiveLoaded = false;
+      if (btn) {
+        btn.textContent = '🗄️ ดูย้อนหลัง';
+        btn.classList.toggle('active', false);
+      }
+    }
+  } else {
+    await loadData();
+  }
+  refreshCurrentView();
+}
+
 async function pollData() {
   if (!currentUser) return;
+  try {
+    const ver = await fetchDataVersion();
+    if (ver !== null && lastDataVersion !== null && ver === lastDataVersion && allRows.length > 0) return;
+    if (ver !== null) lastDataVersion = ver;
+  } catch (e) { /* fall through */ }
+
   try {
     const resp = await appsScriptFetch('', {
       method: 'POST',
@@ -70,21 +157,18 @@ async function pollData() {
     const data = JSON.parse(text);
     if (data.status !== 'ok' || !data.rows) return;
 
-    const oldRefs = allRows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
+    const oldRefs = allRows.filter(r => !r._archived).map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
     const newRefs = data.rows.map(r => r.ref + '|' + r.status + '|' + r.wing).join(',');
     if (oldRefs === newRefs) return;
 
     allRows = data.rows || [];
+    if (archiveLoaded) {
+      await loadArchived(true);
+    }
     const lastUpdated = document.getElementById('lastUpdated');
     if (lastUpdated) lastUpdated.textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
 
-    const activeView = document.querySelector('.view:not([style*="display: none"])');
-    if (activeView) {
-      const viewId = activeView.id.replace('view-', '');
-      if (viewId === 'home') renderDashboardHome();
-      else if (viewId === 'reservations') renderTable();
-      else if (viewId === 'reports') renderReportsView();
-    }
+    refreshCurrentView();
   } catch (e) { /* silent */ }
 }
 
@@ -119,6 +203,8 @@ let pageSize = 10;
 let currentUser = null;
 let prisonerMaster = [];
 let _dashboardCache = { timestamp: 0, data: null };
+let lastDataVersion = null;
+let archiveLoaded = false;
 
 let pendingCancelIdx = null;
 let pendingCancelMode = 'single'; // 'single' | 'bulk'
@@ -201,6 +287,15 @@ async function doLogin() {
       displayName: data.user.displayName || data.user.username
     };
 
+    // Force password change when still using a default credential
+    if (data.mustChangePassword) {
+      document.getElementById('loginErr').style.display = 'none';
+      document.getElementById('loginWrap').style.display = 'none';
+      const pwWrap = document.getElementById('pwChangeWrap');
+      if (pwWrap) pwWrap.style.display = 'flex';
+      return;
+    }
+
     // Clear error display
     document.getElementById('loginErr').style.display = 'none';
 
@@ -266,6 +361,44 @@ async function doLogin() {
   }
 }
 
+async function submitForcedPasswordChange() {
+  const np = document.getElementById('pwNew').value;
+  const cp = document.getElementById('pwConfirm').value;
+  const err = document.getElementById('pwChangeErr');
+  if (err) err.style.display = 'none';
+  if (np.length < 6) {
+    if (err) { err.textContent = 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร'; err.style.display = 'block'; }
+    return;
+  }
+  if (np !== cp) {
+    if (err) { err.textContent = 'รหัสผ่านไม่ตรงกัน'; err.style.display = 'block'; }
+    return;
+  }
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'changePassword', username: currentUser.username, newPassword: np, confirmPassword: cp })
+    }, 1);
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+
+    currentUser = null;
+    const pwWrap = document.getElementById('pwChangeWrap');
+    if (pwWrap) pwWrap.style.display = 'none';
+    document.getElementById('loginWrap').style.display = 'block';
+    document.getElementById('userInput').value = '';
+    document.getElementById('passInput').value = '';
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwConfirm').value = '';
+    showToast('เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบใหม่', 'success');
+  } catch (e) {
+    console.error('Password change error:', e);
+    if (err) { err.textContent = e.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ'; err.style.display = 'block'; }
+  }
+}
+
 function hasPermission(action) {
   return currentUser && PERMISSIONS[currentUser.role] && PERMISSIONS[currentUser.role].includes(action);
 }
@@ -324,7 +457,11 @@ async function loadData() {
     const data = JSON.parse(text);
     if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
     allRows = data.rows || [];
+    if (archiveLoaded) {
+      await loadArchived(true);
+    }
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
+    lastDataVersion = (await fetchDataVersion()) ?? lastDataVersion;
   } catch (e) {
     console.error('Load data error:', e);
     // Demo mode: use sample data if no Apps Script configured and DEMO_MODE is not explicitly disabled
@@ -695,6 +832,7 @@ function renderTable() {
 
     const isCancelled = s === 'ยกเลิก';
     const isRejected = s === 'ไม่อนุมัติ';
+    const isArchived = !!r._archived;
     const rowIdx = allRows.indexOf(r);
 
     // 3-step progress status
@@ -756,7 +894,7 @@ function renderTable() {
       statusOptions.push({ value: 'cancel', label: '🚫 ยกเลิก' });
     }
 
-    if (statusOptions.length > 0) {
+    if (statusOptions.length > 0 && !isArchived) {
       const optsHtml = statusOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
       statusDropdownHtml = `<select class="status-action-select" onchange="if(this.value)quickStatusAdvance(${rowIdx},this.value);this.selectedIndex=0;" style="margin-left:4px;">
         <option value="">⚡ เปลี่ยนสถานะ...</option>
@@ -768,18 +906,18 @@ function renderTable() {
     const actions = [];
     actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ดูสลิป" onclick="viewSlip(${rowIdx})">🧾</button>`);
     actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="รายละเอียด" onclick="viewDetail(${rowIdx})">📋</button>`);
-    if (isAdminOrSuper) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="แก้ไข" onclick="editBooking(${rowIdx})">✏️</button>`);
-    if (canConfirmPayment && s === 'รอชำระเงิน') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="ยืนยันชำระเงิน" onclick="confirmPayment(${rowIdx})">💳</button>`);
-    if (canConfirmPayment && s === 'ชำระแล้ว') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="เสร็จสิ้น" onclick="confirmPayment(${rowIdx})">✅</button>`);
-    if (canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอตรวจสอบวินัย')">✓</button>`);
-    if (canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
-    if (canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-danger" title="ปฏิเสธวินัย" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
-    if (canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ยกเลิก" onclick="cancelBooking(${rowIdx})">🚫</button>`);
+    if (isAdminOrSuper && !isArchived) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="แก้ไข" onclick="editBooking(${rowIdx})">✏️</button>`);
+    if (!isArchived && canConfirmPayment && s === 'รอชำระเงิน') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="ยืนยันชำระเงิน" onclick="confirmPayment(${rowIdx})">💳</button>`);
+    if (!isArchived && canConfirmPayment && s === 'ชำระแล้ว') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="เสร็จสิ้น" onclick="confirmPayment(${rowIdx})">✅</button>`);
+    if (!isArchived && canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอตรวจสอบวินัย')">✓</button>`);
+    if (!isArchived && canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
+    if (!isArchived && canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-danger" title="ปฏิเสธวินัย" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
+    if (!isArchived && canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ยกเลิก" onclick="cancelBooking(${rowIdx})">🚫</button>`);
 
     const actionsHtml = actions.join('');
 
     return `<tr data-idx="${rowIdx}">
-      <td data-label="" style="width:32px;text-align:center;"><input type="checkbox" class="row-select" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer;"></td>
+      <td data-label="" style="width:32px;text-align:center;"><input type="checkbox" class="row-select" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer;"${isArchived ? ' disabled title="ข้อมูลย้อนหลัง (อ่านอย่างเดียว)"' : ''}></td>
       <td data-label="เลขอ้างอิง"><b style="color:var(--blue);font-size:13px;cursor:pointer;text-decoration:underline" onclick="viewDetail(${rowIdx})">${escHtml(r.ref)}</b></td>
       <td data-label="ผู้ต้องขัง/คู่เยี่ยม" style="white-space:normal">
         <div style="font-weight:700;font-size:15px;color:var(--blue)">${escHtml(r.prisonerName || '—')}</div>
@@ -791,7 +929,7 @@ function renderTable() {
       </td>
       <td data-label="แดน" style="font-size:14px;font-weight:600">${escHtml(r.wing) || '—'}</td>
       <td data-label="ยอด" style="font-size:13px">${escHtml(r.visitorCount)} คน · ${(r.total || 0).toLocaleString()} บ.</td>
-      <td data-label="สถานะ" style="white-space:nowrap"><span class="badge ${badgeClass}" style="font-size:12px">${escHtml(r.status)}</span></td>
+      <td data-label="สถานะ" style="white-space:nowrap"><span class="badge ${badgeClass}" style="font-size:12px">${escHtml(r.status)}</span>${isArchived ? '<span class="badge badge-cancelled" style="margin-left:4px;font-size:11px">🗄️ ย้อนหลัง</span>' : ''}</td>
       <td data-label="ความคืบหน้า"><div class="progress-bar-compact">${stepsHtml}</div></td>
       <td data-label="จัดการ"><div class="action-btns" style="flex-wrap:nowrap;">${actionsHtml}</div></td>
     </tr>`;
@@ -1885,6 +2023,7 @@ function closeModal(e) {
 async function viewDetail(idx) {
   const r = allRows[idx];
   const s = r.status || '';
+  const isArchived = !!r._archived;
   let badgeClass = 'badge-pending-review';
   if (s === 'รอชำระเงิน') badgeClass = 'badge-payment-pending';
   else if (s === 'ชำระแล้ว') badgeClass = 'badge-paid';
@@ -1910,7 +2049,7 @@ async function viewDetail(idx) {
         <div class="visitor-approval">
           <span class="lbl">สถานะ:</span>
           <span class="approval-badge ${va === 'yes' ? 'yes' : va === 'no' ? 'no' : 'pending'}">${getApprLabel(va)}</span>
-          ${canVisitorApproval ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},0,'yes')">✓</button>
+          ${canVisitorApproval && !isArchived ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},0,'yes')">✓</button>
           <button class="approval-btn no" onclick="updateVisitorApproval(${idx},0,'no')">✗</button>` : ''}
         </div>
      </div>`;
@@ -1953,7 +2092,7 @@ async function viewDetail(idx) {
             <div class="visitor-approval">
               <span class="lbl">สถานะ:</span>
               <span class="approval-badge ${ea === 'yes' ? 'yes' : ea === 'no' ? 'no' : 'pending'}">${getApprLabel(ea)}</span>
-              ${canVisitorApproval ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},${i + 1},'yes')">✓</button>
+              ${canVisitorApproval && !isArchived ? `<button class="approval-btn yes" onclick="updateVisitorApproval(${idx},${i + 1},'yes')">✓</button>
               <button class="approval-btn no" onclick="updateVisitorApproval(${idx},${i + 1},'no')">✗</button>` : ''}
             </div>
          </div>`;
@@ -1971,6 +2110,8 @@ async function viewDetail(idx) {
       </div>
       <span class="badge ${badgeClass}" style="font-size:13px;padding:6px 14px;">${s}</span>
     </div>
+
+    ${isArchived ? `<div style="background:#f3e8ff;border:1px solid #d8b4fe;border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;font-size:12px;color:#6b21a8;">🗄️ ข้อมูลย้อนหลัง (มากกว่า ${ARCHIVE_MONTHS} เดือน) — ดูได้อย่างเดียว ไม่สามารถแก้ไขได้</div>` : ''}
 
     <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">ผู้ร่วมกิจกรรมทั้งหมด (${r.visitorCount || 1} คน)</div>
     ${visitor1Html}
@@ -2016,7 +2157,7 @@ async function viewDetail(idx) {
          <span class="dlbl">🕐 จองเมื่อ</span>
          <span class="dval">${escHtml(r.timestamp) || '—'}</span>
        </div>
-${canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
+${canApproveParticipant && !isArchived && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
            <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:8px;">
              <span style="font-size:12px;color:var(--text2);">อนุมัติทั้งหมด:</span>
@@ -2079,7 +2220,7 @@ ${canApproveParticipant && s === 'รอตรวจสอบผู้เข้�
     actionBtns.push({ label: '🚫 ยกเลิก', cls: 'btn btn-danger btn-sm', onclick: `cancelBooking(${idx})` });
   }
 
-  if (actionBtns.length > 0) {
+  if (actionBtns.length > 0 && !isArchived) {
     const actionBtnsHtml = actionBtns.map(b =>
       `<button class="${b.cls}" onclick="${b.onclick}">${b.label}</button>`
     ).join('');
@@ -3574,7 +3715,10 @@ function renderReportsView() {
   const filtered = getReportsFilteredRows();
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--text2);">ไม่พบข้อมูลตามเงื่อนไขที่กรอง<br>ลองเปลี่ยน Filter ด้านบน</div>`;
+    const archiveBtn = !archiveLoaded
+      ? `<button class="btn btn-tonal btn-sm" style="margin-top:12px" onclick="toggleArchive()">🗄️ โหลดข้อมูลย้อนหลัง (มากกว่า ${ARCHIVE_MONTHS} เดือน)</button>`
+      : '';
+    container.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--text2);">ไม่พบข้อมูลตามเงื่อนไขที่กรอง<br>ลองเปลี่ยน Filter ด้านบน<br>${archiveBtn}</div>`;
     return;
   }
 

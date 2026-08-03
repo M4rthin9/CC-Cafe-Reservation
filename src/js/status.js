@@ -78,7 +78,10 @@ async function doSearch() {
       if (retryCount > 0) {
         setOverlay(true, `กำลังลองใหม่ (ครั้งที่ ${retryCount}/${maxRetries})...`);
       }
-      const data = await appsScriptGet({ action: 'getAll' });
+      const params = mode === 'ref'
+        ? { action: 'lookupByRef', ref: query }
+        : { action: 'lookupByRef', prisonerId: query };
+      const data = await appsScriptGet(params);
       if (data.status === 'ok') { rows = data.rows || []; break; }
       else throw new Error(data.message || 'error');
     } catch (err) {
@@ -343,7 +346,6 @@ function renderResult(row) {
       </div>
       <div class="result-body">
         <div class="info-row"><span class="lbl">👤 ผู้ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitorName || '—')}</span></div>
-        <div class="info-row"><span class="lbl">📞 โทรศัพท์</span><span class="val">${escHtml(row.visitorPhone || '—')}</span></div>
         <div class="info-row"><span class="lbl">🔒 ผู้ต้องขัง</span><span class="val">${escHtml(maskPrisonerName(row.prisonerName) || '—')} (#${escHtml(row.prisonerId || '—')})</span></div>
         <div class="info-row"><span class="lbl">🏢 แดน</span><span class="val">${escHtml(row.wing || '—')}</span></div>
         <div class="info-row"><span class="lbl">📅 วันที่ร่วมกิจกรรม</span><span class="val">${escHtml(row.visitDate || '—')}</span></div>

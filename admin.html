@@ -27,6 +27,21 @@
   </div>
 </div>
 
+<!-- FORCED PASSWORD CHANGE -->
+<div class="login-wrap" id="pwChangeWrap" style="display:none" role="dialog" aria-modal="true" aria-labelledby="pwChangeTitle">
+  <div class="login-box">
+    <div class="login-icon" aria-hidden="true">🔑</div>
+    <h1 id="pwChangeTitle">เปลี่ยนรหัสผ่าน</h1>
+    <p>คุณยังใช้รหัสผ่านเริ่มต้นของระบบ กรุณาเปลี่ยนรหัสผ่านก่อนเข้าใช้งาน</p>
+    <label for="pwNew" class="sr-only">รหัสผ่านใหม่</label>
+    <input type="password" class="login-input" id="pwNew" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)" autocomplete="new-password" aria-label="รหัสผ่านใหม่">
+    <label for="pwConfirm" class="sr-only">ยืนยันรหัสผ่านใหม่</label>
+    <input type="password" class="login-input" id="pwConfirm" placeholder="ยืนยันรหัสผ่านใหม่" autocomplete="new-password" aria-label="ยืนยันรหัสผ่านใหม่">
+    <button class="login-btn" onclick="submitForcedPasswordChange()" aria-label="บันทึกรหัสผ่านใหม่">บันทึกรหัสผ่าน</button>
+    <div class="login-err" id="pwChangeErr" role="alert">รหัสผ่านไม่ตรงกัน</div>
+  </div>
+</div>
+
 <!-- DASHBOARD -->
 <div class="dash" id="dash">
   <!-- SIDEBAR -->
@@ -343,6 +358,7 @@
             </select>
             <div class="rt-actions">
               <button class="btn btn-filled btn-sm" onclick="openNewBookingModal()" id="btnNewBooking" style="display:none;">➕ จองใหม่</button>
+              <button class="btn btn-tonal btn-sm" onclick="toggleArchive()" id="btnArchive" title="รวมข้อมูลย้อนหลัง (มากกว่า 3 เดือน) ที่ย้ายไป sheet เก็บถาวร">🗄️ ดูย้อนหลัง</button>
               <button class="btn btn-tonal btn-sm" onclick="exportFilteredCSV()" aria-label="ส่งออกข้อมูลเป็น CSV" id="btnExport" style="display:none">📤</button>
               <button class="btn btn-filled btn-sm" onclick="printReport()" aria-label="พิมพ์รายงาน" id="btnPrint" style="display:none">🖨️</button>
               <button class="btn btn-tonal btn-sm" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤มีเบอร์</button>
