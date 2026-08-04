@@ -1,4 +1,5 @@
-let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0CIaYolWI0bb0GTrU9DdcgXl36VFXayoGaC0WDYTsVV6V22uSZZjiVFLi8cWQP022Zw/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbywDEGRnTnZBDX90INXaQepTerV5EeCHxi1XC9q4aj05pb7JF9Sfh5UjRzLJEkjNqdWMQ/exec';
+let APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL;
 const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
 const RESOLVED_URL_KEY = 'cc_resolved_url';
@@ -43,15 +44,11 @@ async function appsScriptFetch(path, params, retries) {
     try {
       const url = path ? APPS_SCRIPT_URL + path : APPS_SCRIPT_URL;
       const resp = await fetchWithTimeout(url, params, API_FETCH_TIMEOUT);
-      // Treat HTTP errors (4xx, 5xx) as retryable — throw so the catch below retries
       if (!resp.ok) {
-        // 404 suggests a stale URL — clear cache so next load re-discovers
+        // 404 usually means a stale URL — re-discover once and retry the fresh URL
         if (resp.status === 404) {
-          try {
-            localStorage.removeItem(BACKEND_DISCOVERED_KEY);
-            localStorage.removeItem(RESOLVED_URL_KEY);
-          } catch (e) { }
-          console.warn('[Backend] 404 — cache cleared, will re-discover on next load');
+          const recovered = await _tryRecover404(path, params);
+          if (recovered) return recovered;
         }
         throw new Error('HTTP ' + resp.status);
       }
@@ -62,9 +59,50 @@ async function appsScriptFetch(path, params, retries) {
     }
   }
 }
+
+async function _tryRecover404(path, params) {
+  try {
+    localStorage.removeItem(BACKEND_DISCOVERED_KEY);
+    localStorage.removeItem(RESOLVED_URL_KEY);
+  } catch (e) { }
+  console.warn('[Backend] 404 — re-discovering backend URL...');
+  const fresh = await _discoverBackendUrl(8000);
+  if (!fresh) return null;
+  console.log('[Backend] Re-discovered URL, retrying:', fresh);
+  const url = path ? fresh + path : fresh;
+  const resp = await fetchWithTimeout(url, params, API_FETCH_TIMEOUT);
+  return resp.ok ? resp : null;
+}
 window.appsScriptFetch = appsScriptFetch;
 window.API_FETCH_TIMEOUT = API_FETCH_TIMEOUT;
 window.waitForUrlReady = waitForUrlReady;
+
+// Re-discover the current Apps Script /exec URL via the lightweight
+// `getBackendUrl` action. Falls back to the hardcoded default URL.
+async function _discoverBackendUrl(timeoutMs) {
+  const ms = timeoutMs || 8000;
+  try {
+    const url = APPS_SCRIPT_URL.includes('/macros/s/') ? APPS_SCRIPT_URL : DEFAULT_APPS_SCRIPT_URL;
+    const resp = await fetchWithTimeout(url + '?action=getBackendUrl', {
+      redirect: 'follow', cache: 'no-store', credentials: 'omit'
+    }, ms);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data && data.url && data.url.includes('/macros/s/')) {
+      APPS_SCRIPT_URL = data.url;
+      try {
+        localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url);
+        localStorage.removeItem(RESOLVED_URL_KEY);
+      } catch (e) { }
+      _connectionStatus = 'connected';
+      _onUrlReady();
+      return data.url;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
 async function initBackendUrl() {
   try {
@@ -74,18 +112,9 @@ async function initBackendUrl() {
       _onUrlReady();
       return cached;
     }
-    const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    if (data && data.url && data.url.includes('macros/s/')) {
-      if (data.url !== APPS_SCRIPT_URL) {
-        console.log('[Backend] initBackendUrl discovered new URL:', data.url);
-        APPS_SCRIPT_URL = data.url;
-      }
-      localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url);
-    }
+    const fresh = await _discoverBackendUrl(15000);
     _onUrlReady();
-    return APPS_SCRIPT_URL;
+    return fresh || APPS_SCRIPT_URL;
   } catch (e) {
     console.warn('[Backend] initBackendUrl failed:', e.message);
     _onUrlReady();
@@ -110,18 +139,10 @@ async function resolveBackendUrl() {
   try { localStorage.removeItem(BACKEND_DISCOVERED_KEY); } catch (e) { }
 
   try {
-    const resp = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', {
-      redirect: 'follow', cache: 'no-store'
-    }, 15000);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    if (data && data.url && data.url.includes('/macros/s/')) {
-      APPS_SCRIPT_URL = data.url;
-      localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url);
-      _connectionStatus = 'connected';
-    }
-    _onUrlReady();
-    return APPS_SCRIPT_URL;
+    const fresh = await _discoverBackendUrl(15000);
+    if (!fresh) throw new Error('Backend URL discovery failed');
+    _connectionStatus = 'connected';
+    return fresh;
   } catch (e) {
     console.warn('[Backend] resolveBackendUrl failed:', e.message);
     _connectionStatus = 'disconnected';
@@ -236,17 +257,10 @@ window.clearBackendCache = clearBackendCache;
     APPS_SCRIPT_URL = cached;
     console.log('[Backend] Using cached URL:', cached);
     // Background check: discover the proper exec URL (not echo URL)
-    fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' }, 15000)
-      .then(r => r.json())
-      .then(data => {
-        if (data && data.url && data.url.includes('/macros/s/')) {
-          if (data.url !== APPS_SCRIPT_URL) {
-            console.log('[Backend] Bootstrap discovered updated URL:', data.url);
-            APPS_SCRIPT_URL = data.url;
-          }
-          try { localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url); } catch (e) { }
-          _connectionStatus = 'connected';
-        }
+    _discoverBackendUrl(15000)
+      .then(fresh => {
+        if (fresh && fresh !== cached) console.log('[Backend] Bootstrap discovered updated URL:', fresh);
+        _connectionStatus = 'connected';
       })
       .catch(() => { /* silent — cached URL is fine */ })
       .finally(() => _onUrlReady());
@@ -254,15 +268,10 @@ window.clearBackendCache = clearBackendCache;
   }
   // No cached URL — do a full discovery with timeout
   console.log('[Backend] No cached URL, discovering...');
-  fetchWithTimeout(APPS_SCRIPT_URL + '?action=getBackendUrl', { redirect: 'follow', cache: 'no-store' }, 15000)
-    .then(r => r.json())
-    .then(data => {
-      if (data && data.url && data.url.includes('/macros/s/')) {
-        if (data.url !== APPS_SCRIPT_URL) {
-          console.log('[Backend] Bootstrap discovered new URL:', data.url);
-          APPS_SCRIPT_URL = data.url;
-        }
-        try { localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url); } catch (e) { }
+  _discoverBackendUrl(15000)
+    .then(fresh => {
+      if (fresh) {
+        console.log('[Backend] Bootstrap discovered new URL:', fresh);
         _connectionStatus = 'connected';
       }
     })

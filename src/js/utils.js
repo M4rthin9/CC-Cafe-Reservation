@@ -40,3 +40,36 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+// ===== CLIENT IP / USER-AGENT (login audit) =====
+const clientMeta = (() => {
+  let cache = null;
+
+  async function fetchPublicIp() {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      const resp = await fetch('https://www.cloudflare.com/cdn-cgi/trace', { cache: 'no-store', signal: controller.signal });
+      clearTimeout(timer);
+      if (!resp.ok) return '';
+      const text = await resp.text();
+      const line = String(text).split('\n').find(l => l.indexOf('ip=') === 0);
+      return line ? line.slice(3).trim() : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  return {
+    async load() {
+      if (cache) return cache;
+      cache = { ip: await fetchPublicIp(), userAgent: navigator.userAgent || '' };
+      return cache;
+    }
+  };
+})();
+
+async function waitClientMeta() {
+  try { return await clientMeta.load(); }
+  catch (e) { return { ip: '', userAgent: navigator.userAgent || '' }; }
+}

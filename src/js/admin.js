@@ -267,14 +267,28 @@ async function doLogin() {
   }
 
   try {
-    // Wait for backend URL resolution (avoids 302→GET conversion on POST)
-    if (window.waitForUrlReady) await window.waitForUrlReady();
+    // Wait for backend URL resolution (avoids 302→GET conversion on POST).
+    // Race against a short grace so a slow discovery never stalls login.
+    if (window.waitForUrlReady) {
+      await Promise.race([
+        window.waitForUrlReady(),
+        new Promise(r => setTimeout(r, 2000))
+      ]);
+    }
+
+    // Client metadata (IP / UA) is best-effort — don't let the IP lookup
+    // delay login. Usually already cached from the background warm-up.
+    const meta = await Promise.race([
+      waitClientMeta(),
+      new Promise(r => setTimeout(r, 1500))
+    ]).catch(() => null);
+    const safeMeta = (meta && meta.ip) ? meta : { ip: '', userAgent: navigator.userAgent || '' };
 
     const resp = await appsScriptFetch('', {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'login', username: username, password: pass })
+      body: JSON.stringify({ action: 'login', username: username, password: pass, ip: safeMeta.ip, userAgent: safeMeta.userAgent })
     }, 1);
 
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -499,12 +513,13 @@ function updateStats() {
     Admin: null, // sees all
     Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
     Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
-    Vinai: ['รอตรวจสอบวินัย', 'รอตรวจสอบ']
+    Vinai: null // uses isVinaiVisible (all statuses until visit date passes)
   };
 
   // Filter rows based on role (same logic as renderTable)
   let statsRows = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
+    if (role === 'Vinai') return isVinaiVisible(r);
     if (allowedStatuses[role]) {
       const normalized = normalizeStatus(r.status);
       if (!allowedStatuses[role].includes(normalized)) return false;
@@ -777,15 +792,17 @@ function renderTable() {
     Admin: null, // sees all
     Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
     Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
-    Vinai: ['รอตรวจสอบวินัย', 'รอตรวจสอบ'],
+    Vinai: null, // uses isVinaiVisible (all statuses until visit date passes)
     User: null // sees all (limited to print permission)
   };
-  const roleFilterActive = allowedStatuses[role] !== null && allowedStatuses[role] !== undefined;
+  const roleFilterActive = role === 'Vinai' || (allowedStatuses[role] !== null && allowedStatuses[role] !== undefined);
 
   let rows = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
     if (r._archived && !archiveLoaded) return false;
-    if (allowedStatuses[role]) {
+    if (role === 'Vinai') {
+      if (!isVinaiVisible(r)) return false;
+    } else if (allowedStatuses[role]) {
       const normalized = normalizeStatus(r.status);
       if (!allowedStatuses[role].includes(normalized)) return false;
     }
@@ -862,12 +879,13 @@ function renderTable() {
 
     const role = currentUser ? currentUser.role : 'User';
     const isAdminOrSuper = role === 'Superadmin' || role === 'Admin';
+    const isVinaiRole = role === 'Vinai';
 
     const canApproveDiscipline = isAdminOrSuper || hasPermission('approve_discipline');
     const canRejectDiscipline = isAdminOrSuper || hasPermission('reject_discipline');
     const canApproveParticipant = isAdminOrSuper || hasPermission('approve_participant');
     const canConfirmPayment = (role === 'Superadmin' || role === 'Admin' || hasPermission('confirm_payment'));
-    const canCancel = isAdminOrSuper || hasPermission('cancel');
+    const canCancel = isAdminOrSuper || isVinaiRole || hasPermission('cancel');
 
     // Build status action dropdown
     let statusDropdownHtml = '';
@@ -889,6 +907,9 @@ function renderTable() {
     if (canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) {
       statusOptions.push({ value: 'cancel', label: '🚫 ยกเลิก' });
     }
+    if (isVinaiRole && !isArchived && !isCancelled && !isRejected && !['เสร็จสิ้น'].includes(s)) {
+      statusOptions.push({ value: 'reject', label: '✗ ปฏิเสธ' });
+    }
 
     if (statusOptions.length > 0 && !isArchived) {
       const optsHtml = statusOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
@@ -908,6 +929,8 @@ function renderTable() {
     if (!isArchived && canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอตรวจสอบวินัย')">✓</button>`);
     if (!isArchived && canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
     if (!isArchived && canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-danger" title="ปฏิเสธวินัย" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
+    if (!isArchived && isVinaiRole && !isCancelled && !isRejected && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="btn btn-icon btn-sm btn-danger" title="ปฏิเสธ" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
+    if (!isArchived && isVinaiRole && row.prisonerId) actions.push(`<button class="btn btn-icon btn-sm" title="ตรวจสอบวินัยล่าสุด" onclick="recheckBooking(${rowIdx})">🔄</button>`);
     if (!isArchived && canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ยกเลิก" onclick="cancelBooking(${rowIdx})">🚫</button>`);
 
     const actionsHtml = actions.join('');
@@ -1040,26 +1063,63 @@ function switchView(v) {
   }
 }
 
+let serverEvents = [];
+let serverEventsLoaded = false;
+
+async function loadServerEventlog() {
+  if (!currentUser) return;
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getEventLogs', username: currentUser.username, password: currentUser.password })
+    }, 1);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
+    serverEvents = (data.logs || []).map(e => ({
+      timestamp: e.timestamp || '',
+      user: e.username || e.user || '',
+      role: e.result || '',
+      displayName: '',
+      action: e.action || '',
+      details: e.details || '',
+      ip: e.ip || '',
+      userAgent: e.userAgent || ''
+    }));
+    serverEventsLoaded = true;
+  } catch (e) {
+    console.warn('Failed to load server eventlog, using local events:', e.message);
+    serverEventsLoaded = false;
+  }
+  renderEventlog();
+}
+
 function renderEventlog() {
   const container = document.getElementById('eventlogBody');
   if (!container) return;
 
-  // Limit to 100 entries max for display
-  const displayEvents = allEvents.slice(0, 100);
-  document.getElementById('eventlogCount').textContent = allEvents.length + ' รายการ' + (allEvents.length > 100 ? ' (แสดง 100 รายการล่าสุด)' : '');
+  if (!serverEventsLoaded) loadServerEventlog();
 
-  if (allEvents.length === 0) {
-    container.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีบันทึกการทำงาน</td></tr>';
+  const events = serverEventsLoaded ? serverEvents : allEvents;
+  const displayEvents = events.slice(0, 100);
+  document.getElementById('eventlogCount').textContent = events.length + ' รายการ' + (events.length > 100 ? ' (แสดง 100 รายการล่าสุด)' : '');
+
+  if (events.length === 0) {
+    container.innerHTML = '<tr><td colspan="7" class="empty-state">ยังไม่มีบันทึกการทำงาน</td></tr>';
     return;
   }
 
   container.innerHTML = displayEvents.map(e => `
     <tr>
       <td style="white-space:nowrap;font-size:12px;">${escHtml(e.timestamp)}</td>
-      <td style="font-size:12px;">${escHtml(e.user)} <span style="color:var(--text2);">(${escHtml(e.role)})</span></td>
+      <td style="font-size:12px;">${escHtml(e.user)}</td>
       <td style="font-size:12px;color:var(--text2);">${escHtml(e.displayName || '-')}</td>
       <td style="font-size:12px;">${escHtml(e.action)}</td>
       <td style="font-size:12px;">${escHtml(e.details)}</td>
+      <td style="font-size:12px;white-space:nowrap;">${escHtml(e.ip || '')}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(e.userAgent || '')}">${escHtml(e.userAgent || '')}</td>
     </tr>
   `).join('');
 }
@@ -1594,6 +1654,8 @@ document.addEventListener('click', (e) => {
 
 // Initialize mobile features on DOM ready
 document.addEventListener('DOMContentLoaded', async () => {
+  // Warm up client metadata (IP) in the background so login isn't delayed
+  if (window.waitClientMeta) window.waitClientMeta().catch(() => { });
   await initBackendUrl();
   loadFilterState();
   initPullToRefresh();
@@ -1618,7 +1680,8 @@ async function updateStatus(idx, newStatus) {
   const role = currentUser ? currentUser.role : null;
 
   // Permission check based on source status
-  if (role !== 'Superadmin' && role !== 'Admin') {
+  const isVinaiRejectCancel = role === 'Vinai' && (newStatus === 'ไม่อนุมัติ' || newStatus === 'ยกเลิก');
+  if (role !== 'Superadmin' && role !== 'Admin' && !isVinaiRejectCancel) {
     if (currentStatus === 'รอตรวจสอบผู้เข้าร่วม' && (newStatus === 'รอตรวจสอบวินัย' || newStatus === 'ไม่อนุมัติ') && !hasPermission('approve_participant')) {
       showToast('คุณไม่มีสิทธิ์ทำรายการนี้', 'error');
       return;
@@ -1762,7 +1825,7 @@ function cancelBooking(idx) {
   const row = allRows[idx];
   const role = currentUser ? currentUser.role : null;
 
-  if (role !== 'Superadmin' && role !== 'Admin' && !hasPermission('cancel')) {
+  if (role !== 'Superadmin' && role !== 'Admin' && role !== 'Vinai' && !hasPermission('cancel')) {
     showToast('คุณไม่มีสิทธิ์ทำรายการนี้', 'error');
     return;
   }
@@ -1931,6 +1994,52 @@ function normalizeStatus(s) {
   if (v.toLowerCase() === 'paid') return 'ชำระแล้ว';
   if (v.toLowerCase() === 'done') return 'เสร็จสิ้น';
   return v || 'รอตรวจสอบวินัย';
+}
+
+function getTodayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Resolve a booking's visit date to a comparable ISO date (yyyy-MM-dd),
+// handling ISO strings, dd/MM/yyyy, Date objects and Thai long-form dates.
+function getRowVisitDateISO(r) {
+  let iso = String(r.visitDateISO || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso.slice(0, 10);
+  let m = iso.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+
+  const raw = r.visitDate;
+  if (raw === undefined || raw === null || raw === '') return '';
+
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    return raw.getFullYear() + '-' + String(raw.getMonth() + 1).padStart(2, '0') + '-' + String(raw.getDate()).padStart(2, '0');
+  }
+
+  const s = String(raw).trim();
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+
+  // Thai long form e.g. "28 พฤษภาคม 2568"
+  const thaiMonths = { 'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12' };
+  m = s.match(/^(\d{1,2})\s+(\S+)\s+(\d{4})/);
+  if (m && thaiMonths[m[2]]) {
+    let year = parseInt(m[3], 10);
+    if (year > 2200) year -= 543; // Buddhist era → Gregorian
+    return year + '-' + thaiMonths[m[2]] + '-' + String(parseInt(m[1], 10)).padStart(2, '0');
+  }
+  return '';
+}
+
+function isVinaiVisible(r) {
+  // Vinai can see every status of a booking up until the visit date passes,
+  // then the booking is removed from the dashboard. Rows with an unknown
+  // date are kept visible so the dashboard is never empty.
+  const iso = getRowVisitDateISO(r);
+  if (iso && iso < getTodayISO()) return false; // visit date passed → hide
+  return true;
 }
 
 function viewSlip(idx) {
@@ -2153,6 +2262,11 @@ async function viewDetail(idx) {
          <span class="dlbl">🕐 จองเมื่อ</span>
          <span class="dval">${escHtml(r.timestamp) || '—'}</span>
        </div>
+${r.prisonerId ? `
+<div class="detail-row">
+  <span class="dlbl">🛡️ ตรวจวินัยล่าสุด</span>
+  <span class="dval" id="detailDisciplineStatus"><span style="color:var(--text2)">⏳ กำลังตรวจสอบ...</span></span>
+</div>` : ''}
 ${canApproveParticipant && !isArchived && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
            <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -2193,7 +2307,9 @@ ${canApproveParticipant && !isArchived && s === 'รอตรวจสอบผ�
   const canRejectDisciplineDetail = isAdminOrSuperDetail || hasPermission('reject_discipline');
   const canApproveParticipantDetail = isAdminOrSuperDetail || hasPermission('approve_participant');
   const canConfirmPaymentDetail = (role === 'Superadmin' || role === 'Admin' || hasPermission('confirm_payment'));
-  const canCancelDetail = isAdminOrSuperDetail || hasPermission('cancel');
+  const isVinaiRoleDetail = role === 'Vinai';
+  const canRejectDetail = isAdminOrSuperDetail || isVinaiRoleDetail || hasPermission('reject') || hasPermission('reject_discipline');
+  const canCancelDetail = isAdminOrSuperDetail || isVinaiRoleDetail || hasPermission('cancel');
   const isCancelledDetail = s === 'ยกเลิก';
   const normalizedDetail = normalizeStatus(s);
 
@@ -2205,12 +2321,16 @@ ${canApproveParticipant && !isArchived && s === 'รอตรวจสอบผ�
   if (canApproveDisciplineDetail && normalizedDetail === 'รอตรวจสอบวินัย') {
     actionBtns.push({ label: '✓ อนุมัติวินัย', cls: 'btn btn-filled btn-sm', onclick: `updateStatus(${idx},'รอชำระเงิน')` });
     actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn btn-danger btn-sm', onclick: `updateStatus(${idx},'ไม่อนุมัติ')` });
+    actionBtns.push({ label: '🔄 ตรวจสอบวินัยล่าสุด', cls: 'btn btn-outlined btn-sm', onclick: `recheckBooking(${idx})` });
   }
   if (canConfirmPaymentDetail && normalizedDetail === 'รอชำระเงิน') {
     actionBtns.push({ label: '💳 ยืนยันชำระเงิน', cls: 'btn btn-filled btn-sm', onclick: `confirmPayment(${idx})` });
   }
   if (canConfirmPaymentDetail && normalizedDetail === 'ชำระแล้ว') {
     actionBtns.push({ label: '✅ เสร็จสิ้น', cls: 'btn btn-filled btn-sm', onclick: `confirmPayment(${idx})` });
+  }
+  if (canRejectDetail && !isCancelledDetail && !isArchived && normalizedDetail !== 'เสร็จสิ้น' && normalizedDetail !== 'ไม่อนุมัติ' && normalizedDetail !== 'รอตรวจสอบวินัย' && normalizedDetail !== 'รอตรวจสอบผู้เข้าร่วม') {
+    actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn btn-danger btn-sm', onclick: `updateStatus(${idx},'ไม่อนุมัติ')` });
   }
   if (canCancelDetail && !isCancelledDetail && normalizedDetail !== 'เสร็จสิ้น') {
     actionBtns.push({ label: '🚫 ยกเลิก', cls: 'btn btn-danger btn-sm', onclick: `cancelBooking(${idx})` });
@@ -2231,12 +2351,74 @@ ${canApproveParticipant && !isArchived && s === 'รอตรวจสอบผ�
   }
 
   document.getElementById('detailModalBg').classList.add('show');
+  refreshDetailDiscipline(idx);
 }
 
 function closeDetailModal(e) {
   if (!e || e.target === document.getElementById('detailModalBg')) {
     document.getElementById('detailModalBg').classList.remove('show');
   }
+}
+
+function getDisciplineFromMaster(prisonerId) {
+  const p = (prisonerMaster || []).find(x => String(x.prisonerId || '').trim() === String(prisonerId || '').trim());
+  if (!p) return { prisoner: null, restricted: false, found: false };
+  return {
+    prisoner: p,
+    restricted: String(p.status || '').trim() === 'ติดวินัย งดเยี่ยม',
+    found: true
+  };
+}
+
+function renderDisciplineStatus(restricted, p) {
+  const el = document.getElementById('detailDisciplineStatus');
+  if (!el) return;
+  if (restricted) {
+    el.innerHTML = `<span style="color:#dc2626;font-weight:600;">⚠️ ติดวินัย งดเยี่ยม</span>` + (p && p.vinaiDate ? `<span style="color:var(--text2)"> · นับถึง ${escHtml(p.vinaiDate)}</span>` : '');
+  } else {
+    const pStatus = p && p.status ? normalizeStatus(p.status) : '';
+    el.innerHTML = `<span style="color:#16a34a;font-weight:600;">✓ ปกติ</span>` + (pStatus ? `<span style="color:var(--text2)"> · ${escHtml(pStatus)}</span>` : '');
+  }
+}
+
+async function refreshDetailDiscipline(idx, silent) {
+  const row = allRows[idx];
+  if (!row || !row.prisonerId) return;
+  const el = document.getElementById('detailDisciplineStatus');
+  if (el) el.innerHTML = '<span style="color:var(--text2)">⏳ กำลังตรวจสอบ...</span>';
+
+  // Instant result from the already-loaded prisoner master list
+  const local = getDisciplineFromMaster(row.prisonerId);
+  if (local.found) renderDisciplineStatus(local.restricted, local.prisoner);
+
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'recheckPrisoner', username: currentUser.username, password: currentUser.password, prisonerId: row.prisonerId })
+    }, 1);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Unauthorized');
+    const restricted = !!data.restricted;
+    renderDisciplineStatus(restricted, data.prisoner);
+    if (!silent) {
+      if (restricted) {
+        showToast('⚠️ ผู้ต้องขังอยู่ในระหว่าง "ติดวินัย งดเยี่ยม" — ยังไม่สามารถอนุมัติได้', 'warning', 5000);
+      } else {
+        showToast('✓ สถานะวินัยปกติ — อนุมัติได้', 'success');
+      }
+    }
+  } catch (e) {
+    // Server check unavailable — keep the client-side result if we had one
+    if (!local.found && el) el.innerHTML = '<span style="color:var(--text2)">—</span>';
+    if (!silent) showToast(`ตรวจสอบวินัยไม่สำเร็จ: ${e.message || 'กรุณาลองใหม่'}`, 'error');
+  }
+}
+
+function recheckBooking(idx) {
+  refreshDetailDiscipline(idx, false);
 }
 
 async function approveParticipantInDetail(idx) {

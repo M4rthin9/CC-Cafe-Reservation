@@ -97,14 +97,18 @@ function isValidISODate(str) {
   return !isNaN(d.getTime()) && String(d.getFullYear()) === s.slice(0, 4);
 }
 
-function logEvent(username, action, targetRef, details, result) {
+let _requestMeta = { ip: '', userAgent: '' };
+
+function logEvent(username, action, targetRef, details, result, ip, userAgent) {
   try {
     const sheet = getEventLogSheet();
     const ts = new Date();
     const detailsStr = (details && typeof details === 'object') ? JSON.stringify(details) : (details || '');
+    const ipVal = sanitizeStr(ip !== undefined && ip !== null ? ip : (_requestMeta && _requestMeta.ip), 64);
+    const uaVal = sanitizeStr(userAgent !== undefined && userAgent !== null ? userAgent : (_requestMeta && _requestMeta.userAgent), 500);
     appendRows(sheet, [[
       Utilities.formatDate(ts, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
-      username || 'system', action, targetRef || '', detailsStr, result || 'success', '', ''
+      username || 'system', action, targetRef || '', detailsStr, result || 'success', ipVal, uaVal
     ]]);
   } catch (e) {
     Logger.log('logEvent failed: ' + e.toString());
@@ -482,6 +486,41 @@ function getPrisonerSheet() {
   return sheet;
 }
 
+function getPrisonerById(prisonerId) {
+  const target = String(prisonerId || '').trim();
+  if (!target) return null;
+  const sheet = getPrisonerSheet();
+  const table = readSheetTable(sheet);
+  const idIdx = table.headers.indexOf('prisonerId');
+  if (idIdx === -1) return null;
+  for (let i = 0; i < table.rows.length; i++) {
+    if (String(table.rows[i][idIdx] || '').trim() === target) {
+      const p = {};
+      table.headers.forEach((h, j) => p[h] = table.rows[i][j]);
+      return p;
+    }
+  }
+  return null;
+}
+
+function isDisciplineActive(p) {
+  if (!p) return false;
+  if (String(p.status || '').trim() !== 'ติดวินัย งดเยี่ยม') return false;
+  const vd = p.vinaiDate;
+  if (vd === undefined || vd === null || String(vd).trim() === '') return true;
+  let vdDate = null;
+  if (vd instanceof Date) {
+    vdDate = vd;
+  } else {
+    const parsed = new Date(String(vd).trim());
+    if (!isNaN(parsed.getTime())) vdDate = parsed;
+  }
+  if (!vdDate) return true;
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  return vdDate > oneYearAgo;
+}
+
 function ensureNotesHeaders(sheet) {
   if (sheet.getLastRow() > 0) return;
   const headers = ['ref', 'text', 'user', 'timestamp', 'createdAt'];
@@ -662,10 +701,12 @@ function handleLogin(body) {
   const rawUsername = String(body.username || '').trim();
   const username = rawUsername.toLowerCase();
   if (!checkRateLimit('login_' + username, MAX_LOGIN_ATTEMPTS, LOGIN_RATE_LIMIT_TTL)) {
+    logEvent(rawUsername, 'login_failed', '', { reason: 'rate_limited' }, 'error');
     return jsonResp({ status: 'error', message: 'การพยายามเข้าสู่ระบบหลายครั้งเกินไป กรุณารอ 5 นาที' });
   }
   const user = getUserByUsername(rawUsername);
   if (!user || !verifyPassword(rawUsername, String(body.password || ''), user.password)) {
+    logEvent(rawUsername, 'login_failed', '', { reason: 'bad_credentials' }, 'error');
     return jsonResp({ status: 'error', message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
   }
   if (String(user.password || '').indexOf('sha256$') !== 0) {
@@ -677,6 +718,7 @@ function handleLogin(body) {
   if (mustChangePassword) {
     logEvent(username, 'login_default_password', '', { action: 'force_password_change' }, 'warning');
   }
+  logEvent(username, 'login', '', { action: 'login_success' }, 'success');
   return jsonResp({
     status: 'ok',
     user: { username: user.username, role: user.role, displayName: user.displayName || user.username },
@@ -938,6 +980,11 @@ function handleSaveReservation(body) {
       }
     }
 
+    // ── Guard: block booking when the prisoner has active discipline ──
+    if (newPrisonerId && isDisciplineActive(getPrisonerById(newPrisonerId))) {
+      return jsonResp({ status: 'error', message: '⚠️ ไม่สามารถจองได้ — ผู้ต้องขังหมายเลข "' + newPrisonerId + '" อยู่ในระหว่าง "ติดวินัย งดเยี่ยม" (งดเยี่ยม)' });
+    }
+
     // ── Guard: ensure ref is unique against the LIVE sheet (not cache) ──
     const existingRefs = [];
     if (refIdx >= 0) {
@@ -1107,13 +1154,14 @@ function handleUpdateStatus(body, username) {
     'Superadmin': null,
     'Admin': null,
     'Tadtel': ['รอตรวจสอบวินัย', 'ไม่อนุมัติ'],
-    'Vinai': ['รอชำระเงิน', 'ไม่อนุมัติ'],
+    'Vinai': ['รอชำระเงิน', 'ไม่อนุมัติ', 'ยกเลิก'],
     'Finance': ['ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ']
   };
 
   const caller = getUserByUsername(username);
   const callerRole = caller ? caller.role : null;
   const roleAllowed = roleAllowedStatuses[callerRole];
+  const canFreeRejectCancel = ['Superadmin', 'Admin', 'Vinai'].includes(callerRole);
 
   if (roleAllowed !== null && roleAllowed !== undefined && !roleAllowed.includes(status)) {
     logEvent(username, 'status_change_rejected', ref, { newStatus: status, reason: 'role_not_allowed', role: callerRole }, 'denied');
@@ -1130,7 +1178,10 @@ function handleUpdateStatus(body, username) {
   let rejected = null;
   rowNums.forEach(rowNum => {
     const oldStatus = statusIdx >= 0 ? String(table.rows[rowNum - 2][statusIdx] || '').trim() : '';
-    const allowed = allowedTransitions[oldStatus];
+    let allowed = allowedTransitions[oldStatus];
+    if (canFreeRejectCancel && (status === 'ไม่อนุมัติ' || status === 'ยกเลิก')) {
+      allowed = ['ไม่อนุมัติ', 'ยกเลิก'];
+    }
     if (allowed && !allowed.includes(status) && !rejected) {
       rejected = { oldStatus: oldStatus, newStatus: status };
     }
@@ -1138,6 +1189,20 @@ function handleUpdateStatus(body, username) {
   if (rejected) {
     logEvent(username, 'status_change_rejected', ref, { oldStatus: rejected.oldStatus, newStatus: rejected.newStatus, reason: 'invalid_transition' }, 'denied');
     return jsonResp({ status: 'error', message: 'Cannot change from "' + rejected.oldStatus + '" to "' + status + '"' });
+  }
+
+  // ── Guard: block approval when the prisoner has active discipline ──
+  if (status === 'รอชำระเงิน') {
+    const pidIdx = table.headers.indexOf('prisonerId');
+    let disciplineBlocked = false;
+    rowNums.forEach(rowNum => {
+      const pid = pidIdx >= 0 ? String(table.rows[rowNum - 2][pidIdx] || '').trim() : '';
+      if (pid && isDisciplineActive(getPrisonerById(pid))) disciplineBlocked = true;
+    });
+    if (disciplineBlocked) {
+      logEvent(username, 'status_change_rejected', ref, { newStatus: status, reason: 'discipline_active' }, 'denied');
+      return jsonResp({ status: 'error', message: '⚠️ ไม่สามารถอนุมัติได้ — ผู้ต้องขังอยู่ในระหว่าง "ติดวินัย งดเยี่ยม" (งดเยี่ยม)' });
+    }
   }
 
   const updates = rowNums.map(rowNum => {
@@ -1907,6 +1972,29 @@ function listAllSheets() {
 // ══════════════════════════════════════════════════════════════════
 // SECTION 7 — ROUTER
 // ══════════════════════════════════════════════════════════════════
+function handleGetEventLogs(params, username) {
+  if (!hasPermission(username, 'view_eventlog')) {
+    return jsonResp({ status: 'error', message: 'ไม่มีสิทธิ์ดูบันทึกการทำงาน' });
+  }
+  return jsonResp({ status: 'ok', logs: getEventLogs(params || {}) });
+}
+
+function handleRecheckPrisoner(body, username) {
+  const pid = sanitizeStr(body.prisonerId, 64);
+  if (!pid) return jsonResp({ status: 'error', message: 'Missing prisonerId' });
+  const p = getPrisonerById(pid);
+  const restricted = isDisciplineActive(p);
+  return jsonResp({
+    status: 'ok',
+    prisonerId: pid,
+    restricted: restricted,
+    prisoner: p ? {
+      prisonerName: String(p.prisonerName || ''),
+      status: String(p.status || ''),
+      vinaiDate: p.vinaiDate instanceof Date ? formatDateISO(p.vinaiDate) : String(p.vinaiDate || '')
+    } : null
+  });
+}
 const GET_ROUTES = {
   getBackendUrl: { run: () => jsonResp({ url: ScriptApp.getService().getUrl() }) },
   resolveUrl: { run: () => jsonResp({ status: 'ok', url: ScriptApp.getService().getUrl(), resolvedUrl: ScriptApp.getService().getUrl(), message: 'resolveUrl endpoint reached successfully' }) },
@@ -1916,7 +2004,7 @@ const GET_ROUTES = {
   lookupByRef: { run: (params) => lookupByRef(params) },
   getArchivedReservations: { auth: true, run: (params) => getArchivedReservations(params) },
   getDataVersion: { auth: true, run: () => jsonResp({ status: 'ok', version: getDataVersion() }) },
-  getEventLogs: { auth: true, run: (params) => jsonResp({ status: 'ok', logs: getEventLogs(params) }) },
+  getEventLogs: { auth: true, run: (params) => handleGetEventLogs(params, params.username) },
   getPrisoners: { run: (params) => handleGetPrisoners(params) },
   getRoles: { auth: true, run: () => jsonResp({ status: 'ok', roles: getRolesList() }) },
   getUsers: { auth: true, run: () => jsonResp({ status: 'ok', users: getAllUsers().map(u => ({ username: u.username, role: u.role, displayName: u.displayName || u.username, createdAt: u.createdAt })) }) },
@@ -1955,6 +2043,8 @@ const POST_ROUTES = {
   syncPrisonerWings: { auth: true, run: handleSyncPrisonerWings },
   getUsers: { auth: true, run: () => jsonResp({ status: 'ok', users: getAllUsers().map(u => ({ username: u.username, role: u.role, displayName: u.displayName || u.username, createdAt: u.createdAt })) }) },
   getRoles: { auth: true, run: () => jsonResp({ status: 'ok', roles: getRolesList() }) },
+  getEventLogs: { auth: true, run: (body, username) => handleGetEventLogs(body, username) },
+  recheckPrisoner: { auth: true, run: handleRecheckPrisoner },
   logClientEvent: {
     auth: true, run: (body, username) => {
       logEvent(username || 'client', body.clientAction || 'client_action', body.targetRef || '', body.details || {}, 'success');
@@ -1982,6 +2072,11 @@ function doPostHandler(e) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return jsonResp({ status: 'error', message: 'Invalid request body' });
   }
+
+  _requestMeta = {
+    ip: sanitizeStr(body.ip, 64),
+    userAgent: sanitizeStr(body.userAgent, 500)
+  };
 
   const action = body.action || 'saveReservation';
   const username = body.username || body.user || 'public';
