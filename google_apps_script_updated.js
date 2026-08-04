@@ -1461,8 +1461,9 @@ function handleDeleteUser(body, username) {
 }
 
 function handleUpdateBooking(body, username) {
-  if (!hasPermission(username, 'approve') && !hasPermission(username, 'manage_users')) {
-    return jsonResp({ status: 'error', message: 'ไม่มีสิทธิ์แก้ไขการจอง' });
+  const caller = getUserByUsername(username);
+  if (!caller || caller.role !== 'Superadmin') {
+    return jsonResp({ status: 'error', message: 'เฉพาะ Superadmin เท่านั้นที่สามารถแก้ไขการจองได้' });
   }
   const ref = sanitizeStr(body.ref, 64);
   if (!ref) return jsonResp({ status: 'error', message: 'กรุณาระบุเลขอ้างอิง' });

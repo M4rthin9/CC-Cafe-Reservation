@@ -1,4 +1,4 @@
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbywDEGRnTnZBDX90INXaQepTerV5EeCHxi1XC9q4aj05pb7JF9Sfh5UjRzLJEkjNqdWMQ/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzfcRrdnmysqWl4wnu5ZSwIkNGUDpjZTNH4_ftda-XZ7mb2CW2D0cXwuMsXyiHkOlOW1g/exec';
 let APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL;
 const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
@@ -105,6 +105,10 @@ async function _discoverBackendUrl(timeoutMs) {
 }
 
 async function initBackendUrl() {
+  // The bootstrap already kicks off discovery on script load. Give it a
+  // short window to finish so we don't fire a duplicate discovery request
+  // (each one cold-starts Apps Script and can be very slow).
+  await Promise.race([waitForUrlReady(), new Promise(r => setTimeout(r, 800))]);
   try {
     const cached = localStorage.getItem(BACKEND_DISCOVERED_KEY);
     if (cached) {

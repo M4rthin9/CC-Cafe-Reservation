@@ -466,9 +466,13 @@ async function loadData() {
   const tableBody = document.getElementById('tableBody');
   if (tableBody) tableBody.innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   try {
-    allRows = await fetchMergedRows();
+    const [rows, version] = await Promise.all([
+      fetchMergedRows(),
+      fetchDataVersion()
+    ]);
+    allRows = rows;
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
-    lastDataVersion = (await fetchDataVersion()) ?? lastDataVersion;
+    if (version !== null && version !== undefined) lastDataVersion = version;
   } catch (e) {
     console.error('Load data error:', e);
     // Demo mode: use sample data if no Apps Script configured and DEMO_MODE is not explicitly disabled
@@ -513,13 +517,12 @@ function updateStats() {
     Admin: null, // sees all
     Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
     Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
-    Vinai: null // uses isVinaiVisible (all statuses until visit date passes)
+    Vinai: null // sees all bookings (no date restriction)
   };
 
   // Filter rows based on role (same logic as renderTable)
   let statsRows = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
-    if (role === 'Vinai') return isVinaiVisible(r);
     if (allowedStatuses[role]) {
       const normalized = normalizeStatus(r.status);
       if (!allowedStatuses[role].includes(normalized)) return false;
@@ -792,17 +795,15 @@ function renderTable() {
     Admin: null, // sees all
     Finance: ['รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'],
     Tadtel: ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบ'],
-    Vinai: null, // uses isVinaiVisible (all statuses until visit date passes)
+    Vinai: null, // sees all bookings (no date restriction)
     User: null // sees all (limited to print permission)
   };
-  const roleFilterActive = role === 'Vinai' || (allowedStatuses[role] !== null && allowedStatuses[role] !== undefined);
+  const roleFilterActive = allowedStatuses[role] !== null && allowedStatuses[role] !== undefined;
 
   let rows = allRows.filter(r => {
     if (!r.ref || String(r.ref).trim() === '') return false;
     if (r._archived && !archiveLoaded) return false;
-    if (role === 'Vinai') {
-      if (!isVinaiVisible(r)) return false;
-    } else if (allowedStatuses[role]) {
+    if (allowedStatuses[role]) {
       const normalized = normalizeStatus(r.status);
       if (!allowedStatuses[role].includes(normalized)) return false;
     }
@@ -923,7 +924,7 @@ function renderTable() {
     const actions = [];
     actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ดูสลิป" onclick="viewSlip(${rowIdx})">🧾</button>`);
     actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="รายละเอียด" onclick="viewDetail(${rowIdx})">📋</button>`);
-    if (isAdminOrSuper && !isArchived) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="แก้ไข" onclick="editBooking(${rowIdx})">✏️</button>`);
+    if (role === 'Superadmin' && !isArchived) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="แก้ไข" onclick="editBooking(${rowIdx})">✏️</button>`);
     if (!isArchived && canConfirmPayment && s === 'รอชำระเงิน') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="ยืนยันชำระเงิน" onclick="confirmPayment(${rowIdx})">💳</button>`);
     if (!isArchived && canConfirmPayment && s === 'ชำระแล้ว') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="เสร็จสิ้น" onclick="confirmPayment(${rowIdx})">✅</button>`);
     if (!isArchived && canApproveParticipant && s === 'รอตรวจสอบผู้เข้าร่วม') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติผู้เข้าร่วม" onclick="updateStatus(${rowIdx},'รอตรวจสอบวินัย')">✓</button>`);
@@ -1994,52 +1995,6 @@ function normalizeStatus(s) {
   if (v.toLowerCase() === 'paid') return 'ชำระแล้ว';
   if (v.toLowerCase() === 'done') return 'เสร็จสิ้น';
   return v || 'รอตรวจสอบวินัย';
-}
-
-function getTodayISO() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-// Resolve a booking's visit date to a comparable ISO date (yyyy-MM-dd),
-// handling ISO strings, dd/MM/yyyy, Date objects and Thai long-form dates.
-function getRowVisitDateISO(r) {
-  let iso = String(r.visitDateISO || '').trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso.slice(0, 10);
-  let m = iso.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  if (m) return m[3] + '-' + m[2] + '-' + m[1];
-
-  const raw = r.visitDate;
-  if (raw === undefined || raw === null || raw === '') return '';
-
-  if (raw instanceof Date && !isNaN(raw.getTime())) {
-    return raw.getFullYear() + '-' + String(raw.getMonth() + 1).padStart(2, '0') + '-' + String(raw.getDate()).padStart(2, '0');
-  }
-
-  const s = String(raw).trim();
-  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return m[1] + '-' + m[2] + '-' + m[3];
-  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  if (m) return m[3] + '-' + m[2] + '-' + m[1];
-
-  // Thai long form e.g. "28 พฤษภาคม 2568"
-  const thaiMonths = { 'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12' };
-  m = s.match(/^(\d{1,2})\s+(\S+)\s+(\d{4})/);
-  if (m && thaiMonths[m[2]]) {
-    let year = parseInt(m[3], 10);
-    if (year > 2200) year -= 543; // Buddhist era → Gregorian
-    return year + '-' + thaiMonths[m[2]] + '-' + String(parseInt(m[1], 10)).padStart(2, '0');
-  }
-  return '';
-}
-
-function isVinaiVisible(r) {
-  // Vinai can see every status of a booking up until the visit date passes,
-  // then the booking is removed from the dashboard. Rows with an unknown
-  // date are kept visible so the dashboard is never empty.
-  const iso = getRowVisitDateISO(r);
-  if (iso && iso < getTodayISO()) return false; // visit date passed → hide
-  return true;
 }
 
 function viewSlip(idx) {
@@ -5836,6 +5791,10 @@ async function submitNewBooking() {
 
 // ===== EDIT BOOKING (Superadmin) =====
 function editBooking(idx) {
+  if (!currentUser || currentUser.role !== 'Superadmin') {
+    showToast('เฉพาะ Superadmin เท่านั้นที่สามารถแก้ไขการจองได้', 'error');
+    return;
+  }
   const r = allRows[idx];
   if (!r) return;
 
@@ -6037,6 +5996,10 @@ function addEditExtra() {
 }
 
 async function saveBookingEdit(idx) {
+  if (!currentUser || currentUser.role !== 'Superadmin') {
+    showToast('เฉพาะ Superadmin เท่านั้นที่สามารถแก้ไขการจองได้', 'error');
+    return;
+  }
   const r = allRows[idx];
   const oldData = { ...r };
 
@@ -6629,10 +6592,10 @@ async function updateConnectionIndicator() {
   dot.textContent = '⏳';
   el.title = 'กำลังทดสอบการเชื่อมต่อ...';
   try {
-    const result = await testConnection();
+    const result = await pingConnection(0);
     if (result.connected) {
       dot.textContent = '🟢';
-      el.title = 'เชื่อมต่อสำเร็จ — ' + (result.message || 'OK') + (result.spreadsheetError ? ' (⚠️ ' + result.spreadsheetError + ')' : '');
+      el.title = 'เชื่อมต่อสำเร็จ — ' + (result.message || 'OK');
     } else {
       dot.textContent = '🔴';
       el.title = 'เชื่อมต่อล้มเหลว — ' + (result.message || 'ไม่สามารถเชื่อมต่อได้');
