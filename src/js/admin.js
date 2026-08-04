@@ -930,7 +930,7 @@ function renderTable() {
     if (!isArchived && canApproveDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-filled" title="อนุมัติวินัย" onclick="updateStatus(${rowIdx},'รอชำระเงิน')">✓</button>`);
     if (!isArchived && canRejectDiscipline && s === 'รอตรวจสอบวินัย') actions.push(`<button class="btn btn-icon btn-sm btn-danger" title="ปฏิเสธวินัย" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
     if (!isArchived && isVinaiRole && !isCancelled && !isRejected && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="btn btn-icon btn-sm btn-danger" title="ปฏิเสธ" onclick="updateStatus(${rowIdx},'ไม่อนุมัติ')">✗</button>`);
-    if (!isArchived && isVinaiRole && row.prisonerId) actions.push(`<button class="btn btn-icon btn-sm" title="ตรวจสอบวินัยล่าสุด" onclick="recheckBooking(${rowIdx})">🔄</button>`);
+    if (!isArchived && isVinaiRole && r.prisonerId) actions.push(`<button class="btn btn-icon btn-sm" title="ตรวจสอบวินัยล่าสุด" onclick="recheckBooking(${rowIdx})">🔄</button>`);
     if (!isArchived && canCancel && !isCancelled && !['เสร็จสิ้น'].includes(s)) actions.push(`<button class="btn btn-icon btn-sm btn-outlined" title="ยกเลิก" onclick="cancelBooking(${rowIdx})">🚫</button>`);
 
     const actionsHtml = actions.join('');
