@@ -5481,7 +5481,7 @@ async function loadPrisonerMaster() {
   }
 
   try {
-    const resp = await appsScriptFetch('?action=getPrisoners', {}, 2);
+    const resp = await appsScriptFetch('?action=getPrisoners', {}, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 

@@ -1,10 +1,10 @@
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzfcRrdnmysqWl4wnu5ZSwIkNGUDpjZTNH4_ftda-XZ7mb2CW2D0cXwuMsXyiHkOlOW1g/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqO4ii65460SwFssXm7aAbT4lOc-ZOhiPNaAEE37Wkqh94mGHsJsAXJ-8mY-XDpZkXIQ/exec';
 let APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL;
 const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
 const RESOLVED_URL_KEY = 'cc_resolved_url';
 
-const API_FETCH_TIMEOUT = 25000;
+const API_FETCH_TIMEOUT = 10000;
 
 let _connectionStatus = 'unknown';
 let _urlReady = false;
@@ -43,10 +43,15 @@ async function appsScriptFetch(path, params, retries) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const url = path ? APPS_SCRIPT_URL + path : APPS_SCRIPT_URL;
-      const resp = await fetchWithTimeout(url, params, API_FETCH_TIMEOUT);
+      const resp = await fetchWithTimeout(url, { ...params, mode: 'cors' }, API_FETCH_TIMEOUT);
       if (!resp.ok) {
         // 404 usually means a stale URL — re-discover once and retry the fresh URL
         if (resp.status === 404) {
+          const recovered = await _tryRecover404(path, params);
+          if (recovered) return recovered;
+        }
+        // 302/301 redirect loops or stale redirects — also re-discover
+        if ([301, 302].includes(resp.status)) {
           const recovered = await _tryRecover404(path, params);
           if (recovered) return recovered;
         }
@@ -84,7 +89,7 @@ async function _discoverBackendUrl(timeoutMs) {
   try {
     const url = APPS_SCRIPT_URL.includes('/macros/s/') ? APPS_SCRIPT_URL : DEFAULT_APPS_SCRIPT_URL;
     const resp = await fetchWithTimeout(url + '?action=getBackendUrl', {
-      redirect: 'follow', cache: 'no-store', credentials: 'omit'
+      redirect: 'follow', cache: 'no-store', credentials: 'omit', mode: 'cors'
     }, ms);
     if (!resp.ok) return null;
     const data = await resp.json();
@@ -116,7 +121,7 @@ async function initBackendUrl() {
       _onUrlReady();
       return cached;
     }
-    const fresh = await _discoverBackendUrl(15000);
+    const fresh = await _discoverBackendUrl(5000);
     _onUrlReady();
     return fresh || APPS_SCRIPT_URL;
   } catch (e) {

@@ -5,7 +5,7 @@ async function appsScriptPost(payload) {
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
-  }, 2);
+  }, 1);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const text = await resp.text();
   try {
@@ -17,7 +17,7 @@ async function appsScriptPost(payload) {
 
 async function appsScriptGet(params) {
   const qs = new URLSearchParams(params).toString();
-  const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 2);
+  const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 1);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const text = await resp.text();
   try {

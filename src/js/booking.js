@@ -394,7 +394,7 @@ async function loadPrisonerMaster() {
   }
 
   try {
-    const resp = await appsScriptFetch('?action=getPrisoners', { redirect: 'follow', credentials: 'omit' }, 2);
+    const resp = await appsScriptFetch('?action=getPrisoners', { redirect: 'follow', credentials: 'omit' }, 1);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 
@@ -1162,7 +1162,7 @@ function resetAll() {
 // ===== SAFE FETCH WRAPPER =====
 async function appsScriptGet(params) {
   const qs = new URLSearchParams(params).toString();
-  const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 2);
+  const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 1);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const text = await resp.text();
   try { return JSON.parse(text); }
