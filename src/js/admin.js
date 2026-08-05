@@ -5481,7 +5481,7 @@ async function loadPrisonerMaster() {
   }
 
   try {
-    const resp = await appsScriptFetch('?action=getPrisoners', {}, 0);
+    const resp = await appsScriptFetch('?action=getPrisoners', {}, 2);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 
@@ -5502,7 +5502,10 @@ async function loadPrisonerMaster() {
     }
     console.error('[PrisonerMaster]', e);
     if (statusEl) {
-      statusEl.textContent = '⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้ — กรอกเองไม่ได้';
+      let detail = e && e.message ? e.message : '';
+      if (/failed to fetch|network|load failed|abort/i.test(detail)) detail = 'เครือข่ายไม่เสถียร';
+      statusEl.innerHTML = `⚠️ โหลดรายชื่อจากฐานข้อมูลไม่ได้${detail ? ` (${detail})` : ''} — กรอกเองได้ชั่วคราว ` +
+        `<button type="button" onclick="loadPrisonerMaster()" style="margin-left:8px;padding:2px 10px;border:1px solid var(--red);background:transparent;color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;">ลองใหม่</button>`;
       statusEl.style.color = 'var(--red)';
     }
   }

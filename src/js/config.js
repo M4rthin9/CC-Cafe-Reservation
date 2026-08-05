@@ -26,7 +26,7 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
-    const resp = await fetch(url, { ...opts, signal: controller.signal });
+    const resp = await fetch(url, { cache: 'no-store', ...opts, signal: controller.signal });
     return resp;
   } catch (e) {
     if (e.name === 'AbortError') {
