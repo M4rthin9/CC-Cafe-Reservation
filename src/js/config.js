@@ -1,5 +1,6 @@
 const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ_XGiFbgjdvUK1DhzNjdWPGZ2hNI0BWyj6g1Bv0dZqGAohQLZkV0wjUXCT6cvtvMoig/exec';
 let APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL;
+const TURNSTILE_SITEKEY = '0x4AAAAAAEIsdWWK1_eTnbKj';
 const QUOTA = 20;
 
 const API_FETCH_TIMEOUT = 30000;

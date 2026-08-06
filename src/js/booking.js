@@ -939,16 +939,76 @@ function goToConfirm() {
     }
   }, 0);
 
+  _confirmVisible = true;
   showPage(2);
+  renderTurnstile();
 }
 
-function goBack() { showPage(1); }
+function goBack() { _confirmVisible = false; showPage(1); }
+
+// ===== TURNSTILE =====
+let turnstileWidgetId = null;
+let _confirmVisible = false;
+
+window.onloadTurnstileCallback = function () {
+  if (_confirmVisible && !turnstileWidgetId && document.getElementById('turnstileWidget')) {
+    renderTurnstile();
+  }
+};
+
+function renderTurnstile() {
+  if (typeof window.turnstile !== 'object' && typeof window.turnstile !== 'function') return;
+  if (turnstileWidgetId || !document.getElementById('turnstileWidget')) return;
+  turnstileWidgetId = window.turnstile.render('turnstileWidget', {
+    sitekey: TURNSTILE_SITEKEY,
+    action: 'booking'
+  });
+}
+
+function resetTurnstile() {
+  if (typeof window.turnstile !== 'object' && typeof window.turnstile !== 'function') return;
+  if (turnstileWidgetId) {
+    try { window.turnstile.reset(turnstileWidgetId); } catch (e) { }
+  }
+}
+
+async function verifyTurnstile() {
+  if (typeof window.turnstile !== 'object' && typeof window.turnstile !== 'function') {
+    showInlineError('confirmSummary', '⚠️ ระบบ CAPTCHA ยังไม่พร้อม — กรุณารอสักครู่แล้วลองอีกครั้ง');
+    return false;
+  }
+  if (!turnstileWidgetId) renderTurnstile();
+  if (!turnstileWidgetId) {
+    showInlineError('confirmSummary', '⚠️ กรุณาทำ CAPTCHA ก่อนส่งคำขอจอง');
+    return false;
+  }
+  const token = window.turnstile.getResponse(turnstileWidgetId);
+  if (!token) {
+    showInlineError('confirmSummary', '⚠️ กรุณากดยืนยัน CAPTCHA ก่อนส่งคำขอจอง');
+    return false;
+  }
+  try {
+    const resp = await fetch('/api/turnstile-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const result = await resp.json();
+    if (result && result.success === true) return true;
+    throw new Error((result && result.error) || 'verify_failed');
+  } catch (e) {
+    resetTurnstile();
+    showInlineError('confirmSummary', '⚠️ CAPTCHA ไม่ผ่านการตรวจสอบ — กรุณาลองใหม่อีกครั้ง');
+    return false;
+  }
+}
 
 // ===== SUBMIT =====
 let bookingSubmitting = false;
 
 async function submitBooking() {
   if (bookingSubmitting) return;
+  if (!(await verifyTurnstile())) return;
   bookingSubmitting = true;
   const submitBtn = document.getElementById('submitBtn');
   if (submitBtn) submitBtn.disabled = true;
@@ -984,6 +1044,7 @@ async function submitBooking() {
         document.getElementById('overlay').classList.remove('show');
         const btn = document.getElementById('submitBtn');
         if (btn) btn.disabled = false;
+        resetTurnstile();
         showInlineError('confirmSummary', `⚠️ ไม่สามารถจองได้ — มีการจองผู้ต้องขังหมายเลข "${escHtml(prisonerId)}" ในวันนี้อยู่แล้ว (Ref: ${escHtml(duplicate.ref)})`);
         return;
       }
@@ -1057,6 +1118,7 @@ async function submitBooking() {
     bookingSubmitting = false;
     const btn = document.getElementById('submitBtn');
     if (btn) btn.disabled = false;
+    resetTurnstile();
     const isServerRejection = submitError && (submitError.indexOf('⚠️') === 0 || submitError.indexOf('ไม่สามารถจองได้') === 0 || submitError.indexOf('Cannot change') === 0);
     const failMsg = isServerRejection
       ? submitError
@@ -1168,6 +1230,8 @@ function resetAll() {
   document.getElementById('selectedDateDisplay').textContent = '';
   document.getElementById('submitBtn').disabled = false;
   bookingSubmitting = false;
+  _confirmVisible = false;
+  resetTurnstile();
   renderCalendar();
   showPage(1);
 }

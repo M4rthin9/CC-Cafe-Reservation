@@ -1,0 +1,23 @@
+**/node_modules
+**/.git
+**/.git copy
+**/.gitignore
+**/.github
+**/.kilo
+**/.opencode
+**/.wrangler
+**/.assetsignore
+**/.DS_Store
+**/Thumbs.db
+**/Desktop.ini
+**/.env
+**/.env.local
+**/worker
+**/package.json
+**/package-lock.json
+**/CNAME
+**/README.md
+**/prompt.md
+**/appsscript.json
+**/google_apps_script_updated.js
+**/wrangler.jsonc

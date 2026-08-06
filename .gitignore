@@ -14,6 +14,9 @@ Desktop.ini
 node_modules/
 npm-debug.log*
 
+# Cloudflare (local state)
+.wrangler/
+
 # Environment
 .env
 .env.local
