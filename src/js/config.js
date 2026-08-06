@@ -4,7 +4,7 @@ const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
 const RESOLVED_URL_KEY = 'cc_resolved_url';
 
-const API_FETCH_TIMEOUT = 10000;
+const API_FETCH_TIMEOUT = 30000;
 
 let _connectionStatus = 'unknown';
 let _urlReady = false;
@@ -85,8 +85,8 @@ async function _tryRecover404(path, params) {
   // Reuse an in-flight discovery if the bootstrap already started one. Keep
   // the original ~8s recovery bound so a hung discovery can't stall retries.
   const fresh = await Promise.race([
-    _ensureDiscovery(8000),
-    new Promise(r => setTimeout(() => r(null), 9000))
+    _ensureDiscovery(15000),
+    new Promise(r => setTimeout(() => r(null), 16000))
   ]);
   if (!fresh) return null;
   // Only rotate the cached URL once a working replacement is confirmed —

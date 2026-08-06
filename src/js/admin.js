@@ -90,68 +90,71 @@ async function toggleArchive() {
     btn.textContent = archiveLoaded ? '🗄️ ซ่อนย้อนหลัง' : '🗄️ ดูย้อนหลัง';
     btn.classList.toggle('active', archiveLoaded);
   }
+  if (archiveLoaded) {
+    // Lazily fetch the archive sheet only when the user asks to see it.
+    if (archiveRows.length === 0) {
+      try {
+        archiveRows = await fetchArchivedRows();
+      } catch (e) {
+        archiveLoaded = false;
+        if (btn) {
+          btn.textContent = '🗄️ ดูย้อนหลัง';
+          btn.classList.toggle('active', false);
+        }
+        showToast('โหลดข้อมูลย้อนหลังไม่สำเร็จ: ' + e.message, 'error');
+        return;
+      }
+    }
+    allRows = mergeArchivedRows(allRows.filter(r => !r._archived), archiveRows);
+  } else {
+    allRows = allRows.filter(r => !r._archived);
+  }
+  saveAdminRowsCache(allRows);
   buildDateFilter();
   refreshCurrentView();
 }
 
-// Whether the deployed backend supports getAllWithArchive (server-side merge).
-// null = not yet detected, true = supported, false = must merge client-side.
-let backendServerMerge = null;
-
+// Fast first fetch: the active "การจอง" sheet only. The archive sheet
+// ("การจอง_Archive") is fetched lazily only when "ดูย้อนหลัง" is toggled on,
+// so initial loads, polling, and renders never pay for the heavy archive.
 function backendCall(action) {
-  return appsScriptFetch('', {
-    method: 'POST',
-    redirect: 'follow',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: action, username: currentUser.username, password: currentUser.password })
-  }, 1);
+  return appsScriptFetch('', { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, username: currentUser.username, password: currentUser.password }) }, 1, 30000);
 }
 
-async function fetchMergedRows() {
-  if (backendServerMerge !== false) {
-    try {
-      const resp = await backendCall('getAllWithArchive');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const data = await resp.json();
-      if (data.status === 'ok' && Array.isArray(data.rows)) {
-        backendServerMerge = true;
-        return data.rows;
-      }
-      if (data.status !== 'error' || data.message !== 'Unknown action') {
-        throw new Error(data.message || 'Unknown error');
-      }
-      backendServerMerge = false;
-    } catch (e) {
-      if (String(e.message) !== 'Unknown action') throw e;
-      backendServerMerge = false;
-    }
-  }
+async function fetchActiveRows() {
+  const resp = await backendCall('getAll');
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const data = await resp.json();
+  if (data.status === 'ok' && Array.isArray(data.rows)) return data.rows;
+  throw new Error(data.message || 'Unknown error');
+}
 
-  // Backend not updated yet — merge active + archive rows client-side.
-  const [activeResp, archiveResp] = await Promise.all([
-    backendCall('getAll'),
-    backendCall('getArchivedReservations')
-  ]);
-  if (!activeResp.ok) throw new Error('HTTP ' + activeResp.status);
-  const activeData = await activeResp.json();
-  if (activeData.status !== 'ok') throw new Error(activeData.message || 'Unknown error');
-  const active = activeData.rows || [];
-  const rows = active.slice();
-  if (archiveResp.ok) {
-    try {
-      const archiveData = await archiveResp.json();
-      if (archiveData.status === 'ok' && Array.isArray(archiveData.rows)) {
-        const activeRefs = new Set(active.map(r => String(r.ref || '').trim().toUpperCase()));
-        archiveData.rows.forEach(r => {
-          const ref = String(r.ref || '').trim();
-          if (ref && !activeRefs.has(ref.toUpperCase())) {
-            rows.push(Object.assign({}, r, { _archived: true }));
-          }
-        });
-      }
-    } catch (e) { /* archive merge is best-effort */ }
+async function fetchArchivedRows() {
+  const resp = await backendCall('getArchivedReservations');
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const data = await resp.json();
+  if (data.status === 'ok' && Array.isArray(data.rows)) {
+    return data.rows.map(r => Object.assign({}, r, { _archived: true }));
   }
-  return rows;
+  throw new Error(data.message || 'Unknown error');
+}
+
+function mergeArchivedRows(active, archived) {
+  const activeRefs = new Set(active.map(r => String(r.ref || '').trim().toUpperCase()));
+  const merged = active.slice();
+  (archived || []).forEach(r => {
+    const ref = String(r.ref || '').trim();
+    if (ref && !activeRefs.has(ref.toUpperCase())) merged.push(r);
+  });
+  return merged;
+}
+
+// Active rows only by default; archive rows (already loaded in memory) are
+// merged in only when ดูย้อนหลัง is active.
+async function fetchMergedRows() {
+  const active = await fetchActiveRows();
+  if (!archiveLoaded || archiveRows.length === 0) return active;
+  return mergeArchivedRows(active, archiveRows);
 }
 
 async function pollData() {
@@ -209,6 +212,7 @@ let prisonerMaster = [];
 let _dashboardCache = { timestamp: 0, data: null };
 let lastDataVersion = null;
 let archiveLoaded = false;
+let archiveRows = [];
 
 let pendingCancelIdx = null;
 let pendingCancelMode = 'single'; // 'single' | 'bulk'
@@ -494,6 +498,8 @@ function doLogout() {
   if (notifPanel) notifPanel.style.display = 'none';
   stopPolling();
   allRows = [];
+  archiveRows = [];
+  archiveLoaded = false;
 }
 
 // ===== LOAD DATA =====
@@ -516,7 +522,9 @@ async function loadData() {
   //    instantly (no spinner) and let the background fetch refresh silently. ──
   const cached = loadAdminRowsCache();
   if (cached && Array.isArray(cached.rows)) {
-    allRows = cached.rows;
+    // A previous session may have cached archive rows; on a fresh load the
+    // archive is not loaded, so drop them (fast first render).
+    allRows = archiveLoaded ? cached.rows : (cached.rows || []).filter(r => !r._archived);
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date(cached.timestamp).toLocaleString('th-TH');
     renderAll();
   } else if (tableBody) {
