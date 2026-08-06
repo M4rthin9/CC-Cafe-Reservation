@@ -213,6 +213,38 @@ let archiveLoaded = false;
 let pendingCancelIdx = null;
 let pendingCancelMode = 'single'; // 'single' | 'bulk'
 
+// ===== ADMIN ROWS STALE-WHILE-REVALIDATE CACHE (FIX 5) =====
+// Renders the reservations table instantly from localStorage on page load,
+// then silently refreshes in the background. Note: cached rows contain PII —
+// stored only in the admin's own browser, never sent anywhere.
+const ADMIN_ROWS_CACHE_KEY = 'cc_admin_rows_cache';
+const ADMIN_ROWS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function loadAdminRowsCache() {
+  try {
+    const raw = localStorage.getItem(ADMIN_ROWS_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached || !Array.isArray(cached.rows)) return null;
+    if (Date.now() - cached.timestamp > ADMIN_ROWS_CACHE_TTL) return null;
+    return cached;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveAdminRowsCache(rows) {
+  try {
+    localStorage.setItem(ADMIN_ROWS_CACHE_KEY, JSON.stringify({ rows: rows, timestamp: Date.now() }));
+  } catch (e) {
+    /* storage full - ignore */
+  }
+}
+
+function rowsSignature(rows) {
+  return rows.map(r => (r.ref || '') + '|' + (r.status || '') + '|' + (r.wing || '')).join(',');
+}
+
 // ===== TOAST NOTIFICATIONS =====
 function showToast(message, type = 'info', duration = 3000) {
   let container = document.getElementById('toastContainer');
@@ -441,6 +473,7 @@ function logEvent(action, details) {
 let allEvents = JSON.parse(localStorage.getItem('eventlog') || '[]');
 function doLogout() {
   currentUser = null;
+  try { localStorage.removeItem(ADMIN_ROWS_CACHE_KEY); } catch (e) { }
   document.getElementById('loginWrap').style.display = 'flex';
   document.getElementById('dash').style.display = 'none';
   document.getElementById('passInput').value = '';
@@ -466,17 +499,49 @@ function doLogout() {
 // ===== LOAD DATA =====
 async function loadData() {
   const tableBody = document.getElementById('tableBody');
-  if (tableBody) tableBody.innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
+  const renderAll = () => {
+    try {
+      updateStats();
+      buildDateFilter();
+      buildWingFilter();
+      renderTable();
+      renderDashboardHome();
+    } catch (renderErr) {
+      console.error('Render error after data load:', renderErr);
+      showToast('เกิดข้อผิดพลาดในการแสดงผล: ' + renderErr.message, 'error');
+    }
+  };
+
+  // ── FIX 5: Stale-while-revalidate. If we have cached rows, render them
+  //    instantly (no spinner) and let the background fetch refresh silently. ──
+  const cached = loadAdminRowsCache();
+  if (cached && Array.isArray(cached.rows)) {
+    allRows = cached.rows;
+    document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date(cached.timestamp).toLocaleString('th-TH');
+    renderAll();
+  } else if (tableBody) {
+    tableBody.innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
+  }
+
   try {
     const [rows, version] = await Promise.all([
       fetchMergedRows(),
       fetchDataVersion()
     ]);
+    const oldSig = rowsSignature(allRows);
+    const newSig = rowsSignature(rows);
     allRows = rows;
+    saveAdminRowsCache(rows);
     document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
     if (version !== null && version !== undefined) lastDataVersion = version;
+    if (oldSig !== newSig) renderAll();
   } catch (e) {
     console.error('Load data error:', e);
+    // If cached data is already on screen, keep it instead of the error state
+    if (cached && Array.isArray(cached.rows)) {
+      console.warn('[Admin] Background refresh failed, using cached data:', e.message);
+      return;
+    }
     // Demo mode: use sample data if no Apps Script configured and DEMO_MODE is not explicitly disabled
     if (window.DEMO_MODE !== false && (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE')) {
       allRows = getDemoData();
@@ -487,16 +552,6 @@ async function loadData() {
       showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
       return;
     }
-  }
-  try {
-    updateStats();
-    buildDateFilter();
-    buildWingFilter();
-    renderTable();
-    renderDashboardHome();
-  } catch (renderErr) {
-    console.error('Render error after data load:', renderErr);
-    showToast('เกิดข้อผิดพลาดในการแสดงผล: ' + renderErr.message, 'error');
   }
   logEvent('load_data', 'โหลดข้อมูลการจอง');
 }
