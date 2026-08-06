@@ -1,8 +1,6 @@
 const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ_XGiFbgjdvUK1DhzNjdWPGZ2hNI0BWyj6g1Bv0dZqGAohQLZkV0wjUXCT6cvtvMoig/exec';
 let APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL;
 const QUOTA = 20;
-const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
-const RESOLVED_URL_KEY = 'cc_resolved_url';
 
 const API_FETCH_TIMEOUT = 30000;
 
@@ -19,20 +17,6 @@ function _onUrlReady() {
 function waitForUrlReady() {
   if (_urlReady) return Promise.resolve();
   return new Promise(resolve => _urlReadyWaiters.push(resolve));
-}
-
-let _discoveryInFlight = null;
-
-// Deduplicated background discovery. Reuses an in-flight discovery so the
-// bootstrap, initBackendUrl(), and 404-recovery never fire parallel
-// cold-start requests. Resolves to the discovered URL (or null on failure).
-function _ensureDiscovery(timeoutMs) {
-  if (!_discoveryInFlight) {
-    _discoveryInFlight = _discoverBackendUrl(timeoutMs || 15000).finally(() => {
-      _discoveryInFlight = null;
-    });
-  }
-  return _discoveryInFlight;
 }
 
 async function fetchWithTimeout(url, opts, timeoutMs) {
@@ -87,19 +71,13 @@ async function appsScriptFetch(path, params, retries, timeoutMs) {
 
 async function _tryRecover404(path, params) {
   console.warn('[Backend] 404/redirect — re-discovering backend URL...');
-  // Reuse an in-flight discovery if the bootstrap already started one. Keep
-  // the original ~8s recovery bound so a hung discovery can't stall retries.
+  // Probe the hardcoded default URL. Bound the recovery so a hung discovery
+  // can't stall the request.
   const fresh = await Promise.race([
-    _ensureDiscovery(15000),
-    new Promise(r => setTimeout(() => r(null), 16000))
+    _discoverBackendUrl(8000),
+    new Promise(r => setTimeout(() => r(null), 10000))
   ]);
   if (!fresh) return null;
-  // Only rotate the cached URL once a working replacement is confirmed —
-  // never wipe both keys on a transient network error, timeout, or abort.
-  try {
-    localStorage.setItem(BACKEND_DISCOVERED_KEY, fresh);
-    localStorage.removeItem(RESOLVED_URL_KEY);
-  } catch (e) { }
   console.log('[Backend] Re-discovered URL, retrying:', fresh);
   const url = path ? fresh + path : fresh;
   const resp = await fetchWithTimeout(url, params, API_FETCH_TIMEOUT);
@@ -143,12 +121,13 @@ function rebuildPrisonerObjects(rows) {
 window.debounce = debounce;
 window.rebuildPrisonerObjects = rebuildPrisonerObjects;
 
-// Re-discover the current Apps Script /exec URL via the lightweight
-// `getBackendUrl` action. Falls back to the hardcoded default URL.
+// Re-discover the Apps Script /exec URL by probing the hardcoded default
+// deployment via the lightweight `getBackendUrl` action. Used only as a
+// 404 self-heal: normal requests always go straight to DEFAULT_APPS_SCRIPT_URL.
 async function _discoverBackendUrl(timeoutMs) {
   const ms = timeoutMs || 8000;
   try {
-    const url = APPS_SCRIPT_URL.includes('/macros/s/') ? APPS_SCRIPT_URL : DEFAULT_APPS_SCRIPT_URL;
+    const url = DEFAULT_APPS_SCRIPT_URL;
     const resp = await fetchWithTimeout(url + '?action=getBackendUrl', {
       redirect: 'follow', cache: 'no-store', credentials: 'omit', mode: 'cors'
     }, ms);
@@ -156,10 +135,6 @@ async function _discoverBackendUrl(timeoutMs) {
     const data = await resp.json();
     if (data && data.url && data.url.includes('/macros/s/')) {
       APPS_SCRIPT_URL = data.url;
-      try {
-        localStorage.setItem(BACKEND_DISCOVERED_KEY, data.url);
-        localStorage.removeItem(RESOLVED_URL_KEY);
-      } catch (e) { }
       _connectionStatus = 'connected';
       _onUrlReady();
       return data.url;
@@ -171,54 +146,10 @@ async function _discoverBackendUrl(timeoutMs) {
 }
 
 async function initBackendUrl() {
-  // The bootstrap already set APPS_SCRIPT_URL to a usable value (cached or
-  // hardcoded default), so return it immediately — the first real data
-  // request must never block on discovery finishing (double cold-start
-  // round trip). Discovery runs in the background and only rotates the URL
-  // for subsequent calls.
-  try {
-    const cached = localStorage.getItem(BACKEND_DISCOVERED_KEY);
-    if (cached && cached.includes('/macros/s/')) {
-      APPS_SCRIPT_URL = cached;
-    }
-  } catch (e) { }
+  // Hardcoded by design — the first real request must never wait on any
+  // discovery/cache round trip. 404 self-heal handles a changed deployment.
   _onUrlReady();
-  // If the bootstrap's discovery is still in flight, reuse it. If it already
-  // settled successfully we're connected — don't fire a duplicate. Only a
-  // failed/settled discovery gets a fresh attempt here.
-  if (!_discoveryInFlight && _connectionStatus !== 'connected') {
-    _ensureDiscovery(15000);
-  }
   return APPS_SCRIPT_URL;
-}
-
-function isValidExecUrl(url) {
-  return url && url.includes('/macros/s/') && !url.includes('user_content_key');
-}
-
-async function resolveBackendUrl() {
-  const stored = localStorage.getItem(RESOLVED_URL_KEY);
-  if (stored && isValidExecUrl(stored)) {
-    APPS_SCRIPT_URL = stored;
-    _connectionStatus = 'connected';
-    _onUrlReady();
-    return stored;
-  }
-  // Stale/echo URL — clear only the invalid echo key and re-discover.
-  // Leave BACKEND_DISCOVERED_KEY untouched: it may still be valid.
-  try { localStorage.removeItem(RESOLVED_URL_KEY); } catch (e) { }
-
-  try {
-    const fresh = await _discoverBackendUrl(15000);
-    if (!fresh) throw new Error('Backend URL discovery failed');
-    _connectionStatus = 'connected';
-    return fresh;
-  } catch (e) {
-    console.warn('[Backend] resolveBackendUrl failed:', e.message);
-    _connectionStatus = 'disconnected';
-    _onUrlReady();
-    return APPS_SCRIPT_URL;
-  }
 }
 
 // Lightweight connectivity probe. Uses the ultra-fast `ping` action (no
@@ -281,69 +212,11 @@ async function testConnection() {
 
 function getConnectionStatus() { return _connectionStatus; }
 
-function setBackendUrl(url) {
-  if (!url || !url.includes('macros/s/')) return false;
-  APPS_SCRIPT_URL = url;
-  try {
-    localStorage.setItem(BACKEND_DISCOVERED_KEY, url);
-    localStorage.removeItem(RESOLVED_URL_KEY);
-  } catch (e) { }
-  _connectionStatus = 'unknown';
-  return true;
-}
-
-function clearBackendCache() {
-  try {
-    localStorage.removeItem(BACKEND_DISCOVERED_KEY);
-    localStorage.removeItem(RESOLVED_URL_KEY);
-  } catch (e) { }
-  _connectionStatus = 'unknown';
-  console.log('[Backend] Cache cleared. Reload the page.');
-}
-window.clearBackendCache = clearBackendCache;
-
-// ── Bootstrap: load cached URL on script start ──
+// ── Bootstrap: the URL is hardcoded and usable right away. No cache reads,
+//    no background discovery round trip — the first request (e.g. login)
+//    fires immediately against DEFAULT_APPS_SCRIPT_URL. ──
 (function bootstrap() {
-  // Remove stale echo URLs from cache
-  try {
-    const stale = localStorage.getItem(RESOLVED_URL_KEY);
-    if (stale && !isValidExecUrl(stale)) {
-      console.warn('[Backend] Removing stale echo URL from cache:', stale);
-      localStorage.removeItem(RESOLVED_URL_KEY);
-    }
-  } catch (e) { }
-
-  const cached = (() => { try { return localStorage.getItem(BACKEND_DISCOVERED_KEY); } catch (e) { } })();
-  const resolved = (() => { try { return localStorage.getItem(RESOLVED_URL_KEY); } catch (e) { } })();
-
-  if (resolved && isValidExecUrl(resolved)) {
-    APPS_SCRIPT_URL = resolved;
-    console.log('[Backend] Using resolved URL:', resolved);
-    _connectionStatus = 'connected';
-  } else if (cached && cached.includes('/macros/s/')) {
-    APPS_SCRIPT_URL = cached;
-    console.log('[Backend] Using cached URL:', cached);
-  } else {
-    console.log('[Backend] No cached URL — using default until background discovery resolves.');
-  }
-
-  // The URL is usable right now (cached or default). Resolve all waiters
-  // immediately so the first real request (getPrisoners, lookupByRef,
-  // login…) fires without waiting for discovery to finish.
   _onUrlReady();
-
-  // Background discovery — runs in parallel, only rotates APPS_SCRIPT_URL
-  // for subsequent calls if it finds a different URL. If it finds nothing,
-  // the cached/default URL keeps being used (and _tryRecover404 handles a
-  // confirmed 404/redirect-loop reactively).
-  _ensureDiscovery(15000)
-    .then(fresh => {
-      if (fresh) {
-        console.log('[Backend] Bootstrap discovered URL:', fresh);
-        _connectionStatus = 'connected';
-      }
-    })
-    .catch(() => { /* silent — cached/default URL will be used */ });
 })();
 
 async function window$checkConnection() {
@@ -353,10 +226,9 @@ async function window$checkConnection() {
 }
 
 async function window$resetConnection() {
-  clearBackendCache();
   _connectionStatus = 'unknown';
-  console.log('[Backend] Cache cleared. Attempting re-discovery...');
-  await resolveBackendUrl();
+  console.log('[Backend] Attempting re-discovery...');
+  await _discoverBackendUrl(8000);
   const result = await testConnection();
   console.log('[Connection Test]', result.connected ? 'CONNECTED' : 'FAILED', result.message);
   return result;

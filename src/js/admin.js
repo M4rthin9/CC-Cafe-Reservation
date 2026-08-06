@@ -65,7 +65,7 @@ async function fetchDataVersion() {
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'getDataVersion', username: currentUser.username, password: currentUser.password })
-    }, 1);
+    }, 1, 15000);
     if (!resp.ok) return null;
     const data = await resp.json();
     return (data.status === 'ok') ? (data.version || 0) : null;
@@ -118,7 +118,7 @@ async function toggleArchive() {
 // ("การจอง_Archive") is fetched lazily only when "ดูย้อนหลัง" is toggled on,
 // so initial loads, polling, and renders never pay for the heavy archive.
 function backendCall(action) {
-  return appsScriptFetch('', { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, username: currentUser.username, password: currentUser.password }) }, 1, 30000);
+  return appsScriptFetch('', { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, username: currentUser.username, password: currentUser.password }) }, 1, 20000);
 }
 
 async function fetchActiveRows() {
@@ -213,6 +213,12 @@ let _dashboardCache = { timestamp: 0, data: null };
 let lastDataVersion = null;
 let archiveLoaded = false;
 let archiveRows = [];
+
+let _loadInFlight = false;
+let _loadRetryTimer = null;
+const LOAD_RETRY_ATTEMPTS = 5;
+const LOAD_RETRY_DELAYS = [1000, 2000, 3000, 5000, 6000];
+const LOAD_AUTO_RETRY_MS = 10000;
 
 let pendingCancelIdx = null;
 let pendingCancelMode = 'single'; // 'single' | 'bulk'
@@ -496,6 +502,7 @@ function doLogout() {
   const notifPanel = document.getElementById('notifPanel');
   if (notifPanel) notifPanel.style.display = 'none';
   stopPolling();
+  if (_loadRetryTimer) { clearTimeout(_loadRetryTimer); _loadRetryTimer = null; }
   allRows = [];
   archiveRows = [];
   archiveLoaded = false;
@@ -503,6 +510,10 @@ function doLogout() {
 
 // ===== LOAD DATA =====
 async function loadData() {
+  if (_loadInFlight) return;
+  _loadInFlight = true;
+  if (_loadRetryTimer) { clearTimeout(_loadRetryTimer); _loadRetryTimer = null; }
+
   const tableBody = document.getElementById('tableBody');
   const renderAll = () => {
     try {
@@ -530,37 +541,66 @@ async function loadData() {
     tableBody.innerHTML = '<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล...</td></tr>';
   }
 
-  try {
-    const [rows, version] = await Promise.all([
-      fetchMergedRows(),
-      fetchDataVersion()
-    ]);
-    const oldSig = rowsSignature(allRows);
-    const newSig = rowsSignature(rows);
-    allRows = rows;
-    saveAdminRowsCache(rows);
-    document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
-    if (version !== null && version !== undefined) lastDataVersion = version;
-    if (oldSig !== newSig) renderAll();
-  } catch (e) {
-    console.error('Load data error:', e);
-    // If cached data is already on screen, keep it instead of the error state
-    if (cached && Array.isArray(cached.rows)) {
-      console.warn('[Admin] Background refresh failed, using cached data:', e.message);
+  // ── FIX: Retry loop — keep trying until booking rows actually appear,
+  //    instead of giving up after a single 404/timeout. ──
+  let lastError = null;
+  for (let attempt = 1; attempt <= LOAD_RETRY_ATTEMPTS; attempt++) {
+    try {
+      // getDataVersion is best-effort and non-blocking (it self-swallows
+      // errors); only the rows fetch drives the retry loop.
+      const versionPromise = fetchDataVersion().then(v => {
+        if (v !== null && v !== undefined) lastDataVersion = v;
+      }).catch(() => {});
+      const rows = await fetchMergedRows();
+      const oldSig = rowsSignature(allRows);
+      const newSig = rowsSignature(rows);
+      allRows = rows;
+      saveAdminRowsCache(rows);
+      document.getElementById('lastUpdated').textContent = 'อัพเดทล่าสุด: ' + new Date().toLocaleString('th-TH');
+      if (oldSig !== newSig) renderAll();
+      logEvent('load_data', 'โหลดข้อมูลการจอง');
+      _loadInFlight = false;
       return;
-    }
-    // Demo mode: use sample data if no Apps Script configured and DEMO_MODE is not explicitly disabled
-    if (window.DEMO_MODE !== false && (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE')) {
-      allRows = getDemoData();
-      document.getElementById('lastUpdated').textContent = 'โหมด Demo (ยังไม่ได้เชื่อม Google Sheet)';
-      showToast('ไม่สามารถเชื่อมต่อระบบได้ กำลังแสดงโหมดทดสอบ (Demo)', 'warning');
-    } else {
-      document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
-      showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
-      return;
+    } catch (e) {
+      lastError = e;
+      console.warn('Load data attempt ' + attempt + '/' + LOAD_RETRY_ATTEMPTS + ' failed:', e.message);
+      if (attempt < LOAD_RETRY_ATTEMPTS) {
+        if (tableBody && !cached) {
+          tableBody.innerHTML = `<tr><td colspan="8" class="loading-state"><span class="spinner-sm"></span>กำลังโหลดข้อมูล... (ครั้งที่ ${attempt}/${LOAD_RETRY_ATTEMPTS})</td></tr>`;
+        }
+        const delay = LOAD_RETRY_DELAYS[Math.min(attempt - 1, LOAD_RETRY_DELAYS.length - 1)];
+        await new Promise(r => setTimeout(r, delay));
+      }
     }
   }
-  logEvent('load_data', 'โหลดข้อมูลการจอง');
+
+  _loadInFlight = false;
+
+  // ── All attempts exhausted: keep cached data on screen, else show the
+  //    error state — and in both cases keep retrying in the background so
+  //    the dashboard eventually shows the data without a manual reload. ──
+  if (cached && Array.isArray(cached.rows)) {
+    console.warn('[Admin] Background refresh failed, using cached data:', lastError && lastError.message);
+    scheduleLoadRetry();
+    return;
+  }
+  // Demo mode: use sample data if no Apps Script configured and DEMO_MODE is not explicitly disabled
+  if (window.DEMO_MODE !== false && (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE')) {
+    allRows = getDemoData();
+    document.getElementById('lastUpdated').textContent = 'โหมด Demo (ยังไม่ได้เชื่อม Google Sheet)';
+    showToast('ไม่สามารถเชื่อมต่อระบบได้ กำลังแสดงโหมดทดสอบ (Demo)', 'warning');
+    renderAll();
+    scheduleLoadRetry();
+    return;
+  }
+  document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" class="empty-state">❌ โหลดข้อมูลไม่สำเร็จ กำลังพยายามใหม่อัตโนมัติ...</td></tr>`;
+  showToast('โหลดข้อมูลไม่สำเร็จ ระบบจะลองโหลดใหม่โดยอัตโนมัติ', 'error');
+  scheduleLoadRetry();
+}
+
+function scheduleLoadRetry() {
+  if (_loadRetryTimer) clearTimeout(_loadRetryTimer);
+  _loadRetryTimer = setTimeout(() => { _loadRetryTimer = null; loadData(); }, LOAD_AUTO_RETRY_MS);
 }
 
 // ===== DEMO DATA =====
@@ -6738,14 +6778,10 @@ async function updateConnectionIndicator() {
 function renderConnectionView() {
   document.getElementById('view-connection').style.display = '';
   document.getElementById('connCurrentUrl').textContent = APPS_SCRIPT_URL || '—';
-  document.getElementById('connUrlInput').value = APPS_SCRIPT_URL || '';
   const diagnostic = document.getElementById('connDiagnostic');
-  const cachedUrl = (() => { try { return localStorage.getItem('gas_discovered_url'); } catch(e) {} })();
-  const resolvedUrl = (() => { try { return localStorage.getItem('cc_resolved_url'); } catch(e) {} })();
   diagnostic.innerHTML = `
     <div style="margin-bottom:6px;font-weight:600;color:var(--text)">🩺 การวินิจฉัย</div>
-    <div>Cached URL: ${cachedUrl || '—'}</div>
-    <div>Resolved URL: ${resolvedUrl || '—'}</div>
+    <div>URL: ${APPS_SCRIPT_URL || '—'}</div>
     <div>Status: ${getConnectionStatus()}</div>
   `;
 }
@@ -6786,31 +6822,6 @@ async function testConnectionHandler() {
     btn.disabled = false;
     btn.textContent = '🔄 ทดสอบการเชื่อมต่อ';
   }
-}
-
-function saveConnectionUrl() {
-  const input = document.getElementById('connUrlInput');
-  const url = input ? input.value.trim() : '';
-  if (!url || !url.includes('macros/s/')) {
-    showToast('❌ URL ไม่ถูกต้อง — ต้องมี "macros/s/" อยู่ใน URL', 'error');
-    return;
-  }
-  const success = setBackendUrl(url);
-  if (success) {
-    document.getElementById('connCurrentUrl').textContent = url;
-    showToast('✅ อัปเดต URL สำเร็จ — กำลังทดสอบการเชื่อมต่อ...', 'success');
-    updateConnectionIndicator();
-    testConnectionHandler();
-  } else {
-    showToast('❌ ไม่สามารถบันทึก URL ได้', 'error');
-  }
-}
-
-function clearConnectionCache() {
-  clearBackendCache();
-  document.getElementById('connTestResult').innerHTML = '';
-  renderConnectionView();
-  showToast('🗑️ ล้างแคชการเชื่อมต่อแล้ว — รีเฟรชหน้าเพื่อใช้ URL ปัจจุบัน', 'success');
 }
 
 function copyConnectionUrl() {
