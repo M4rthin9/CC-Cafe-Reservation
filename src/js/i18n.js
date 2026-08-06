@@ -68,6 +68,8 @@ const translations = {
     verifyInfo: "โปรดตรวจสอบให้แน่ใจว่าข้อมูลข้างต้นถูกต้องทุกประการ<br>หลังส่งคำขอแล้วจะได้รับเลขอ้างอิงทันทีเพื่อติดตามสถานะ",
     copySummary: "คัดลอกสรุปการจองของฉัน (บันทึกส่วนตัว)",
     copied: "คัดลอกแล้ว",
+    vinaiInfoText: "ทางทัณฑสถานฯจะไม่อนุญาตให้เข้าเยี่ยมและจะไม่มีการคืนเงินแต่อย่างได แต่จะส่งอาหารที่ชำระเงินเข้ามาแล้วให้กับผู้ต้องขังแทน",
+    vinaiInfo: "กรณีพบการกระทำผิดทางวินัย:",
 
     // Form labels
     nameLabel: "ชื่อ-นามสกุล",
@@ -218,6 +220,8 @@ const translations = {
     costSummary: "Cost Summary",
     verifyInfo: "Please verify all information is correct<br>You will receive reference number immediately after submission",
     copySummary: "Copy My Booking Summary (Personal Record)",
+    vinaiInfoText: "The correctional facility will not permit visitation and no refunds will be provided under any circumstances. However, any food items that have already been paid for will still be delivered to the inmate.",
+    vinaiInfo: "Disciplinary Violation:",
 
     // Form labels
     nameLabel: "Name",
@@ -361,6 +365,8 @@ const translations = {
     costSummary: "费用总计",
     verifyInfo: "请确认以上信息全部正确<br>提交后将立即获取参考编号",
     copySummary: "复制我的预约摘要",
+    vinaiInfoText: "惩教所将不批准探视且概不退款。但已付费的餐食仍将交付给服刑人员",
+    vinaiInfo: "若发现违反纪律行为:",
 
     // Form labels
     nameLabel: "姓名",
