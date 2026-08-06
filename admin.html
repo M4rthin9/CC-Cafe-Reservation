@@ -367,6 +367,7 @@
               <button class="btn btn-tonal btn-sm" onclick="exportFilteredCSVWithPhones()" aria-label="ส่งออก CSV พร้อมเบอร์โทร" id="btnExportPhones" style="display:none">📤มีเบอร์</button>
               <button class="btn btn-outlined btn-sm" onclick="resetToFirstPage();loadData()" aria-label="โหลดข้อมูลใหม่" title="โหลดข้อมูลใหม่">🔄</button>
               <button class="btn btn-filled btn-sm" onclick="dedupeReservations()" id="btnDedupe" style="display:none;" title="ลบรายการจองที่มีเลขอ้างอิงซ้ำ (เก็บแถวแรก)">🧹 ลบ Ref ซ้ำ</button>
+              <button class="btn btn-tonal btn-sm" onclick="findDuplicateBookings()" id="btnFindDupes" style="display:none;" title="ค้นหาการจองที่ผู้ต้องขังคนเดียวกัน + วันที่เดียวกันซ้ำกัน (ตรวจสอบเท่านั้น ไม่ลบ)">🔍 ค้นหาการจองซ้ำ</button>
               <button class="btn btn-filled btn-sm" onclick="syncPrisonerWings()" id="btnSyncWings" style="display:none;">🔄 Sync</button>
             </div>
           </div>
@@ -822,7 +823,7 @@
 <div class="modal-bg" id="modalBg" onclick="closeModal(event)">
   <div class="modal">
     <div class="modal-head">
-      <h3>🧾 สลิปการโอนเงิน</h3>
+      <h3 id="modalTitle">🧾 สลิปการโอนเงิน</h3>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="modal-body" id="modalBody"></div>

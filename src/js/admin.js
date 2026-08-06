@@ -347,6 +347,7 @@ async function doLogin() {
     const btnSyncWings = document.getElementById('btnSyncWings');
     const btnNewBooking = document.getElementById('btnNewBooking');
     const btnDedupe = document.getElementById('btnDedupe');
+    const btnFindDupes = document.getElementById('btnFindDupes');
     if (filterStatusEl) filterStatusEl.style.display = isAdminOrSuper ? '' : 'none';
     if (btnExport) btnExport.style.display = isAdminOrSuper ? '' : 'none';
     if (btnPrint) btnPrint.style.display = isAdminOrSuper ? '' : 'none';
@@ -354,6 +355,7 @@ async function doLogin() {
     if (btnSyncWings) btnSyncWings.style.display = isAdminOrSuper ? '' : 'none';
     if (btnNewBooking) btnNewBooking.style.display = isAdminOrSuper ? '' : 'none';
     if (btnDedupe) btnDedupe.style.display = isAdminOrSuper ? '' : 'none';
+    if (btnFindDupes) btnFindDupes.style.display = isAdminOrSuper ? '' : 'none';
 
     // Show role-specific sidebar links and bottom nav
     ['sbUsers', 'sbPrisoners', 'sbConnection', 'sbSettings', 'bnUsers', 'bnPrisoners', 'bnConnection', 'bnSettings'].forEach(id => {
@@ -2694,6 +2696,55 @@ async function dedupeReservations() {
     }
   } catch (e) {
     showToast('ลบ Ref ซ้ำ Error: ' + e.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function findDuplicateBookings() {
+  const btn = document.getElementById('btnFindDupes');
+  if (btn) btn.disabled = true;
+  try {
+    const resp = await appsScriptFetch('', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'findDuplicateBookings', username: currentUser.username, password: currentUser.password })
+    }, 1);
+    const data = JSON.parse(await resp.text());
+    if (data.status !== 'ok') {
+      showToast('ค้นหาการจองซ้ำล้มเหลว: ' + (data.message || ''), 'error');
+      return;
+    }
+    const groups = data.duplicates || [];
+    if (groups.length === 0) {
+      showToast('ไม่พบการจองซ้ำ (ผู้ต้องขัง + วันที่เดียวกัน)', 'success');
+      return;
+    }
+    const rowsHtml = groups.map((g, gi) => `
+      <div style="margin:12px 0;padding:12px;border:1px solid var(--border,#e0e0e0);border-radius:8px;background:var(--surface,#fff);">
+        <div style="font-weight:700;margin-bottom:6px;">กลุ่ม ${gi + 1} — ผู้ต้องขัง #${escHtml(g.prisonerId)} (${escHtml(g.visitDateISO)})</div>
+        ${g.rows.map(r => `
+          <div style="font-size:13px;padding:3px 0;">
+            • แถว ${r.row} — Ref: <strong>${escHtml(r.ref)}</strong> — ผู้เยี่ยม: ${escHtml(r.visitorName || '-')}
+          </div>`).join('')}
+      </div>`).join('');
+    const modalBody = document.getElementById('modalBody');
+    if (!modalBody) {
+      showToast('พบการจองซ้ำ ' + groups.length + ' กลุ่ม — เปิดจากหน้า "รายการจอง" เพื่อดูรายละเอียด', 'warning', 5000);
+      return;
+    }
+    modalBody.innerHTML = `
+      <div style="padding:4px 2px;">
+        <div style="font-weight:700;margin-bottom:4px;">พบ ${groups.length} กลุ่มที่อาจเป็นการจองซ้ำ</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">นี่คือการตรวจสอบเท่านั้น — ระบบไม่ลบข้อมูลให้อัตโนมัติ กรุณาเปิดแต่ละ Ref เพื่อตรวจสอบแล้วแก้ไขเอง (เช่น ยกเลิกหรือเลื่อนวันที่)</div>
+        ${rowsHtml}
+      </div>`;
+    const title = document.getElementById('modalTitle');
+    if (title) title.textContent = '🔍 การจองซ้ำ (ผู้ต้องขัง + วันที่เดียวกัน)';
+    document.getElementById('modalBg').classList.add('show');
+  } catch (e) {
+    showToast('ค้นหาการจองซ้ำ Error: ' + e.message, 'error');
   } finally {
     if (btn) btn.disabled = false;
   }

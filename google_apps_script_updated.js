@@ -238,6 +238,32 @@ function normalizeVisitDateISO(value) {
   return !isNaN(parsed.getTime()) ? formatDateISO(parsed) : s;
 }
 
+// ── Shared duplicate guard: does an ACTIVE booking already exist for the
+//    same prisoner on the same visit date? excludeRowNum is the 1-based sheet
+//    row of the booking being edited, so a row doesn't flag against itself.
+//    Returns the matching row's ref (or null). Mirrors the old inline check
+//    in handleSaveReservation exactly. ──
+function findDuplicateBookingRow(table, prisonerId, dateISO, excludeRowNum) {
+  const refIdx = table.headers.indexOf('ref');
+  const prisonerIdIdx = table.headers.indexOf('prisonerId');
+  const dateIdx = table.headers.indexOf('visitDateISO');
+  const statusIdx = table.headers.indexOf('status');
+  if (prisonerIdIdx < 0 || dateIdx < 0) return null;
+  const targetPrisonerId = String(prisonerId || '').trim();
+  const targetDate = normalizeVisitDateISO(dateISO);
+  if (!targetPrisonerId || !targetDate) return null;
+  for (let i = 0; i < table.rows.length; i++) {
+    if (excludeRowNum && i + 2 === excludeRowNum) continue;
+    const row = table.rows[i];
+    if (String(row[prisonerIdIdx] || '').trim() === targetPrisonerId &&
+        normalizeVisitDateISO(row[dateIdx]) === targetDate &&
+        isActiveReservationStatus(row[statusIdx])) {
+      return String(row[refIdx] || '').trim() || null;
+    }
+  }
+  return null;
+}
+
 function findRowByKey(table, keyCol, value, caseInsensitive) {
   const idx = table.headers.indexOf(keyCol);
   if (idx === -1) return -1;
@@ -1075,23 +1101,12 @@ function handleSaveReservation(body) {
     const table = readSheetTable(sheet);
     const headers = table.headers;
     const refIdx = headers.indexOf('ref');
-    const prisonerIdIdx = headers.indexOf('prisonerId');
-    const dateIdx = headers.indexOf('visitDateISO');
-    const statusIdx = headers.indexOf('status');
 
     // ── Guard: reject duplicate booking for the same prisoner on the same day ──
     const newPrisonerId = String(validation.data.prisonerId || '').trim();
-    const newDate = normalizeVisitDateISO(validation.data.visitDateISO);
-    if (prisonerIdIdx >= 0 && dateIdx >= 0 && newPrisonerId && newDate) {
-      for (let i = 0; i < table.rows.length; i++) {
-        const row = table.rows[i];
-        if (String(row[prisonerIdIdx] || '').trim() === newPrisonerId &&
-            normalizeVisitDateISO(row[dateIdx]) === newDate &&
-            isActiveReservationStatus(row[statusIdx])) {
-          const dupRef = String(row[refIdx] || '').trim();
-          return jsonResp({ status: 'error', message: '⚠️ ไม่สามารถจองได้ — มีการจองผู้ต้องขังหมายเลข "' + newPrisonerId + '" ในวันนี้อยู่แล้ว' + (dupRef ? ' (Ref: ' + dupRef + ')' : '') });
-        }
-      }
+    const dupRef = findDuplicateBookingRow(table, newPrisonerId, validation.data.visitDateISO);
+    if (dupRef !== null) {
+      return jsonResp({ status: 'error', message: '⚠️ ไม่สามารถจองได้ — มีการจองผู้ต้องขังหมายเลข "' + newPrisonerId + '" ในวันนี้อยู่แล้ว' + (dupRef ? ' (Ref: ' + dupRef + ')' : '') });
     }
 
     // ── Guard: block booking when the prisoner has active discipline ──
@@ -1182,6 +1197,53 @@ function handleDedupeReservations(body, username) {
   }
 }
 
+// ── Read-only duplicate finder: groups every row that shares the same
+//    prisonerId + visitDateISO where MORE THAN ONE row has an active status.
+//    Unlike handleDedupeReservations (which blind-deletes duplicate refs),
+//    this never deletes anything — these may be legitimate bookings that
+//    need human judgment about which to keep. ──
+function handleFindDuplicateBookings(body, username) {
+  if (!hasPermission(username, 'manage_users') && !hasPermission(username, 'approve')) {
+    return jsonResp({ status: 'error', message: 'ไม่มีสิทธิ์ดำเนินการนี้' });
+  }
+
+  const sheet = getMainSheet();
+  const table = readSheetTable(sheet);
+  const headers = table.headers;
+  const refIdx = headers.indexOf('ref');
+  const prisonerIdIdx = headers.indexOf('prisonerId');
+  const dateIdx = headers.indexOf('visitDateISO');
+  const statusIdx = headers.indexOf('status');
+  const visitorNameIdx = headers.indexOf('visitorName');
+  if (refIdx === -1 || prisonerIdIdx === -1 || dateIdx === -1 || statusIdx === -1) {
+    return jsonResp({ status: 'error', message: 'ไม่พบคอลัมน์ที่จำเป็นในชีต' });
+  }
+
+  const groups = {};
+  for (let i = 0; i < table.rows.length; i++) {
+    const row = table.rows[i];
+    if (!isActiveReservationStatus(row[statusIdx])) continue;
+    const prisonerId = String(row[prisonerIdIdx] || '').trim();
+    const visitDateISO = normalizeVisitDateISO(row[dateIdx]);
+    if (!prisonerId || !visitDateISO) continue;
+    const key = prisonerId + '\u0001' + visitDateISO;
+    if (!groups[key]) {
+      groups[key] = { prisonerId: prisonerId, visitDateISO: visitDateISO, rows: [] };
+    }
+    groups[key].rows.push({
+      row: i + 2,
+      ref: String(row[refIdx] || '').trim(),
+      visitorName: visitorNameIdx >= 0 ? String(row[visitorNameIdx] || '').trim() : ''
+    });
+  }
+
+  const duplicates = Object.keys(groups)
+    .filter(key => groups[key].rows.length > 1)
+    .map(key => groups[key]);
+
+  return jsonResp({ status: 'ok', count: duplicates.length, duplicates: duplicates });
+}
+
 function validateSaveReservation(body) {
   if (!body || typeof body !== 'object') return { ok: false, message: 'Invalid request body' };
   const ref = sanitizeStr(body.ref, 64);
@@ -1203,6 +1265,13 @@ function validateSaveReservation(body) {
     }
   });
   data.ref = ref;
+  // ── Defensive default: never store a blank status. A new row with
+  //    status = '' would be invisible to isActiveReservationStatus() and
+  //    could slip past the duplicate guard. body.status may be undefined
+  //    (loop skips the field) or '' (stored above) — normalize both here. ──
+  if (data.status === undefined || data.status === '') {
+    data.status = 'รอตรวจสอบผู้เข้าร่วม';
+  }
   return { ok: true, data };
 }
 
@@ -1625,7 +1694,55 @@ function handleUpdateBooking(body, username) {
   });
   if (errors.length > 0) return jsonResp({ status: 'error', message: errors.join('; ') });
 
-  if (cols.length > 0) {
+  // ── Guard: an update that changes prisonerId and/or visitDateISO is a
+  //    duplicate-sensitive read-then-write. Take the script lock, re-read the
+  //    sheet fresh, and reject the edit if it would create the same
+  //    prisoner+date+active-status duplicate the booking form blocks.
+  //    Unrelated-field updates (notes, slips, approval) keep the old
+  //    no-lock path below. ──
+  const touchesKeyFields = changes.prisonerId !== undefined || changes.visitDateISO !== undefined;
+  if (touchesKeyFields) {
+    const lock = LockService.getScriptLock();
+    try {
+      if (!lock.tryLock(20000)) {
+        return jsonResp({ status: 'error', message: '⚠️ ระบบกำลังรับคำขอจำนวนมาก กรุณารอสักครู่แล้วลองใหม่อีกครั้ง' });
+      }
+
+      const freshTable = readSheetTable(sheet);
+      const freshHeaders = freshTable.headers;
+      const prisonerIdIdx = freshHeaders.indexOf('prisonerId');
+      const dateIdx = freshHeaders.indexOf('visitDateISO');
+      const editedRowNum = rowNums[0];
+      const editedRow = freshTable.rows[editedRowNum - 2];
+
+      // Effective values for the row being edited: new value if it's part of
+      // this update, otherwise the row's current value.
+      const currentPrisonerId = prisonerIdIdx >= 0 ? String(editedRow[prisonerIdIdx] || '').trim() : '';
+      const currentDate = dateIdx >= 0 ? normalizeVisitDateISO(editedRow[dateIdx]) : '';
+      const effPrisonerId = changes.prisonerId !== undefined ? String(changes.prisonerId || '').trim() : currentPrisonerId;
+      const effDate = changes.visitDateISO !== undefined ? normalizeVisitDateISO(changes.visitDateISO) : currentDate;
+
+      const dupRef = findDuplicateBookingRow(freshTable, effPrisonerId, effDate, editedRowNum);
+      if (dupRef !== null) {
+        return jsonResp({ status: 'error', message: '⚠️ ไม่สามารถจองได้ — มีการจองผู้ต้องขังหมายเลข "' + effPrisonerId + '" ในวันนี้อยู่แล้ว' + (dupRef ? ' (Ref: ' + dupRef + ')' : '') });
+      }
+
+      if (cols.length > 0) {
+        const updates = rowNums.map(rowNum => ({ row: rowNum, cols: cols.slice() }));
+        writeColumnsToRows(sheet, updates);
+        if (phoneIdx >= 0 && changes.visitorPhone !== undefined) {
+          rowNums.forEach(rowNum => {
+            sheet.getRange(rowNum, phoneIdx + 1).setNumberFormat('@');
+          });
+        }
+      }
+    } catch (err) {
+      Logger.log('handleUpdateBooking failed: ' + err.toString());
+      return jsonResp({ status: 'error', message: 'เกิดข้อผิดพลาดในการแก้ไขการจอง — ' + err.toString() });
+    } finally {
+      try { lock.releaseLock(); } catch (e) { }
+    }
+  } else if (cols.length > 0) {
     const updates = rowNums.map(rowNum => ({ row: rowNum, cols: cols.slice() }));
     writeColumnsToRows(sheet, updates);
     if (phoneIdx >= 0 && changes.visitorPhone !== undefined) {
@@ -2155,6 +2272,7 @@ const POST_ROUTES = {
   changePassword: { auth: false, run: handleChangePassword },
   saveReservation: { auth: false, run: handleSaveReservation },
   dedupeReservations: { auth: true, run: handleDedupeReservations },
+  findDuplicateBookings: { auth: true, run: handleFindDuplicateBookings },
   getAll: { auth: true, run: () => getAllReservations_() },
   getAllWithArchive: { auth: true, run: () => getAllReservationsWithArchive_() },
   getCountsByDate: { auth: false, run: () => getCountsByDate() },

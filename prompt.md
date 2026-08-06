@@ -1,133 +1,145 @@
 You are working directly in the repo for a Thai correctional-facility 
-booking system: admin.html, admin.js, booking.html, booking.js, 
-status.js, chatbot.js, config.js, utils.js, i18n.js, and 
-google_apps_script_updated.js (Google Apps Script backend). Your job is 
-to actually fix the slow-loading issues below — not just report them. 
-Make the code changes directly, then show diffs for each.
+booking system: google_apps_script_updated.js (backend), booking.js, 
+booking.html, admin.js, admin.html, config.js, utils.js. Your job is to 
+actually fix the duplicate-booking bug below — not just report it. Make 
+the code changes directly, then show diffs.
 
 ════════════════════════════════════════
 BEFORE YOU TOUCH ANYTHING
 ════════════════════════════════════════
-- Read config.js, booking.js, status.js, admin.js, and chatbot.js in 
-  full before editing any of them. These files share state (APPS_SCRIPT_URL, 
-  waitForUrlReady, localStorage keys) — a change in config.js can break 
-  callers in all four other files. Trace every call site of 
-  waitForUrlReady(), initBackendUrl(), resolveBackendUrl(), and 
-  appsScriptFetch() before changing their contract.
-- Do not assume — verify. If you're not sure whether a function is 
-  called elsewhere, grep for it across the whole repo first, not just 
-  the file you're editing.
-- Preserve every existing error-handling path (try/catch, timeout 
-  fallback, the 404-recovery flow) unless a fix explicitly says to 
-  change it. Silent removal of error handling to "simplify" code is not 
-  acceptable — if you think a fallback path is now dead code, say so and 
-  ask, don't delete it unilaterally.
-- These are Thai-language, public-facing government forms handling PII 
-  (prisoner IDs, visitor names, phone numbers). Do not change any 
-  user-facing strings, validation logic, or data fields as a side effect 
-  of a performance fix. If a performance fix would require touching 
-  validation or data-handling logic, stop and flag it instead of 
-  proceeding.
+- Read handleSaveReservation, handleUpdateBooking, readSheetTable, 
+  isActiveReservationStatus, normalizeVisitDateISO, and 
+  handleDedupeReservations in full first — they interact.
+- Do not assume — grep the whole repo for every place a row gets written 
+  or a prisonerId/visitDateISO gets changed on an existing row, so you 
+  don't miss another silent path.
+- This touches live booking data with real people's names, IDs, and 
+  scheduled visit dates. Do not change validation logic, field names, or 
+  status strings as a side effect — only close the duplicate-booking 
+  gap.
 
 ════════════════════════════════════════
-FIX 1 (highest priority) — Kill the double cold-start round trip
+BUG — CONFIRMED ROOT CAUSE
 ════════════════════════════════════════
-In config.js, bootstrap() calls _discoverBackendUrl() to resolve the 
-Apps Script /exec URL, and pages (e.g. booking.js loadPrisonerMaster()) 
-wait for that to finish before making their real data request. Since 
-Google Apps Script cold starts can take several seconds, this means two 
-sequential multi-second round trips before any data appears.
+handleSaveReservation() has a working duplicate guard: it rejects a new 
+booking if an existing row has the same prisonerId + same visitDateISO 
++ an active status (isActiveReservationStatus). This is correctly 
+wrapped in LockService.getScriptLock().
 
-Fix it so:
-- The first real data call (getPrisoners, etc.) fires immediately using 
-  DEFAULT_APPS_SCRIPT_URL (or the cached URL if one exists in 
-  localStorage) — it must NOT wait on _discoverBackendUrl() first.
-- Discovery still runs, but in the background, in parallel, only 
-  updating APPS_SCRIPT_URL for subsequent calls if it finds a different 
-  URL than what's already in use.
-- Keep the existing _tryRecover404() reactive re-discovery (triggered 
-  only on an actual 404/redirect-loop response) — that part is fine.
-- Update initBackendUrl()/waitForUrlReady() and every caller across 
-  booking.js, status.js, admin.js, chatbot.js so none of them block the 
-  first request on discovery finishing.
-- Edge case to think through: what happens if the very first real 
-  request fails BECAUSE the hardcoded default URL is stale, and 
-  discovery (running in parallel) hasn't resolved yet? Make sure there's 
-  still a correct fallback/retry path, not just a faster happy path.
+handleUpdateBooking() (used by the admin "edit booking" panel) lets a 
+Superadmin change prisonerId and/or visitDateISO on an EXISTING row via 
+UPDATE_BOOKING_FIELDS — with NO equivalent duplicate check and NO 
+LockService lock. Editing a booking's date or prisoner to match another 
+active booking for the same prisoner/day goes through unchecked and 
+creates exactly the duplicate you're seeing.
+
+Separately: handleDedupeReservations() only removes rows with a 
+duplicate `ref` value — it has no logic to detect two DIFFERENT refs 
+that share the same prisonerId + visitDateISO + active status, so any 
+duplicates already sitting in the sheet from this gap will not be found 
+by the existing cleanup tool.
 
 ════════════════════════════════════════
-FIX 2 — Stop over-aggressive cache wiping
+FIX 1 (required) — Extract a shared duplicate-check function
 ════════════════════════════════════════
-_tryRecover404() and the bootstrap stale-URL check currently clear both 
-BACKEND_DISCOVERED_KEY and RESOLVED_URL_KEY from localStorage. Make sure 
-this only happens on a confirmed 404 / redirect-loop response — never on 
-generic network errors, timeouts, or aborts — so flaky connections don't 
-trigger unnecessary full re-discovery (another cold GAS hit).
+Pull the duplicate-detection logic currently inline in 
+handleSaveReservation (lines checking prisonerId + normalizeVisitDateISO 
++ isActiveReservationStatus) into a standalone function, e.g.:
+
+  function findDuplicateBookingRow(table, prisonerId, dateISO, excludeRowNum)
+
+It should scan table.rows the same way the existing guard does, but 
+accept an optional excludeRowNum so a booking being edited doesn't 
+flag against itself. Return the matching row's ref (or null) the same 
+way the current inline check does, so the error message stays 
+consistent. Update handleSaveReservation to call this new function 
+instead of its inline loop — behavior must not change for that path.
 
 ════════════════════════════════════════
-FIX 3 — Defer/optimize render-blocking assets
+FIX 2 (required) — Apply the same guard to handleUpdateBooking
 ════════════════════════════════════════
-In booking.html (and admin.html / status.html if the same pattern 
-exists):
-- Add `defer` to the sweetalert2 <script> tag, or load it dynamically 
-  right before it's actually needed (submitBooking()).
-- Add <link rel="preconnect"> for cdn.jsdelivr.net and for the Apps 
-  Script domains (script.google.com, script.googleusercontent.com), 
-  alongside the existing font preconnects.
-- Grep all HTML files for `ti ti-` classes to find which Tabler icons 
-  are actually used, and replace the full Tabler Icons webfont CDN 
-  stylesheet with either inline SVGs for just those icons or a trimmed 
-  subset. Before doing this, list every icon class you found so it's 
-  clear nothing gets silently dropped from the UI.
+In handleUpdateBooking, when the update includes a change to 
+prisonerId and/or visitDateISO:
+- Wrap the whole update in LockService.getScriptLock() (same 
+  tryLock(20000) pattern and error message style as 
+  handleSaveReservation), since it's now doing a duplicate-sensitive 
+  read-then-write.
+- After acquiring the lock, re-read the sheet fresh (readSheetTable) — 
+  don't reuse data read before the lock was acquired.
+- Determine the EFFECTIVE prisonerId and visitDateISO for the row being 
+  edited (the new value if it's part of this update, otherwise the 
+  row's current value).
+- Call findDuplicateBookingRow() with the row's own row number passed 
+  as excludeRowNum, using the same isActiveReservationStatus filter.
+- If a duplicate is found, return the same style of error the booking 
+  form shows ("มีการจองผู้ต้องขังหมายเลข ... ในวันนี้อยู่แล้ว (Ref: ...)") 
+  and do NOT write the update.
+- Only run this check when prisonerId or visitDateISO is actually being 
+  changed by this update — don't add overhead/lock contention to 
+  updates that only touch unrelated fields like notes or slip uploads.
 
 ════════════════════════════════════════
-FIX 4 — Don't block user actions on the Cloudflare trace call
+FIX 3 (required) — Defensive default for a missing/blank status
 ════════════════════════════════════════
-In utils.js, clientMeta.load() fetches https://www.cloudflare.com/cdn-cgi/trace 
-for IP/audit logging. Find every place in booking.js and admin.js where 
-waitClientMeta() is awaited BEFORE a submit/login action completes, and 
-change those to fire-and-forget: kick off the IP fetch in parallel with 
-the main request, and attach the IP to the log write asynchronously 
-(or omit it) if it isn't back yet — never let it delay the primary 
-action. Confirm the backend (google_apps_script_updated.js) tolerates a 
-missing/empty IP field gracefully before making this change — check 
-logEvent() and any handler reading body.ip.
+In validateSaveReservation, if body.status is missing or blank, a new 
+row can be written with status = '' — which isActiveReservationStatus() 
+does not recognize, making that row invisible to the duplicate guard. 
+The client (booking.js) currently always sends 
+status: 'รอตรวจสอบผู้เข้าร่วม', so this isn't hit today, but make the 
+backend safe on its own: if body.status is undefined or empty, default 
+data.status to 'รอตรวจสอบผู้เข้าร่วม' server-side instead of allowing a 
+blank value to be stored. Confirm this doesn't break any legitimate flow 
+that intentionally saves a blank status (grep all callers of 
+handleSaveReservation/validateSaveReservation to check).
 
 ════════════════════════════════════════
-FIX 5 — Extend backend caching coverage
+FIX 4 (required) — Extend the cleanup tool to find real duplicates
 ════════════════════════════════════════
-google_apps_script_updated.js already caches the 'prisoners' list via 
-CacheService.getScriptCache(). Audit every other GET route (sheet info, 
-reservation counts, quota/date-availability lookups, etc.) for the same 
-pattern and add CacheService caching wherever a route reads a sheet on 
-every call but the underlying data doesn't change every request.
-- CacheService entries are capped at 100KB per key — if any dataset 
-  might exceed that, say so instead of silently caching a truncated 
-  result.
-- Add matching cache-invalidation calls (like the existing 
-  invalidatePrisonersCache()) at every write path that touches that 
-  data — a stale cache that silently serves outdated booking/quota 
-  numbers is worse than no cache at all. List every write path you 
-  found and confirm each one now invalidates the right cache key.
+handleDedupeReservations only removes rows with a duplicate `ref`. Add a 
+new admin action (e.g. `findDuplicateBookings`, read-only — do NOT 
+auto-delete) that scans the live sheet and returns every group of rows 
+sharing the same prisonerId + visitDateISO where more than one row has 
+an active status (isActiveReservationStatus). Return each group's refs, 
+visitor names, and row numbers so an admin can review before manually 
+resolving them — do not delete anything automatically, since unlike 
+duplicate-ref rows (which are safe to blind-delete), these may be 
+legitimate bookings that need human judgment about which to keep. Wire 
+this into admin.js/admin.html as a button next to the existing dedupe 
+tool if a natural place exists; if not, just add the backend route and 
+tell me where to hook up the UI.
+
+════════════════════════════════════════
+FIX 5 (defense in depth, client side) — Prevent double-submit
+════════════════════════════════════════
+In booking.js submitBooking(), confirm the submit button is disabled (or 
+a submitting-in-progress flag checked) for the full duration of the 
+request, including any retry inside appsScriptFetch, so a double-click 
+or slow network can't fire two concurrent submissions for the same 
+booking. If this protection already exists, just confirm it covers the 
+retry path too and say so — don't add a second layer if one already 
+works.
 
 ════════════════════════════════════════
 VERIFICATION (do this before declaring a fix done)
 ════════════════════════════════════════
-For each fix, after making the change:
-- Re-read the modified function(s) end to end and confirm the original 
-  behavior is preserved for the non-happy-path (network failure, empty 
-  cache, first-ever visit with no localStorage data).
-- Check that you haven't introduced a race condition (e.g. background 
-  discovery finishing and swapping APPS_SCRIPT_URL mid-request).
-- If you can run/lint the JS, do so. If not, at minimum re-read the diff 
-  once fresh, as if reviewing someone else's PR, before moving to the 
-  next fix.
+- Re-read handleSaveReservation and handleUpdateBooking end to end after 
+  your changes and confirm: a normal booking still succeeds, a normal 
+  admin edit that doesn't touch prisonerId/visitDateISO still succeeds 
+  without lock overhead, and an edit that WOULD create a duplicate is 
+  correctly rejected.
+- Confirm findDuplicateBookingRow correctly excludes the row being 
+  edited (excludeRowNum) so editing a booking's non-conflicting fields, 
+  or even re-saving its own current date/prisoner unchanged, doesn't 
+  falsely flag itself as a duplicate of itself.
+- Check that LockService usage in handleUpdateBooking releases the lock 
+  in a finally block, matching the existing pattern in 
+  handleSaveReservation.
 
 ════════════════════════════════════════
 OUTPUT
 ════════════════════════════════════════
-For each fix: make the change directly in the relevant file(s), then 
-show the diff. At the end, give a short summary of which fixes reduce 
-cold-start latency vs. which reduce render-blocking time, list anything 
-you found along the way that looks broken or risky but wasn't in this 
-list, and flag any fix you could NOT safely complete along with why.
+For each fix: make the change directly, then show the diff. At the end, 
+confirm whether FIX 5 was already present or newly added, and flag 
+anything else you noticed while reading this code that looks like it 
+could also produce duplicate or inconsistent booking data, even if it 
+wasn't in this list.
