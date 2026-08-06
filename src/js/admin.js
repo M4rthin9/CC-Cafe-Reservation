@@ -406,7 +406,6 @@ async function doLogin() {
     renderDashboardHome();
     loadData();
     startPolling();
-    loadPrisonerMaster();
     updateConnectionIndicator();
     showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณ ' + (currentUser.displayName || currentUser.username), 'success');
 
@@ -2285,7 +2284,7 @@ async function viewDetail(idx) {
 ${r.prisonerId ? `
 <div class="detail-row">
   <span class="dlbl">🛡️ ตรวจวินัยล่าสุด</span>
-  <span class="dval" id="detailDisciplineStatus"><span style="color:var(--text2)">⏳ กำลังตรวจสอบ...</span></span>
+  <span class="dval" id="detailDisciplineStatus"><span style="color:var(--text2)">— กดปุ่ม 🔄 ตรวจสอบวินัยเพื่อตรวจ</span></span>
 </div>` : ''}
 ${canApproveParticipant && !isArchived && s === 'รอตรวจสอบผู้เข้าร่วม' ? `
          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
@@ -2341,6 +2340,8 @@ ${canApproveParticipant && !isArchived && s === 'รอตรวจสอบผ�
   if (canApproveDisciplineDetail && normalizedDetail === 'รอตรวจสอบวินัย') {
     actionBtns.push({ label: '✓ อนุมัติวินัย', cls: 'btn btn-filled btn-sm', onclick: `updateStatus(${idx},'รอชำระเงิน')` });
     actionBtns.push({ label: '✗ ปฏิเสธ', cls: 'btn btn-danger btn-sm', onclick: `updateStatus(${idx},'ไม่อนุมัติ')` });
+  }
+  if (isVinaiRoleDetail && !isArchived && r.prisonerId) {
     actionBtns.push({ label: '🔄 ตรวจสอบวินัยล่าสุด', cls: 'btn btn-outlined btn-sm', onclick: `recheckBooking(${idx})` });
   }
   if (canConfirmPaymentDetail && normalizedDetail === 'รอชำระเงิน') {
@@ -2371,7 +2372,6 @@ ${canApproveParticipant && !isArchived && s === 'รอตรวจสอบผ�
   }
 
   document.getElementById('detailModalBg').classList.add('show');
-  refreshDetailDiscipline(idx);
 }
 
 function closeDetailModal(e) {
@@ -5714,6 +5714,7 @@ function openNewBookingModal() {
   adminBookingSubmitting = false;
   const nbSubmitBtn = document.getElementById('nbSubmitBtn');
   if (nbSubmitBtn) nbSubmitBtn.disabled = false;
+  loadPrisonerMaster();
   document.getElementById('newBookingModalBg').classList.add('show');
 }
 
