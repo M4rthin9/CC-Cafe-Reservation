@@ -394,7 +394,7 @@ async function loadPrisonerMaster() {
   }
 
   try {
-    const resp = await appsScriptFetch('?action=getPrisoners', { redirect: 'follow', credentials: 'omit' }, 1);
+    const resp = await appsScriptFetch('?action=getPrisoners', { redirect: 'follow', credentials: 'omit' }, 1, 25000);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 
@@ -1160,9 +1160,9 @@ function resetAll() {
 }
 
 // ===== SAFE FETCH WRAPPER =====
-async function appsScriptGet(params) {
+async function appsScriptGet(params, timeoutMs) {
   const qs = new URLSearchParams(params).toString();
-  const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 1);
+  const resp = await appsScriptFetch('?' + qs, { redirect: 'follow', credentials: 'omit' }, 1, timeoutMs);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const text = await resp.text();
   try { return JSON.parse(text); }
@@ -1201,7 +1201,7 @@ async function fetchBookingCounts() {
    let lastErr = null;
    for (const params of attempts) {
      try {
-       const data = await appsScriptGet(params);
+       const data = await appsScriptGet(params, 25000);
        if (data && data.status === 'ok') {
          if (params.action === 'getCountsByDate' && data.counts) {
            try {

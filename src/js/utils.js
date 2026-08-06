@@ -65,6 +65,9 @@ const clientMeta = (() => {
       if (cache) return cache;
       cache = { ip: await fetchPublicIp(), userAgent: navigator.userAgent || '' };
       return cache;
+    },
+    cached() {
+      return cache;
     }
   };
 })();

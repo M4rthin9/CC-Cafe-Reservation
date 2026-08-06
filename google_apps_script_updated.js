@@ -27,10 +27,11 @@ const PERMISSIONS = {
 };
 
 const CACHE_TTL = 60;
-const PUBLIC_CACHE_TTL = 120;
+const PUBLIC_CACHE_TTL = 300;
+const LOOKUP_CACHE_TTL = 15;
 const LOGIN_RATE_LIMIT_TTL = 300;
 const MAX_LOGIN_ATTEMPTS = 5;
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const PASSWORD_SALT = 'cc-cafe-reservation-v1';
 
 const VALID_STATUSES = ['รอตรวจสอบผู้เข้าร่วม', 'รอตรวจสอบวินัย', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น', 'ไม่อนุมัติ', 'ยกเลิก'];
@@ -122,6 +123,8 @@ function invalidateReservationsCache() {
   try {
     const cache = CacheService.getScriptCache();
     cache.remove(CACHE_VERSION + ':allReservations');
+    cache.remove(CACHE_VERSION + ':counts');
+    cache.remove(CACHE_VERSION + ':allArchived');
   } catch (e) {
     Logger.log('invalidateReservationsCache failed: ' + e.toString());
   }
@@ -556,17 +559,47 @@ function getUserByUsername(username) {
   return user;
 }
 
+function invalidateAllUsersCache() {
+  try { CacheService.getScriptCache().remove(CACHE_VERSION + ':users'); } catch (e) { }
+}
+
 function getAllUsers() {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = CACHE_VERSION + ':users';
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      try { cache.remove(cacheKey); } catch (e2) { }
+    }
+  }
+
   const sheet = getUsersSheet();
   const table = readSheetTable(sheet);
-  return table.rows.map(r => {
+  const users = table.rows.map(r => {
     const obj = {};
     table.headers.forEach((h, i) => obj[h] = r[i]);
     return obj;
   });
+  try { cache.put(cacheKey, JSON.stringify(users), PUBLIC_CACHE_TTL); } catch (e) { }
+  return users;
 }
 
 function getRolesList() {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = CACHE_VERSION + ':roles';
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      try { cache.remove(cacheKey); } catch (e2) { }
+    }
+  }
+
   const rolesSheet = getRolesSheet();
   const table = readSheetTable(rolesSheet);
   if (table.rows.length === 0) return [];
@@ -579,6 +612,7 @@ function getRolesList() {
     }
     rolesList.push({ roleName: table.rows[i][0], permissions: permissions });
   }
+  try { cache.put(cacheKey, JSON.stringify(rolesList), PUBLIC_CACHE_TTL); } catch (e) { }
   return rolesList;
 }
 
@@ -693,6 +727,7 @@ function updatePassword(username, newPassword) {
   if (rowNum === -1 || passwordIdx === -1) return false;
   writeColumnsToRows(sheet, [{ row: rowNum, cols: [[passwordIdx, hashPassword(uname, newPassword)]] }]);
   invalidateUserCache(uname);
+  invalidateAllUsersCache();
   clearDefaultAccountFlag(uname);
   return true;
 }
@@ -846,16 +881,35 @@ function ensureArchiveHeaders(sheet) {
 }
 
 function getArchivedRows() {
+  const cache = CacheService.getScriptCache();
+  const CACHE_KEY = CACHE_VERSION + ':allArchived';
   const sheet = getArchiveSheet();
-  const table = readSheetTable(sheet);
-  if (table.rows.length === 0) return [];
-  const refIdx = table.headers.indexOf('ref');
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const refIdx = headers.indexOf('ref');
   if (refIdx === -1) return [];
-  const rows = table.rows
+
+  const headersHash = headers.join('||');
+  const cached = cache.get(CACHE_KEY);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed.headersHash === headersHash && parsed.lastRow === lastRow && Array.isArray(parsed.rows)) {
+        return parsed.rows;
+      }
+    } catch (e) {
+      try { cache.remove(CACHE_KEY); } catch (e2) { }
+    }
+  }
+
+  const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  const rows = data
     .filter(row => row[refIdx] && String(row[refIdx]).trim() !== '')
     .map(row => {
       const obj = {};
-      table.headers.forEach((h, i) => {
+      headers.forEach((h, i) => {
         let val = row[i];
         obj[h] = val instanceof Date ? (h === 'visitDateISO' ? formatDateISO(val) : Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')) : val;
       });
@@ -865,21 +919,52 @@ function getArchivedRows() {
       }
       return obj;
     });
-  return rows.reverse();
+
+  const reversed = rows.reverse();
+  try { cache.put(CACHE_KEY, JSON.stringify({ headersHash: headersHash, lastRow: lastRow, rows: reversed }), PUBLIC_CACHE_TTL); } catch (e) { }
+  return reversed;
 }
 
 function getCountsByDate() {
+  const cache = CacheService.getScriptCache();
+  const countsKey = CACHE_VERSION + ':counts';
   try {
-    const rows = getActiveRows();
+    const cached = cache.get(countsKey);
+    if (cached) return jsonResp({ status: 'ok', counts: JSON.parse(cached) });
+  } catch (e) { }
+
+  try {
+    const sheet = getMainSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      try { cache.put(countsKey, '{}', PUBLIC_CACHE_TTL); } catch (e2) { }
+      return jsonResp({ status: 'ok', counts: {} });
+    }
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const dateIdx = headers.indexOf('visitDateISO');
+    const statusIdx = headers.indexOf('status');
+    if (dateIdx === -1) {
+      return jsonResp({ status: 'error', message: 'Sheet is missing the required "visitDateISO" column header' });
+    }
+
+    const dates = sheet.getRange(2, dateIdx + 1, lastRow - 1, 1).getValues();
+    let statuses = null;
+    if (statusIdx >= 0) {
+      statuses = sheet.getRange(2, statusIdx + 1, lastRow - 1, 1).getValues();
+    }
+
     const counts = {};
     const activeStatuses = ['รอตรวจสอบวินัย', 'รอตรวจสอบผู้เข้าร่วม', 'รอชำระเงิน', 'ชำระแล้ว', 'เสร็จสิ้น'];
-    rows.forEach(r => {
-      if (!r.visitDateISO) return;
-      const vdi = String(r.visitDateISO).trim();
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(vdi)) return;
-      if (!activeStatuses.includes(String(r.status || ''))) return;
+    for (let i = 0; i < dates.length; i++) {
+      if (statuses && !activeStatuses.includes(String(statuses[i][0] || '').trim())) continue;
+      const cell = dates[i][0];
+      const vdi = cell instanceof Date ? formatDateISO(cell) : String(cell || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(vdi)) continue;
       counts[vdi] = (counts[vdi] || 0) + 1;
-    });
+    }
+
+    try { cache.put(countsKey, JSON.stringify(counts), PUBLIC_CACHE_TTL); } catch (e2) { }
     return jsonResp({ status: 'ok', counts: counts });
   } catch (e) {
     return jsonResp({ status: 'error', message: e.message || e.toString() });
@@ -904,11 +989,38 @@ function maskRowForPublic(row) {
   return out;
 }
 
+function lookupCacheKey(ref, prisonerId) {
+  if (ref) return CACHE_VERSION + ':lookup:ref:' + String(ref).trim().toUpperCase();
+  return CACHE_VERSION + ':lookup:pid:' + String(prisonerId || '').trim().toUpperCase();
+}
+
+function invalidateLookupCache(ref) {
+  if (!ref) return;
+  try { CacheService.getScriptCache().remove(lookupCacheKey(ref, null)); } catch (e) { }
+}
+
+function invalidatePrisonerLookupCache(prisonerId) {
+  if (!prisonerId) return;
+  try { CacheService.getScriptCache().remove(lookupCacheKey(null, prisonerId)); } catch (e) { }
+}
+
 function lookupByRef(params) {
   try {
     const ref = sanitizeStr(params.ref, 64);
     const prisonerId = sanitizeStr(params.prisonerId, 64);
     if (!ref && !prisonerId) return jsonResp({ status: 'error', message: 'Missing ref or prisonerId' });
+
+    const cache = CacheService.getScriptCache();
+    const cacheKey = lookupCacheKey(ref, prisonerId);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.rows)) return jsonResp({ status: 'ok', rows: parsed.rows });
+      } catch (e) {
+        try { cache.remove(cacheKey); } catch (e2) { }
+      }
+    }
 
     let matches = [];
     const active = getActiveRows();
@@ -921,7 +1033,9 @@ function lookupByRef(params) {
       else matches = archived.filter(r => String(r.prisonerId).trim() === prisonerId);
     }
 
-    return jsonResp({ status: 'ok', rows: matches.map(maskRowForPublic) });
+    const masked = matches.map(maskRowForPublic);
+    try { cache.put(cacheKey, JSON.stringify({ rows: masked }), LOOKUP_CACHE_TTL); } catch (e) { }
+    return jsonResp({ status: 'ok', rows: masked });
   } catch (e) {
     return jsonResp({ status: 'error', message: e.message || e.toString() });
   }
@@ -1009,6 +1123,7 @@ function handleSaveReservation(body) {
     }
 
     invalidateReservationsCache();
+    invalidatePrisonerLookupCache(newPrisonerId);
     logEvent('public', 'booking_submitted', ref, { visitorName: data.visitorName, prisonerName: data.prisonerName, visitDate: data.visitDate }, 'success');
     return jsonResp({ status: 'ok', ref: ref });
   } catch (err) {
@@ -1110,6 +1225,7 @@ function handleCancelBooking(body, username) {
 
   logEvent(username, 'booking_cancelled', body.ref, { previousStatus: prevStatus, affectedRows: rowNums.length }, 'success');
   invalidateReservationsCache();
+  invalidateLookupCache(body.ref);
   return jsonResp({ status: 'ok' });
 }
 
@@ -1130,6 +1246,7 @@ function handlePublicCancelBooking(body) {
 
   logEvent('public', 'booking_cancelled', body.ref, { previousStatus: prevStatus, affectedRows: rowNums.length }, 'success');
   invalidateReservationsCache();
+  invalidateLookupCache(body.ref);
   return jsonResp({ status: 'ok' });
 }
 
@@ -1217,6 +1334,7 @@ function handleUpdateStatus(body, username) {
 
   logEvent(username, 'status_changed', ref, { newStatus: status, affectedRows: rowNums.length }, 'success');
   invalidateReservationsCache();
+  invalidateLookupCache(ref);
   return jsonResp({ status: 'ok' });
 }
 
@@ -1294,6 +1412,7 @@ function handleUpdateVisitorApproval(body, username) {
 
   logEvent(username, 'visitor_approval_updated', body.ref, { visitorApproved: body.visitorApproved, extraVisitorApproved: body.extraVisitorApproved, visitorCount: correctVisitorCount, total: correctTotal, affectedRows: rowNums.length }, 'success');
   invalidateReservationsCache();
+  invalidateLookupCache(body.ref);
   return jsonResp({ status: 'ok', visitorCount: correctVisitorCount, total: correctTotal });
 }
 
@@ -1334,6 +1453,7 @@ function handleUpdateSlipAndStatus(body, username) {
 
   logEvent(username, 'slip_and_status_updated', body.ref, { status: body.status }, 'success');
   invalidateReservationsCache();
+  invalidateLookupCache(body.ref);
   return jsonResp({ status: 'ok' });
 }
 
@@ -1367,6 +1487,7 @@ function handleCreateUser(body) {
   appendRows(sheet, [[newUsername, hashPassword(newUsername, newPassword), newRole, newDisplayName, new Date().toISOString()]]);
   invalidateUserCache(adminUser);
   invalidateUserCache(newUsername);
+  invalidateAllUsersCache();
   logEvent(adminUser, 'create_user', newUsername, { role: newRole }, 'success');
   return jsonResp({ status: 'ok', message: 'ผู้ใช้ถูกสร้างสำเร็จ', user: { username: newUsername, role: newRole } });
 }
@@ -1398,6 +1519,7 @@ function handleCreateRole(body, username) {
   const rowValues = [roleName];
   AVAILABLE_PERMISSIONS.forEach(perm => rowValues.push(permissionsInput.includes(perm) ? true : false));
   appendRows(rolesSheet, [rowValues]);
+  try { CacheService.getScriptCache().remove(CACHE_VERSION + ':roles'); } catch (e) { }
   logEvent(username, 'create_role', roleName, { permissions: permissionsInput }, 'success');
   return jsonResp({ status: 'ok', message: 'สร้างบทบาทสำเร็จ', role: { roleName: roleName, permissions: permissionsInput } });
 }
@@ -1435,6 +1557,7 @@ function handleUpdateUser(body, username) {
   }
   if (cols.length > 0) writeColumnsToRows(sheet, [{ row: rowNum, cols: cols }]);
   invalidateUserCache(targetUser);
+  invalidateAllUsersCache();
   logEvent(username, 'update_user', targetUser, { role: body.role, displayName: body.displayName }, 'success');
   return jsonResp({ status: 'ok', message: 'อัปเดตผู้ใช้สำเร็จ' });
 }
@@ -1456,6 +1579,7 @@ function handleDeleteUser(body, username) {
   if (rowNum === -1) return jsonResp({ status: 'error', message: 'ไม่พบผู้ใช้ที่ระบุ' });
   sheet.deleteRow(rowNum);
   invalidateUserCache(targetUser);
+  invalidateAllUsersCache();
   logEvent(username, 'delete_user', targetUser, {}, 'success');
   return jsonResp({ status: 'ok', message: 'ลบผู้ใช้สำเร็จ' });
 }
@@ -1512,6 +1636,7 @@ function handleUpdateBooking(body, username) {
   }
   logEvent(username, 'update_booking', ref, changes, 'success');
   invalidateReservationsCache();
+  invalidateLookupCache(ref);
   return jsonResp({ status: 'ok', message: 'แก้ไขการจองสำเร็จ' });
 }
 
@@ -1953,17 +2078,27 @@ function setupDailyTrigger() {
       .create();
   }
 
-  if (!hasHandler('archiveOldReservations')) {
-    ScriptApp.newTrigger('archiveOldReservations')
-      .timeBased()
-      .everyDays(1)
-      .atHour(0)
-      .nearMinute(15)
-      .inTimezone('Asia/Bangkok')
-      .create();
-  }
+  // Archive runs every 3 months (1st of the month, 00:15 Bangkok) instead of
+  // daily. The Apps Script trigger API cannot report a trigger's frequency,
+  // so to guarantee the new schedule we delete any prior
+  // archiveOldReservations clock trigger (e.g. an old daily one from a
+  // previous deployment) before creating the monthly one.
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'archiveOldReservations' &&
+        t.getEventType() === ScriptApp.TriggerSource.CLOCK) {
+      try { ScriptApp.deleteTrigger(t); } catch (e) { }
+    }
+  });
+  ScriptApp.newTrigger('archiveOldReservations')
+    .timeBased()
+    .everyMonths(3)
+    .onDayOfMonth(1)
+    .atHour(0)
+    .nearMinute(15)
+    .inTimezone('Asia/Bangkok')
+    .create();
 
-  return 'Daily triggers created — cleanup at 00:00, backup at 00:05, archive at 00:15 Bangkok time';
+  return 'Triggers ready — discipline cleanup daily at 00:00, backup daily at 00:05, archive every 3 months (day 1, 00:15) Bangkok time';
 }
 
 function listAllSheets() {

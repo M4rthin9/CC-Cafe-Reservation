@@ -1,0 +1,57 @@
+/*!
+ * Tabler Icons 2.47.0 — trimmed subset (42 used classes only)
+ * Generated with fontTools.subset from @tabler/icons-webfont.
+ * Full CDN stylesheet (~760KB font) replaced by this self-hosted subset (~9KB).
+ * Icon classes used across booking.html, booking.js, status.html, status.js
+ * and src/guide.html. `ti-diagram` / `ti-plus-circle` are legacy names no
+ * longer shipped by Tabler 2.x — aliased to the sitemap / circle-plus glyphs.
+ */
+@font-face{
+  font-family:"tabler-icons";
+  font-style:normal;
+  font-weight:400;
+  src:url("../fonts/tabler-icons.woff2") format("woff2");
+}
+.ti{font-family:"tabler-icons" !important;speak:none;font-style:normal;font-weight:normal;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.ti-arrow-left:before{content:"\ea19"}
+.ti-arrow-right:before{content:"\ea1f"}
+.ti-arrow-up:before{content:"\ea25"}
+.ti-bookmark:before{content:"\ea3a"}
+.ti-bulb:before{content:"\ea51"}
+.ti-calendar:before{content:"\ea53"}
+.ti-calendar-event:before{content:"\ea52"}
+.ti-check:before{content:"\ea5e"}
+.ti-clipboard-check:before{content:"\ea6c"}
+.ti-coin:before{content:"\eb82"}
+.ti-copy:before{content:"\ea7a"}
+.ti-credit-card:before{content:"\ea84"}
+.ti-dashboard:before{content:"\ea87"}
+.ti-diagram:before{content:"\eb9d"}
+.ti-edit:before{content:"\ea98"}
+.ti-external-link:before{content:"\ea99"}
+.ti-file-report:before{content:"\eded"}
+.ti-hash:before{content:"\eabc"}
+.ti-history:before{content:"\ebea"}
+.ti-home:before{content:"\eac1"}
+.ti-key:before{content:"\eac7"}
+.ti-list:before{content:"\eb6b"}
+.ti-list-details:before{content:"\ef40"}
+.ti-lock:before{content:"\eae2"}
+.ti-login:before{content:"\eba7"}
+.ti-plug:before{content:"\ebd9"}
+.ti-plus:before{content:"\eb0b"}
+.ti-plus-circle:before{content:"\ea69"}
+.ti-printer:before{content:"\eb0e"}
+.ti-refresh:before{content:"\eb13"}
+.ti-report:before{content:"\eece"}
+.ti-rocket:before{content:"\ec45"}
+.ti-search:before{content:"\eb1c"}
+.ti-send:before{content:"\eb1e"}
+.ti-settings:before{content:"\eb20"}
+.ti-sitemap:before{content:"\eb9d"}
+.ti-sparkles:before{content:"\f6d7"}
+.ti-tool:before{content:"\eb40"}
+.ti-upload:before{content:"\eb47"}
+.ti-user:before{content:"\eb4d"}
+.ti-users:before{content:"\ebf2"}
+.ti-x:before{content:"\eb55"}

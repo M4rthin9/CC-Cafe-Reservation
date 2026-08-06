@@ -276,13 +276,13 @@ async function doLogin() {
       ]);
     }
 
-    // Client metadata (IP / UA) is best-effort — don't let the IP lookup
-    // delay login. Usually already cached from the background warm-up.
-    const meta = await Promise.race([
-      waitClientMeta(),
-      new Promise(r => setTimeout(r, 1500))
-    ]).catch(() => null);
-    const safeMeta = (meta && meta.ip) ? meta : { ip: '', userAgent: navigator.userAgent || '' };
+    // Client metadata (IP / UA) is best-effort — never let the IP lookup
+    // delay login (FIX 4). Use the warm-up cache synchronously if it's
+    // already back; otherwise omit the IP — the backend tolerates an empty
+    // value (logEvent/_requestMeta fall back to ''). The background warm-up
+    // at DOMContentLoaded keeps populating the cache for later actions.
+    const cachedMeta = (typeof clientMeta !== 'undefined' && clientMeta.cached) ? clientMeta.cached() : null;
+    const safeMeta = (cachedMeta && cachedMeta.ip) ? cachedMeta : { ip: '', userAgent: navigator.userAgent || '' };
 
     const resp = await appsScriptFetch('', {
       method: 'POST',
