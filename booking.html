@@ -145,7 +145,7 @@
             <span data-i18n="extraVisitorSub">(เลือกจากรายชื่อเพื่อแสดงข้อมูล)</span>
           </label>
           <input type="text" id="prisonerSearch" placeholder="พิมพ์เลขผู้ต้องขัง หรือ ชื่อ-นามสกุล..."
-            oninput="filterPrisonerSuggestions()">
+            oninput="debouncedPrisonerFilter()">
           <div id="prisonerSuggestions" class="suggestions-dropdown"></div>
           <div id="prisonerLoadStatus" style="font-size:11px;margin-top:6px;color:var(--text2);"></div>
           <div id="prisonerMatchStatus" style="font-size:11px;margin-top:4px;color:var(--green);display:none;"></div>

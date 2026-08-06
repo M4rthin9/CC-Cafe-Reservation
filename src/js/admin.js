@@ -5585,7 +5585,7 @@ async function loadPrisonerMaster() {
   // Try localStorage cache first
   const cached = loadPrisonerFromCache();
   if (cached) {
-    prisonerMaster = cached;
+    prisonerMaster = window.rebuildPrisonerObjects(cached);
     if (statusEl) {
       statusEl.textContent = `✓ โหลดสำเร็จ (${prisonerMaster.length} คน)`;
       statusEl.style.color = 'var(--green)';
@@ -5600,7 +5600,7 @@ async function loadPrisonerMaster() {
     const data = await resp.json();
 
     if (data.status === 'ok' && Array.isArray(data.prisoners)) {
-      prisonerMaster = data.prisoners;
+      prisonerMaster = window.rebuildPrisonerObjects(data.prisoners);
       savePrisonerToCache(prisonerMaster);
       if (statusEl) {
         statusEl.textContent = `✓ โหลดสำเร็จ (${prisonerMaster.length} คน)`;
@@ -5625,6 +5625,8 @@ async function loadPrisonerMaster() {
   }
 }
 
+const MAX_NB_PRISONER_SUGGESTIONS = 8;
+
 function nbFilterPrisonerSuggestions() {
   const q = document.getElementById('nbPrisonerSearch').value.trim().toLowerCase();
   const container = document.getElementById('nbPrisonerSuggestions');
@@ -5633,30 +5635,39 @@ function nbFilterPrisonerSuggestions() {
 
   if (!q || prisonerMaster.length === 0) return;
 
-  const matches = prisonerMaster.filter(p =>
-    p.prisonerId.toLowerCase().includes(q) ||
-    p.prisonerName.toLowerCase().includes(q)
-  ).slice(0, 8);
+  // Short-circuit loop: stop as soon as we have 8 matches instead of filtering
+  // the whole master array on every keystroke.
+  const matches = [];
+  const src = prisonerMaster;
+  for (let i = 0; i < src.length && matches.length < MAX_NB_PRISONER_SUGGESTIONS; i++) {
+    const p = src[i];
+    if (p.prisonerId.toLowerCase().indexOf(q) !== -1 || p.prisonerName.toLowerCase().indexOf(q) !== -1) {
+      matches.push(p);
+    }
+  }
 
   if (matches.length === 0) return;
 
-  matches.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'suggestion-item';
-    div.innerHTML = `
-      <div style="flex:1">
-        <strong style="font-size:15px;">${escHtml(maskPrisonerName(p.prisonerName))}</strong>
-      </div>
-      <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
-        #${escHtml(p.prisonerId)}<br>
-        <span style="color:var(--blue);font-weight:600;">${escHtml(p.wing || '')}</span>
-      </div>
-    `;
-    div.onclick = () => nbSelectPrisoner(p);
-    container.appendChild(div);
-  });
+  // Single innerHTML inject => one reflow instead of N appends.
+  let html = '';
+  for (let i = 0; i < matches.length; i++) {
+    const p = matches[i];
+    html += '<div class="suggestion-item" data-i="' + i + '">' +
+      '<div style="flex:1"><strong style="font-size:15px;">' + escHtml(maskPrisonerName(p.prisonerName)) + '</strong></div>' +
+      '<div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">#' + escHtml(p.prisonerId) + '<br>' +
+      '<span style="color:var(--blue);font-weight:600;">' + escHtml(p.wing || '') + '</span></div></div>';
+  }
+  container.innerHTML = html;
+  container.onclick = (ev) => {
+    const el = ev.target && ev.target.closest ? ev.target.closest('.suggestion-item') : null;
+    if (el) nbSelectPrisoner(matches[parseInt(el.dataset.i, 10)]);
+  };
   container.style.display = 'block';
 }
+
+// Debounced entry point wired from the HTML input (250ms trailing edge).
+const debouncedNbPrisonerFilter = debounce(nbFilterPrisonerSuggestions, 250);
+window.debouncedNbPrisonerFilter = debouncedNbPrisonerFilter;
 
 function nbSelectPrisoner(p) {
   document.getElementById('nbPrisonerId').value = p.prisonerId;

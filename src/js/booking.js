@@ -30,10 +30,8 @@ function renderCalendar() {
   const title = new Date(calYear, calMonth, 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
   document.getElementById('calTitle').textContent = title;
   const grid = document.getElementById('dateGrid');
-  grid.innerHTML = '';
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  for (let i = 0; i < firstDay; i++) grid.insertAdjacentHTML('beforeend', '<div></div>');
 
   const todayStr = toLocalDateStr(today);
 
@@ -46,6 +44,12 @@ function renderCalendar() {
   maxAllowedDate.setDate(today.getDate() + 16);
   const maxAllowedStr = toLocalDateStr(maxAllowedDate);
 
+  // Build the whole month in one string and inject it once (single reflow),
+  // instead of one insertAdjacentHTML per day (N reflows per render).
+  const parts = new Array(firstDay + daysInMonth);
+  for (let i = 0; i < firstDay; i++) parts[i] = '<div></div>';
+
+  let idx = firstDay;
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(calYear, calMonth, d);
     const dateStr = toLocalDateStr(date);
@@ -76,10 +80,9 @@ function renderCalendar() {
     // กำหนดให้บล็อกการกด ถ้าเกิดเงื่อนไขอย่างใดอย่างหนึ่ง
     const isBlocked = isPast || isNotWithinWindow || isHol || isWknd || isFull;
 
-    grid.insertAdjacentHTML('beforeend',
-      `<div class="${cls}" onclick="selectDate('${dateStr}', ${isBlocked})">${d}${quotaLabel}${holLabel}</div>`
-    );
+    parts[idx++] = `<div class="${cls}" onclick="selectDate('${dateStr}', ${isBlocked})">${d}${quotaLabel}${holLabel}</div>`;
   }
+  grid.innerHTML = parts.join('');
 }
 
 function selectDate(dateStr, blocked) {
@@ -93,6 +96,19 @@ function selectDate(dateStr, blocked) {
 }
 
 // ===== EXTRA VISITORS =====
+// Global helper wired via inline onchange so updateExtraVisitors() can build
+// the visitor blocks as one HTML string (single innerHTML => one reflow).
+function toggleAgeGroup(i) {
+  const ag = document.getElementById('ageGroup' + i);
+  if (!ag) return;
+  const relEl = document.getElementById('extraVisitorRelation' + i);
+  const ai = document.getElementById('extraVisitorAge' + i);
+  const childValues = ['บุตร / ธิดา', 'Child', '子女', 'Son/Daughter'];
+  const isChild = relEl && childValues.includes(relEl.value);
+  ag.style.display = isChild ? 'block' : 'none';
+  if (!isChild && ai) ai.value = '';
+}
+
 function updateExtraVisitors() {
   const n = parseInt(document.getElementById('visitorCount').value);
   const container = document.getElementById('extraVisitorsContainer');
@@ -132,11 +148,11 @@ function updateExtraVisitors() {
   const allergyPh = window.t ? window.t('allergyPlaceholder') : "ระบุอาการแพ้ หรือ 'ไม่มี'";
   const agePh = window.t ? window.t('ageChildRule') : "อายุ (ปี) · <5 ฟรี, 5-8=500, >8=1000";
 
+  // Build every visitor block as one string, then a single innerHTML inject.
+  const blocks = new Array(Math.max(0, n - 1));
   for (let i = 2; i <= n; i++) {
-    const div = document.createElement('div');
-    div.className = 'form-group full';
-    div.style.cssText = 'border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;';
-    div.innerHTML =
+    blocks[i - 2] =
+      '<div class="form-group full" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;">' +
       '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">ผู้เข้าร่วมกิจกรรม ' + i + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
       '<div class="form-group"><label>ชื่อ-นามสกุล <span style="color:var(--red)">*</span></label>' +
@@ -151,30 +167,13 @@ function updateExtraVisitors() {
       '<input type="text" id="extraVisitorAllergy' + i + '" placeholder="' + allergyPh + '"></div>' +
       '</div>' +
       '<div class="form-group"><label>ความสัมพันธ์ <span style="color:var(--red)">*</span></label>' +
-      '<select id="extraVisitorRelation' + i + '">' + relOpts + '</select></div>' +
+      '<select id="extraVisitorRelation' + i + '" onchange="toggleAgeGroup(' + i + ')">' + relOpts + '</select></div>' +
       '<div class="form-group" id="ageGroup' + i + '" style="display:none;margin-top:6px;">' +
       '<label>อายุ (ปี) <span style="color:var(--red)">*</span></label>' +
       '<input type="number" id="extraVisitorAge' + i + '" min="0" max="120" placeholder="' + agePh + '">' +
-      '</div>';
-    list.appendChild(div);
-    // attach conditional age field for บุตร/ธิดา
-    const relEl = div.querySelector('#extraVisitorRelation' + i);
-    if (relEl) {
-      relEl.onchange = function () {
-        const ag = document.getElementById('ageGroup' + i);
-        const ai = document.getElementById('extraVisitorAge' + i);
-        if (!ag) return;
-        // Check if this is child relationship (in any language)
-        const childValues = ['บุตร / ธิดา', 'Child', '子女', 'Son/Daughter'];
-        if (childValues.includes(this.value)) {
-          ag.style.display = 'block';
-        } else {
-          ag.style.display = 'none';
-          if (ai) ai.value = '';
-        }
-      };
-    }
+      '</div></div>';
   }
+  list.innerHTML = blocks.join('');
 }
 
 function getExtraVisitors() {
@@ -373,7 +372,7 @@ async function loadPrisonerMaster() {
   // Show cached data immediately if available
   const cached = loadPrisonerFromCache();
   if (cached) {
-    prisonerMaster = cached;
+    prisonerMaster = window.rebuildPrisonerObjects(cached);
     if (statusEl) {
       statusEl.textContent = `✓ โหลดรายชื่อสำเร็จ (${prisonerMaster.length} คน)`;
       statusEl.style.color = 'var(--green)';
@@ -399,7 +398,7 @@ async function loadPrisonerMaster() {
     const data = await resp.json();
 
     if (data.status === 'ok' && Array.isArray(data.prisoners)) {
-      prisonerMaster = data.prisoners;
+      prisonerMaster = window.rebuildPrisonerObjects(data.prisoners);
       savePrisonerToCache(prisonerMaster);
       if (statusEl) {
         statusEl.textContent = `✓ โหลดรายชื่อสำเร็จ (${prisonerMaster.length} คน)`;
@@ -425,6 +424,8 @@ async function loadPrisonerMaster() {
   }
 }
 
+const MAX_PRISONER_SUGGESTIONS = 8;
+
 function filterPrisonerSuggestions() {
   const q = document.getElementById('prisonerSearch').value.trim().toLowerCase();
   const container = document.getElementById('prisonerSuggestions');
@@ -433,31 +434,43 @@ function filterPrisonerSuggestions() {
 
   if (!q || prisonerMaster.length === 0) return;
 
-  const matches = prisonerMaster.filter(p =>
-    p.prisonerId.toLowerCase().includes(q) ||
-    p.prisonerName.toLowerCase().includes(q)
-  ).slice(0, 8); // limit results
+  // Short-circuit loop: stops scanning the moment we have 8 matches, so a
+  // 5000+ row master never gets fully filtered per keystroke.
+  const matches = [];
+  const src = prisonerMaster;
+  for (let i = 0; i < src.length && matches.length < MAX_PRISONER_SUGGESTIONS; i++) {
+    const p = src[i];
+    if (p.prisonerId.toLowerCase().indexOf(q) !== -1 || p.prisonerName.toLowerCase().indexOf(q) !== -1) {
+      matches.push(p);
+    }
+  }
 
   if (matches.length === 0) return;
 
-  matches.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'suggestion-item';
-    div.innerHTML = `
-      <div style="flex:1">
-        <strong style="font-size:15px;">${escHtml(maskPrisonerName(p.prisonerName))}</strong>
-      </div>
-      <div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">
-        #${escHtml(p.prisonerId)}<br>
-        <span style="color:var(--blue);font-weight:600;">${escHtml(p.wing || '')}</span>
-        ${p.status ? `<br><span style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:4px;font-size:10px;background:${p.status === 'ติดวินัย งดเยี่ยม' ? '#fee2e2;color:#991b1b' : '#dbeafe;color:#1e40af'};font-weight:600;">${escHtml(p.status)}</span>` : ''}
-      </div>
-    `;
-    div.onclick = () => selectPrisoner(p);
-    container.appendChild(div);
-  });
+  // Build all suggestions as one string => single innerHTML (one reflow).
+  let html = '';
+  for (let i = 0; i < matches.length; i++) {
+    const p = matches[i];
+    const statusBadge = p.status
+      ? `<br><span style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:4px;font-size:10px;background:${p.status === 'ติดวินัย งดเยี่ยม' ? '#fee2e2;color:#991b1b' : '#dbeafe;color:#1e40af'};font-weight:600;">${escHtml(p.status)}</span>`
+      : '';
+    html += '<div class="suggestion-item" data-i="' + i + '">' +
+      '<div style="flex:1"><strong style="font-size:15px;">' + escHtml(maskPrisonerName(p.prisonerName)) + '</strong></div>' +
+      '<div style="text-align:right;font-size:12px;line-height:1.25;color:#555;">#' + escHtml(p.prisonerId) + '<br>' +
+      '<span style="color:var(--blue);font-weight:600;">' + escHtml(p.wing || '') + '</span>' + statusBadge + '</div></div>';
+  }
+  container.innerHTML = html;
+  container.onclick = (ev) => {
+    const el = ev.target && ev.target.closest ? ev.target.closest('.suggestion-item') : null;
+    if (el) selectPrisoner(matches[parseInt(el.dataset.i, 10)]);
+  };
   container.style.display = 'block';
 }
+
+// Debounced entry point wired from the HTML input: 250ms trailing edge means
+// the expensive filter only runs after the user pauses typing.
+const debouncedPrisonerFilter = debounce(filterPrisonerSuggestions, 250);
+window.debouncedPrisonerFilter = debouncedPrisonerFilter;
 
 function selectPrisoner(p) {
   const isRestricted = String(p.status || '').trim() === 'ติดวินัย งดเยี่ยม';
@@ -1297,12 +1310,13 @@ async function loadBookingCounts() {
    renderCalendar();
 }
 
-// Initialize calendar immediately, then load data from server
+// Initialize calendar immediately, then load data from server.
 renderCalendar(); // show immediately (with 0 quotas), load will refresh counts from server
-loadBookingCounts();
 
-// Load prisoner master data from Google Sheet (for autocomplete + validation in prisoner info section)
-loadPrisonerMaster();
+// Fire both independent network loads concurrently. Promise.allSettled (an
+// upgraded Promise.all) guarantees one slow/failing fetch can never block or
+// cancel the other — the calendar counts and prisoner master are independent.
+Promise.allSettled([loadBookingCounts(), loadPrisonerMaster()]);
 
 // Close prisoner suggestions when clicking outside the search box
 document.addEventListener('click', (e) => {

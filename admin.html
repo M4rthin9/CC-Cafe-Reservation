@@ -771,7 +771,7 @@
             <span style="font-weight:400;font-size:10px;">(เลือกจากรายชื่อเพื่อแสดงข้อมูล)</span>
           </label>
           <input type="text" id="nbPrisonerSearch" class="search-box" placeholder="พิมพ์เลขผู้ต้องขัง หรือ ชื่อ-นามสกุล..."
-            oninput="nbFilterPrisonerSuggestions()" style="width:100%;">
+            oninput="debouncedNbPrisonerFilter()" style="width:100%;">
           <div id="nbPrisonerSuggestions" class="suggestions-dropdown" style="display:none;"></div>
           <div id="nbPrisonerLoadStatus" style="font-size:11px;margin-top:4px;color:var(--text2);"></div>
           <div id="nbPrisonerMatchStatus" style="font-size:11px;margin-top:4px;color:var(--green);display:none;"></div>

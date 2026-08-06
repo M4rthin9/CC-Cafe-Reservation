@@ -1,4 +1,4 @@
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVP6_gk84BnQvmFcPKAPc0oFABIG3ENhOZH8Pfnm7avgcZn_SQ741xuSz4tL46sepZeA/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHND-03U5-Eo6trtgnhwokn8gQdf4jz80a16ZD1diXhVgZsnrKmqnQkYBZwJ9JE_n_pw/exec';
 let APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL;
 const QUOTA = 20;
 const BACKEND_DISCOVERED_KEY = 'gas_discovered_url';
@@ -75,7 +75,12 @@ async function appsScriptFetch(path, params, retries, timeoutMs) {
       return resp;
     } catch (e) {
       if (attempt === maxRetries) throw e;
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      // Jittered exponential backoff. First retry fires at ~300ms (not 1s) so
+      // it absorbs a GAS cold start / transient blip without feeling sluggish;
+      // it then doubles per attempt, capped at 4s so a dead endpoint doesn't
+      // stall for minutes. Jitter de-synchronizes parallel requests.
+      const delay = Math.min(300 * Math.pow(2, attempt), 4000);
+      await new Promise(r => setTimeout(r, delay + Math.floor(Math.random() * 150)));
     }
   }
 }
@@ -103,6 +108,40 @@ async function _tryRecover404(path, params) {
 window.appsScriptFetch = appsScriptFetch;
 window.API_FETCH_TIMEOUT = API_FETCH_TIMEOUT;
 window.waitForUrlReady = waitForUrlReady;
+
+// ── Shared perf helpers (used by booking.js / admin.js) ──
+// Trailing-edge debounce: the callback only fires ms after the last call,
+// so keystroke-driven filters run once per pause instead of once per key.
+function debounce(fn, ms) {
+  let timer = null;
+  return function (...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; fn.apply(this, args); }, ms);
+  };
+}
+
+// Rebuilds the minified getPrisoners payload (array of arrays) back into the
+// {prisonerName, prisonerId, wing, status, vinaiDate} objects the UI expects.
+// Legacy payloads (array of objects) pass through unchanged, and the same
+// function is used for localStorage cache reads so both formats are safe.
+function rebuildPrisonerObjects(rows) {
+  if (!Array.isArray(rows)) return [];
+  if (rows.length > 0 && typeof rows[0] === 'object' && !Array.isArray(rows[0])) return rows;
+  const out = new Array(rows.length);
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    out[i] = {
+      prisonerName: String(r[0] || ''),
+      prisonerId: String(r[1] || ''),
+      wing: String(r[2] || ''),
+      status: String(r[3] || ''),
+      vinaiDate: String(r[4] || '')
+    };
+  }
+  return out;
+}
+window.debounce = debounce;
+window.rebuildPrisonerObjects = rebuildPrisonerObjects;
 
 // Re-discover the current Apps Script /exec URL via the lightweight
 // `getBackendUrl` action. Falls back to the hardcoded default URL.
