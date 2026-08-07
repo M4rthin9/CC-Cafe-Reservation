@@ -959,7 +959,8 @@ window.onloadTurnstileCallback = function () {
 function renderTurnstile() {
   if (typeof window.turnstile !== 'object' && typeof window.turnstile !== 'function') return;
   if (turnstileWidgetId || !document.getElementById('turnstileWidget')) return;
-  turnstileWidgetId = window.turnstile.render('turnstileWidget', {
+  const container = document.getElementById('turnstileWidget');
+  turnstileWidgetId = window.turnstile.render(container, {
     sitekey: TURNSTILE_SITEKEY,
     action: 'booking'
   });
