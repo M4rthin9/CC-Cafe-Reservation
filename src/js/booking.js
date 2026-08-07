@@ -949,16 +949,18 @@ function goBack() { _confirmVisible = false; showPage(1); }
 // ===== TURNSTILE =====
 let turnstileWidgetId = null;
 let _confirmVisible = false;
-
-window.onloadTurnstileCallback = function () {
-  if (_confirmVisible && !turnstileWidgetId && document.getElementById('turnstileWidget')) {
-    renderTurnstile();
-  }
-};
+let _turnstileRetries = 0;
 
 function renderTurnstile() {
-  if (typeof window.turnstile !== 'object' && typeof window.turnstile !== 'function') return;
   if (turnstileWidgetId || !document.getElementById('turnstileWidget')) return;
+  if (typeof window.turnstile !== 'object' && typeof window.turnstile !== 'function') {
+    if (_turnstileRetries < 10) {
+      _turnstileRetries++;
+      setTimeout(renderTurnstile, 200);
+    }
+    return;
+  }
+  _turnstileRetries = 0;
   const container = document.getElementById('turnstileWidget');
   turnstileWidgetId = window.turnstile.render(container, {
     sitekey: TURNSTILE_SITEKEY,
