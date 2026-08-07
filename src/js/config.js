@@ -1,4 +1,4 @@
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ_XGiFbgjdvUK1DhzNjdWPGZ2hNI0BWyj6g1Bv0dZqGAohQLZkV0wjUXCT6cvtvMoig/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDIC5dQ3JgU-54bAarlu25O94CRz96lu5fbNGnHM-qDNG7-_RMIukGfhDTWWP_6iZv/exec';
 let APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL;
 const TURNSTILE_SITEKEY = '0x4AAAAAAEIsdWWK1_eTnbKj';
 const QUOTA = 20;
