@@ -975,6 +975,8 @@ function resetTurnstile() {
   }
 }
 
+let currentTurnstileToken = '';
+
 async function verifyTurnstile() {
   if (typeof window.turnstile !== 'object' && typeof window.turnstile !== 'function') {
     showInlineError('confirmSummary', '⚠️ ระบบ CAPTCHA ยังไม่พร้อม — กรุณารอสักครู่แล้วลองอีกครั้ง');
@@ -990,20 +992,8 @@ async function verifyTurnstile() {
     showInlineError('confirmSummary', '⚠️ กรุณากดยืนยัน CAPTCHA ก่อนส่งคำขอจอง');
     return false;
   }
-  try {
-    const resp = await fetch('/api/turnstile-verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
-    });
-    const result = await resp.json();
-    if (result && result.success === true) return true;
-    throw new Error((result && result.error) || 'verify_failed');
-  } catch (e) {
-    resetTurnstile();
-    showInlineError('confirmSummary', '⚠️ CAPTCHA ไม่ผ่านการตรวจสอบ — กรุณาลองใหม่อีกครั้ง');
-    return false;
-  }
+  currentTurnstileToken = token;
+  return true;
 }
 
 // ===== SUBMIT =====
@@ -1083,7 +1073,9 @@ async function submitBooking() {
     child5to8Count: cost.kids5_8,
     childUnder5Count: cost.kidsUnder5,
     status: 'รอตรวจสอบผู้เข้าร่วม',
-    slipImage: ''
+    slipImage: '',
+    turnstileToken: currentTurnstileToken,
+    ip: ''
   };
 
   // overlay already shown from duplicate check; do NOT add again
